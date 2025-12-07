@@ -2,7 +2,29 @@
  * Generic revision types for tracking changes across multiple entity types
  */
 
-export type EntityType = 'page' | 'product' | 'category' | 'theme' | 'site';
+export type EntityType = 'page' | 'product' | 'category' | 'theme' | 'site' | 'component';
+
+/**
+ * Component revision data structure - stores the full component state
+ */
+export interface ComponentRevisionData {
+  name: string;
+  description?: string;
+  type: string;
+  config: Record<string, unknown>;
+  children?: ComponentChildData[];
+}
+
+/**
+ * Child widget data for component revisions
+ */
+export interface ComponentChildData {
+  id: string;
+  type: string;
+  position: number;
+  config: Record<string, unknown>;
+  children?: ComponentChildData[];
+}
 
 /**
  * Generic revision record from database

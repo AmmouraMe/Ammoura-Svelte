@@ -142,13 +142,15 @@
   <slot />
 
   {#if !isAdminPage && footerConfig}
-    <FrontendComponentRenderer
-      type="footer"
-      config={footerConfig}
-      position={data.layoutData?.footer?.position}
-      siteContext={data.siteContext}
-      user={data.currentUser}
-    />
+    {#key data.currentUser?.id}
+      <FrontendComponentRenderer
+        type="footer"
+        config={footerConfig}
+        position={data.layoutData?.footer?.position}
+        siteContext={data.siteContext}
+        user={data.currentUser}
+      />
+    {/key}
   {/if}
 </main>
 

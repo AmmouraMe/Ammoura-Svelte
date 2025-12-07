@@ -29,6 +29,16 @@
   }
 
   async function handleSave(saveData: SaveData): Promise<void> {
+    console.log('[handleSave] Starting save with saveData:', {
+      title: saveData.title,
+      componentsCount: saveData.components.length,
+      components: saveData.components.map((c) => ({
+        id: c.id,
+        type: c.type,
+        parent_id: c.parent_id
+      }))
+    });
+
     try {
       // Convert PageComponent[] to component children format
       // Preserve parent_id to maintain the component hierarchy
@@ -70,8 +80,14 @@
 
       console.log(
         '[handleSave] Final children to save:',
-        children.map((c) => ({ id: c.id, parent_id: c.parent_id, position: c.position }))
+        children.map((c) => ({
+          id: c.id,
+          type: c.type,
+          parent_id: c.parent_id,
+          position: c.position
+        }))
       );
+      console.log('[handleSave] Full children data:', JSON.stringify(children, null, 2));
 
       // Determine component type
       // For navbar/footer components, preserve the original type to ensure proper rendering
@@ -139,9 +155,10 @@
     }
   }
 
-  async function handlePublish(saveData: SaveData): Promise<void> {
-    // For components, publishing is the same as saving
-    await handleSave(saveData);
+  async function handlePublish(_saveData: SaveData): Promise<void> {
+    // For components, publishing is handled by the save operation
+    // The AdvancedBuilder already calls onSave before onPublish for existing components
+    // So we just need to show a success message here
     toastStore.info('Component published!');
   }
 

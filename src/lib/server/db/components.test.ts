@@ -29,6 +29,11 @@ vi.mock('./componentChildren', () => ({
   saveComponentWidgets: vi.fn()
 }));
 
+// Mock component-revisions module - returns null to trigger fallback to hardcoded defaults
+vi.mock('./component-revisions', () => ({
+  resetComponentToOriginal: vi.fn().mockResolvedValue(null)
+}));
+
 import { getComponentChildren, saveComponentChildren } from './componentChildren';
 
 describe('Component Database Functions', () => {
@@ -1025,10 +1030,12 @@ describe('Component Database Functions', () => {
   });
 
   describe('resetBuiltInComponent', () => {
+    const testSiteId = 'test-site-id';
+
     it('should reset component to default navbar config with main-container wrapper', async () => {
       mockDb.run.mockResolvedValue({ success: true });
 
-      await resetBuiltInComponent(mockDb as unknown as D1Database, 1, 'navbar');
+      await resetBuiltInComponent(mockDb as unknown as D1Database, testSiteId, 1, 'navbar');
 
       // Should update component config
       expect(mockDb.prepare).toHaveBeenCalledWith(
@@ -1077,7 +1084,7 @@ describe('Component Database Functions', () => {
     it('should reset component to default footer config', async () => {
       mockDb.run.mockResolvedValue({ success: true });
 
-      await resetBuiltInComponent(mockDb as unknown as D1Database, 1, 'footer');
+      await resetBuiltInComponent(mockDb as unknown as D1Database, testSiteId, 1, 'footer');
 
       const bindCall = mockDb.bind.mock.calls[0];
       const parsedConfig = JSON.parse(bindCall[0] as string);
@@ -1087,7 +1094,7 @@ describe('Component Database Functions', () => {
     it('should reset component to default hero config', async () => {
       mockDb.run.mockResolvedValue({ success: true });
 
-      await resetBuiltInComponent(mockDb as unknown as D1Database, 1, 'hero');
+      await resetBuiltInComponent(mockDb as unknown as D1Database, testSiteId, 1, 'hero');
 
       const bindCall = mockDb.bind.mock.calls[0];
       const parsedConfig = JSON.parse(bindCall[0] as string);
@@ -1097,7 +1104,7 @@ describe('Component Database Functions', () => {
     it('should reset component to default container config', async () => {
       mockDb.run.mockResolvedValue({ success: true });
 
-      await resetBuiltInComponent(mockDb as unknown as D1Database, 1, 'container');
+      await resetBuiltInComponent(mockDb as unknown as D1Database, testSiteId, 1, 'container');
 
       const bindCall = mockDb.bind.mock.calls[0];
       const parsedConfig = JSON.parse(bindCall[0] as string);
@@ -1107,7 +1114,7 @@ describe('Component Database Functions', () => {
     it('should reset component to default text config', async () => {
       mockDb.run.mockResolvedValue({ success: true });
 
-      await resetBuiltInComponent(mockDb as unknown as D1Database, 1, 'text');
+      await resetBuiltInComponent(mockDb as unknown as D1Database, testSiteId, 1, 'text');
 
       const bindCall = mockDb.bind.mock.calls[0];
       const parsedConfig = JSON.parse(bindCall[0] as string);
@@ -1117,7 +1124,7 @@ describe('Component Database Functions', () => {
     it('should reset component to default button config', async () => {
       mockDb.run.mockResolvedValue({ success: true });
 
-      await resetBuiltInComponent(mockDb as unknown as D1Database, 1, 'button');
+      await resetBuiltInComponent(mockDb as unknown as D1Database, testSiteId, 1, 'button');
 
       const bindCall = mockDb.bind.mock.calls[0];
       const parsedConfig = JSON.parse(bindCall[0] as string);
@@ -1127,7 +1134,7 @@ describe('Component Database Functions', () => {
     it('should reset component to default image config', async () => {
       mockDb.run.mockResolvedValue({ success: true });
 
-      await resetBuiltInComponent(mockDb as unknown as D1Database, 1, 'image');
+      await resetBuiltInComponent(mockDb as unknown as D1Database, testSiteId, 1, 'image');
 
       const bindCall = mockDb.bind.mock.calls[0];
       const parsedConfig = JSON.parse(bindCall[0] as string);
@@ -1137,7 +1144,7 @@ describe('Component Database Functions', () => {
     it('should use empty config for unknown component type', async () => {
       mockDb.run.mockResolvedValue({ success: true });
 
-      await resetBuiltInComponent(mockDb as unknown as D1Database, 1, 'unknown_type');
+      await resetBuiltInComponent(mockDb as unknown as D1Database, testSiteId, 1, 'unknown_type');
 
       const bindCall = mockDb.bind.mock.calls[0];
       const parsedConfig = JSON.parse(bindCall[0] as string);
@@ -1147,7 +1154,7 @@ describe('Component Database Functions', () => {
     it('should delete existing component children', async () => {
       mockDb.run.mockResolvedValue({ success: true });
 
-      await resetBuiltInComponent(mockDb as unknown as D1Database, 1, 'navbar');
+      await resetBuiltInComponent(mockDb as unknown as D1Database, testSiteId, 1, 'navbar');
 
       expect(mockDb.prepare).toHaveBeenCalledWith(
         'DELETE FROM component_widgets WHERE component_id = ?'
@@ -1158,7 +1165,7 @@ describe('Component Database Functions', () => {
       mockDb.run.mockRejectedValue(new Error('Update failed'));
 
       await expect(
-        resetBuiltInComponent(mockDb as unknown as D1Database, 1, 'navbar')
+        resetBuiltInComponent(mockDb as unknown as D1Database, testSiteId, 1, 'navbar')
       ).rejects.toThrow('Update failed');
     });
   });

@@ -204,7 +204,7 @@ describe('componentChildren database operations', () => {
       const result = await createComponentChild(mockDb as unknown as D1Database, childData);
 
       expect(mockDb.prepare).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO component_widgets')
+        expect.stringContaining('INSERT OR REPLACE INTO component_widgets')
       );
       expect(mockDb.bind).toHaveBeenCalledWith(
         'child-1',
@@ -443,7 +443,7 @@ describe('componentChildren database operations', () => {
 
       // Should create new children
       expect(mockDb.prepare).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO component_widgets')
+        expect.stringContaining('INSERT OR REPLACE INTO component_widgets')
       );
     });
 
@@ -498,6 +498,36 @@ describe('componentChildren database operations', () => {
       await expect(
         saveComponentChildren(mockDb as unknown as D1Database, 1, children)
       ).rejects.toThrow('Create failed');
+    });
+
+    it('deduplicates children by ID, keeping the last occurrence', async () => {
+      mockDb.run.mockResolvedValue({ success: true });
+
+      // Duplicate IDs - should only insert the last one
+      const children = [
+        { id: 'child-1', type: 'text', position: 0, config: { content: 'First' } },
+        { id: 'child-2', type: 'image', position: 1, config: { src: '/img.jpg' } },
+        { id: 'child-1', type: 'text', position: 2, config: { content: 'Updated' } } // duplicate
+      ];
+
+      await saveComponentChildren(mockDb as unknown as D1Database, 1, children);
+
+      // Should delete existing children first
+      expect(mockDb.prepare).toHaveBeenCalledWith(
+        'DELETE FROM component_widgets WHERE component_id = ?'
+      );
+
+      // Count the number of INSERT OR REPLACE calls (should be 2, not 3)
+      const insertCalls = mockDb.prepare.mock.calls.filter((call: string[]) =>
+        call[0]?.includes('INSERT OR REPLACE INTO component_widgets')
+      );
+      expect(insertCalls.length).toBe(2);
+
+      // Verify the last occurrence of child-1 is used (with 'Updated' content)
+      const bindCalls = mockDb.bind.mock.calls;
+      const child1BindCall = bindCalls.find((call: unknown[]) => call[0] === 'child-1');
+      expect(child1BindCall).toBeDefined();
+      expect(child1BindCall?.[4]).toBe(JSON.stringify({ content: 'Updated' }));
     });
   });
 

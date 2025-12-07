@@ -170,12 +170,12 @@ export interface ResponsiveValue<T> {
   desktop: T;
 }
 
-// Spacing configuration
+// Spacing configuration - allows 'auto' for margin values (CSS auto margin for centering)
 export interface SpacingConfig {
-  top?: number;
-  right?: number;
-  bottom?: number;
-  left?: number;
+  top?: number | 'auto';
+  right?: number | 'auto';
+  bottom?: number | 'auto';
+  left?: number | 'auto';
 }
 
 // Typography configuration
@@ -410,7 +410,7 @@ export interface ComponentConfig {
   alignment?: 'left' | 'center' | 'right' | 'justify';
   typography?: TypographyConfig;
   textColor?: string | ThemeSpecificColor;
-  fontSize?: number;
+  fontSize?: number | ResponsiveValue<number>;
   lineHeight?: number;
 
   // Heading component
@@ -487,7 +487,8 @@ export interface ComponentConfig {
   columnCount?: ResponsiveValue<number>;
   gap?: ResponsiveValue<number>;
   verticalAlign?: 'stretch' | 'start' | 'center' | 'end';
-  children?: PageComponent[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  children?: any[]; // Flexible children array - can be PageComponent or inline definitions
 
   // Divider component
   thickness?: number;
@@ -588,11 +589,32 @@ export interface ComponentConfig {
     openInNewTab?: boolean;
   }>;
   socialLinks?: Array<{
-    platform: 'facebook' | 'twitter' | 'instagram' | 'linkedin' | 'youtube';
+    platform:
+      | 'facebook'
+      | 'twitter'
+      | 'instagram'
+      | 'linkedin'
+      | 'youtube'
+      | 'github'
+      | 'tiktok'
+      | 'pinterest';
     url: string;
   }>;
   footerBackground?: string | ThemeSpecificColor;
   footerTextColor?: string | ThemeSpecificColor;
+  footerHoverColor?: string | ThemeSpecificColor; // Link hover color
+  footerBorderColor?: string | ThemeSpecificColor; // Border color
+  footerShadow?: boolean; // Show shadow on footer
+  footerPadding?: ResponsiveValue<SpacingConfig>; // Custom padding
+  columnsPerRow?: ResponsiveValue<number>; // Number of columns in footer grid
+  linkSections?: Array<{
+    title: string;
+    links: Array<{
+      text: string;
+      url: string;
+      openInNewTab?: boolean;
+    }>;
+  }>;
 
   // Yield component (special - renders page content in layout)
   // No configuration needed - just a placeholder

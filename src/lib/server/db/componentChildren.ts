@@ -87,9 +87,11 @@ export async function createComponentChild(
     const now = new Date().toISOString();
     const configJson = JSON.stringify(data.config);
 
+    // Use INSERT OR REPLACE to handle cases where the ID already exists
+    // This can happen when re-saving components with the same widget IDs
     await db
       .prepare(
-        `INSERT INTO component_widgets (id, component_id, type, position, config, parent_id, created_at, updated_at)
+        `INSERT OR REPLACE INTO component_widgets (id, component_id, type, position, config, parent_id, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
@@ -221,6 +223,8 @@ export const deleteComponentWidgets = deleteComponentChildren;
 
 /**
  * Bulk save component children (delete all existing and create new ones)
+ * Children are sorted to ensure parents are inserted before their children
+ * to satisfy the foreign key constraint on parent_id.
  */
 export async function saveComponentChildren(
   db: D1Database,
@@ -237,8 +241,28 @@ export async function saveComponentChildren(
     // Delete all existing children
     await deleteComponentChildren(db, componentId);
 
-    // Insert new children
+    // Deduplicate children by ID (keep the last occurrence if duplicates exist)
+    const childrenMap = new Map<
+      string,
+      {
+        id: string;
+        type: string;
+        position: number;
+        config: Record<string, unknown>;
+        parent_id?: string;
+      }
+    >();
     for (const child of children) {
+      childrenMap.set(child.id, child);
+    }
+    const uniqueChildren = Array.from(childrenMap.values());
+
+    // Sort children so parents are inserted before their children
+    // This is necessary because of the foreign key constraint on parent_id
+    const sortedChildren = sortChildrenByHierarchy(uniqueChildren);
+
+    // Insert new children in the correct order
+    for (const child of sortedChildren) {
       await createComponentChild(db, {
         ...child,
         component_id: componentId
@@ -248,6 +272,67 @@ export async function saveComponentChildren(
     console.error('Failed to save component children:', error);
     throw error;
   }
+}
+
+/**
+ * Sort children so that parents come before their children.
+ * This ensures we can insert them in order without violating the parent_id foreign key.
+ */
+function sortChildrenByHierarchy(
+  children: Array<{
+    id: string;
+    type: string;
+    position: number;
+    config: Record<string, unknown>;
+    parent_id?: string;
+  }>
+): typeof children {
+  const result: typeof children = [];
+  const remaining = [...children];
+  const insertedIds = new Set<string>();
+
+  // First, add all root-level children (no parent_id)
+  const rootChildren = remaining.filter((c) => !c.parent_id);
+  for (const child of rootChildren) {
+    result.push(child);
+    insertedIds.add(child.id);
+  }
+
+  // Remove root children from remaining
+  const withParents = remaining.filter((c) => c.parent_id);
+
+  // Keep adding children whose parents have been inserted
+  let iterations = 0;
+  const maxIterations = withParents.length + 1; // Prevent infinite loop
+
+  while (withParents.length > 0 && iterations < maxIterations) {
+    iterations++;
+    const toInsert: typeof children = [];
+
+    for (let i = withParents.length - 1; i >= 0; i--) {
+      const child = withParents[i];
+      if (child.parent_id && insertedIds.has(child.parent_id)) {
+        toInsert.push(child);
+        insertedIds.add(child.id);
+        withParents.splice(i, 1);
+      }
+    }
+
+    // Add children whose parents are now inserted
+    result.push(...toInsert);
+  }
+
+  // If there are still remaining children (orphans or circular references), add them anyway
+  // The database will handle the constraint violation
+  if (withParents.length > 0) {
+    console.warn(
+      'Some children have parent_ids that do not exist in the children list:',
+      withParents.map((c) => ({ id: c.id, parent_id: c.parent_id }))
+    );
+    result.push(...withParents);
+  }
+
+  return result;
 }
 
 /**

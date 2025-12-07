@@ -416,28 +416,48 @@
   }
 
   async function handlePublishClick() {
-    // For new pages (no id), skip the draft save and go straight to publish
-    // The onPublish handler will create the page directly as published
-    if (page?.id) {
-      await handleSaveClick();
-    }
-    await onPublish({
-      id: page?.id,
+    console.log('[AdvancedBuilder] handlePublishClick called', {
+      pageId: page?.id,
       title,
-      slug,
-      components: pageComponents,
-      layout_id: layoutId || undefined
+      componentsCount: pageComponents.length,
+      canPublish,
+      hasActualChanges,
+      isViewingPublishedRevision
     });
-    // After publishing, we're now viewing a published revision
-    isViewingPublishedRevision = true;
-    // Update lastSavedState to reflect the published content
-    lastSavedState = {
-      title,
-      slug,
-      components: JSON.parse(JSON.stringify(pageComponents))
-    };
-    hasUnsavedChanges = false;
-    lastSavedAt = new Date();
+
+    isSaving = true;
+    try {
+      // For new pages (no id), skip the draft save and go straight to publish
+      // The onPublish handler will create the page directly as published
+      if (page?.id) {
+        await onSave({
+          id: page?.id,
+          title,
+          slug,
+          components: pageComponents,
+          layout_id: layoutId || undefined
+        });
+      }
+      await onPublish({
+        id: page?.id,
+        title,
+        slug,
+        components: pageComponents,
+        layout_id: layoutId || undefined
+      });
+      // After publishing, we're now viewing a published revision
+      isViewingPublishedRevision = true;
+      // Update lastSavedState to reflect the published content
+      lastSavedState = {
+        title,
+        slug,
+        components: JSON.parse(JSON.stringify(pageComponents))
+      };
+      hasUnsavedChanges = false;
+      lastSavedAt = new Date();
+    } finally {
+      isSaving = false;
+    }
   }
 
   function handleUpdateLayout(newLayoutId: number) {
@@ -559,19 +579,39 @@
 
   // Compute whether current state differs from last saved state
   $: hasActualChanges = (() => {
-    if (!lastSavedState) return hasUnsavedChanges;
+    if (!lastSavedState) {
+      console.log(
+        '[AdvancedBuilder] hasActualChanges: no lastSavedState, returning',
+        hasUnsavedChanges
+      );
+      return hasUnsavedChanges;
+    }
 
     // Compare current state with last saved state
     const currentState = JSON.stringify({ title, slug, components: pageComponents });
     const savedState = JSON.stringify(lastSavedState);
+    const changed = currentState !== savedState;
 
-    return currentState !== savedState;
+    if (changed) {
+      console.log(
+        '[AdvancedBuilder] hasActualChanges: true - current components:',
+        pageComponents.length,
+        'saved components:',
+        lastSavedState.components.length
+      );
+    }
+
+    return changed;
   })();
 
   // Compute whether publish button should be enabled
-  // Only enable if we're NOT currently viewing the published version
+  // For component/primitive mode, always allow publishing (they don't have revisions yet)
+  // For page/layout mode, only enable if we're NOT currently viewing the published version
   // OR if we've made changes since loading the published version
-  $: canPublish = !isViewingPublishedRevision || hasActualChanges;
+  $: canPublish =
+    mode === 'component' || mode === 'primitive'
+      ? true
+      : !isViewingPublishedRevision || hasActualChanges;
 
   // Auto-save
   let autoSaveInterval: ReturnType<typeof setInterval>;

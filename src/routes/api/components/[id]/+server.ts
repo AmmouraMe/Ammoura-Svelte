@@ -170,10 +170,18 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
     return json({ success: true, component });
   } catch (err) {
     console.error('Failed to update component:', err);
+    // Log the full error details for debugging
+    if (err instanceof Error) {
+      console.error('Error message:', err.message);
+      console.error('Error stack:', err.stack);
+    }
     if (err && typeof err === 'object' && 'status' in err) {
       throw err;
     }
-    throw error(500, 'Failed to update component');
+    throw error(
+      500,
+      `Failed to update component: ${err instanceof Error ? err.message : String(err)}`
+    );
   }
 };
 

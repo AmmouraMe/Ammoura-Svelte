@@ -79,10 +79,10 @@
     }
   }
 
-  async function handlePublish(saveData: SaveData): Promise<void> {
-    // For layouts, publishing is the same as saving
-    // In the future, you could add a published status field
-    await handleSave(saveData);
+  async function handlePublish(_saveData: SaveData): Promise<void> {
+    // For layouts, publishing is handled by the save operation
+    // The AdvancedBuilder already calls onSave before onPublish for existing layouts
+    // So we just need to show a success message here
     toastStore.info('Layout published!');
   }
 

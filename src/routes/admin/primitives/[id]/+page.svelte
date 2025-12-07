@@ -54,9 +54,10 @@
     }
   }
 
-  async function handlePublish(saveData: SaveData): Promise<void> {
-    // For primitives, publishing is the same as saving
-    await handleSave(saveData);
+  async function handlePublish(_saveData: SaveData): Promise<void> {
+    // For primitives, publishing is handled by the save operation
+    // The AdvancedBuilder already calls onSave before onPublish for existing primitives
+    // So we just need to show a success message here
     toastStore.info('Primitive defaults applied!');
   }
 

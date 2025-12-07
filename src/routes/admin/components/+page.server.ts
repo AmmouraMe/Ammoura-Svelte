@@ -146,7 +146,7 @@ export const actions: Actions = {
       }
 
       // Reset the component to its original configuration
-      await resetBuiltInComponent(db, componentId, component.type);
+      await resetBuiltInComponent(db, String(siteId), componentId, component.type);
 
       return { success: true };
     } catch (err) {

@@ -1253,20 +1253,123 @@
       </div>
     {/if}
   {:else if component.type === 'footer'}
-    <div class="footer-preview">
-      <div class="footer-container">
-        {#if component.config.footerLinks && component.config.footerLinks.length > 0}
-          <div class="footer-links">
-            {#each component.config.footerLinks as link}
-              <a href={link.url} class="footer-link">{sub(link.text)}</a>
+    <!-- Footer with container-based architecture (new) or legacy format -->
+    {@const footerChildrenRaw = component.config.children}
+    {@const hasFooterChildren =
+      footerChildrenRaw && Array.isArray(footerChildrenRaw) && footerChildrenRaw.length > 0}
+    {@const footerDisplay =
+      getBreakpointValue(component.config.containerDisplay, currentBreakpoint) || 'flex'}
+    {@const footerFlexDirection =
+      getBreakpointValue(component.config.containerFlexDirection, currentBreakpoint) || 'column'}
+    {@const footerGap = getBreakpointValue(component.config.containerGap, currentBreakpoint) || 32}
+    {@const footerPadding = getBreakpointValue(
+      component.config.containerPadding,
+      currentBreakpoint
+    )}
+    {@const footerBackground =
+      component.config.containerBackground || component.config.footerBackground || 'theme:surface'}
+    {#if hasFooterChildren || isEditable}
+      <!-- New container-based footer with children (or editable empty footer) -->
+      <footer
+        class="footer-container-based"
+        style="
+          background: {resolveThemeColor(footerBackground, colorTheme, '#f9fafb', true)};
+          max-width: {component.config.containerMaxWidth || '100%'};
+          width: 100%;
+          box-sizing: border-box;
+          border-top: 1px solid {resolveThemeColor(
+          component.config.footerBorderColor || 'theme:border',
+          colorTheme,
+          '#e5e7eb',
+          true
+        )};
+        "
+      >
+        {#if isEditable}
+          <!-- Use ContainerDropZone for editable footer -->
+          <ContainerDropZone
+            containerId={component.id}
+            children={footerChildrenRaw || []}
+            isActive={false}
+            allowedTypes={[]}
+            displayMode={footerDisplay === 'grid' ? 'grid' : 'flex'}
+            showLayoutHints={true}
+            label="Footer"
+            containerStyles="
+              flex-direction: {footerFlexDirection};
+              justify-content: {component.config.containerJustifyContent || 'center'};
+              align-items: {component.config.containerAlignItems || 'stretch'};
+              flex-wrap: {component.config.containerWrap || 'wrap'};
+              gap: {footerGap}px;
+              padding: {footerPadding
+              ? `${footerPadding.top || 48}px ${footerPadding.right || 24}px ${footerPadding.bottom || 48}px ${footerPadding.left || 24}px`
+              : '48px 24px'};
+            "
+            on:drop={handleContainerDrop}
+            on:reorder={handleContainerReorder}
+            on:childClick={handleChildClick}
+          >
+            <svelte:fragment slot="child" let:child>
+              <svelte:self
+                component={child}
+                {currentBreakpoint}
+                {colorTheme}
+                onUpdate={createChildUpdateHandler(child.id)}
+                {isEditable}
+                {siteContext}
+                {user}
+                {onSelectComponent}
+              />
+            </svelte:fragment>
+          </ContainerDropZone>
+        {:else}
+          <!-- Non-editable: render children directly -->
+          <div
+            class="footer-content-wrapper"
+            style="
+              display: {footerDisplay};
+              flex-direction: {footerFlexDirection};
+              justify-content: {component.config.containerJustifyContent || 'center'};
+              align-items: {component.config.containerAlignItems || 'stretch'};
+              flex-wrap: {component.config.containerWrap || 'wrap'};
+              gap: {footerGap}px;
+              padding: {footerPadding
+              ? `${footerPadding.top || 48}px ${footerPadding.right || 24}px ${footerPadding.bottom || 48}px ${footerPadding.left || 24}px`
+              : '48px 24px'};
+            "
+          >
+            {#each footerChildrenRaw || [] as child (child.id)}
+              <svelte:self
+                component={child}
+                {currentBreakpoint}
+                {colorTheme}
+                onUpdate={createChildUpdateHandler(child.id)}
+                {isEditable}
+                {siteContext}
+                {user}
+                {onSelectComponent}
+              />
             {/each}
           </div>
         {/if}
-        <div class="footer-copyright">
-          {sub(component.config.copyright || '© 2025 Store Name. All rights reserved.')}
+      </footer>
+    {:else}
+      <!-- Legacy footer format -->
+      <div class="footer-preview">
+        <div class="footer-container">
+          {#if component.config.footerLinks && component.config.footerLinks.length > 0}
+            <div class="footer-links">
+              {#each component.config.footerLinks as link}
+                <a href={link.url} class="footer-link">{sub(link.text)}</a>
+              {/each}
+            </div>
+          {/if}
+          <div class="footer-copyright">
+            {sub(component.config.copyright || '© 2025 Store Name. All rights reserved.')}
+          </div>
         </div>
       </div>
-    </div>
+    {/if}
   {:else if component.type === 'yield'}
     <div class="yield-preview">
       <div class="yield-placeholder">
@@ -2126,6 +2229,19 @@
     font-size: 0.875rem;
     padding-top: 1rem;
     border-top: 1px solid var(--color-border-secondary);
+  }
+
+  /* Footer Container-based Architecture */
+  .footer-container-based {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .footer-content-wrapper {
+    width: 100%;
+    box-sizing: border-box;
+    max-width: 1200px;
+    margin: 0 auto;
   }
 
   /* Yield Preview */

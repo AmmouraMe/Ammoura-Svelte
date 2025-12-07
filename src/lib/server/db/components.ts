@@ -301,10 +301,13 @@ export async function updateComponent(
     updates.push('updated_at = CURRENT_TIMESTAMP');
     values.push(componentId, siteId);
 
+    // For global components (is_global = 1), allow update even if site_id doesn't match exactly
+    // This matches the getComponent query pattern: (site_id = ? OR is_global = 1)
+    // But we still verify ownership through the earlier check
     const result = await db
       .prepare(
         `UPDATE components SET ${updates.join(', ')}
-         WHERE id = ? AND site_id = ?
+         WHERE id = ? AND (site_id = ? OR is_global = 1)
          RETURNING *`
       )
       .bind(...values)
@@ -630,15 +633,17 @@ function _getDefaultNavbarChildren(): Array<{
 }
 
 /**
- * Reset a built-in component to its original default configuration
+ * Reset a built-in component to its original default configuration.
+ * Uses the hardcoded defaults which represent the canonical state for built-in components.
  */
 export async function resetBuiltInComponent(
   db: D1Database,
+  siteId: string,
   componentId: number,
   componentType: string
 ): Promise<void> {
   try {
-    // Get the default configuration for this component type
+    // Use hardcoded defaults - this is the canonical state for built-in components
     const defaultConfig = getDefaultComponentConfig(componentType);
 
     // Update the component config to defaults
@@ -650,7 +655,7 @@ export async function resetBuiltInComponent(
       .run();
 
     // Delete any existing component children (reset to clean state)
-    // For navbar, the children are now stored inside config.children (container-based architecture)
+    // For navbar/footer, the children are now stored inside config.children (container-based architecture)
     // So we just clear the component_widgets table
     await db
       .prepare('DELETE FROM component_widgets WHERE component_id = ?')
@@ -920,14 +925,193 @@ function getDefaultComponentConfig(type: string): Record<string, unknown> {
       ]
     },
     footer: {
-      copyright: '© 2025 Store Name. All rights reserved.',
-      footerLinks: [
-        { text: 'Privacy Policy', url: '/privacy' },
-        { text: 'Terms of Service', url: '/terms' }
+      // Container-based architecture matching Navigation Bar pattern
+      // Component wrapper provides the outer footer styling
+      containerPadding: {
+        desktop: { top: 0, right: 0, bottom: 0, left: 0 },
+        tablet: { top: 0, right: 0, bottom: 0, left: 0 },
+        mobile: { top: 0, right: 0, bottom: 0, left: 0 }
+      },
+      containerMargin: {
+        desktop: { top: 0, right: 0, bottom: 0, left: 0 },
+        tablet: { top: 0, right: 0, bottom: 0, left: 0 },
+        mobile: { top: 0, right: 0, bottom: 0, left: 0 }
+      },
+      containerBackground: 'transparent',
+      containerBorderRadius: 0,
+      containerMaxWidth: '100%',
+      containerDisplay: { desktop: 'block', tablet: 'block', mobile: 'block' },
+      containerWidth: { desktop: '100%', tablet: '100%', mobile: '100%' },
+      visibilityRule: 'always',
+      // Footer-specific styling
+      footerBackground: 'theme:surface',
+      footerTextColor: 'theme:textSecondary',
+      footerHoverColor: 'theme:primary',
+      footerBorderColor: 'theme:border',
+      footerShadow: false,
+      copyright: '© 2025 ${site.name}. All rights reserved.',
+      columnsPerRow: { desktop: 4, tablet: 2, mobile: 1 },
+      // Logo and tagline
+      logo: {
+        text: '${site.name}',
+        url: '/',
+        image: '',
+        imageHeight: 32
+      },
+      tagline: '${site.tagline}',
+      // Link sections for multi-column footer
+      linkSections: [
+        {
+          title: 'Company',
+          links: [
+            { text: 'About', url: '/about' },
+            { text: 'Careers', url: '/careers' },
+            { text: 'Blog', url: '/blog' }
+          ]
+        },
+        {
+          title: 'Support',
+          links: [
+            { text: 'Help Center', url: '/help' },
+            { text: 'Contact Us', url: '/contact' },
+            { text: 'FAQ', url: '/faq' }
+          ]
+        },
+        {
+          title: 'Legal',
+          links: [
+            { text: 'Privacy Policy', url: '/privacy' },
+            { text: 'Terms of Service', url: '/terms' },
+            { text: 'Cookie Policy', url: '/cookies' }
+          ]
+        }
       ],
-      socialLinks: [],
-      footerBackground: '#f9fafb',
-      footerTextColor: '#374151'
+      // Social links
+      socialLinks: [
+        { platform: 'facebook', url: '#' },
+        { platform: 'twitter', url: '#' },
+        { platform: 'instagram', url: '#' },
+        { platform: 'linkedin', url: '#' }
+      ],
+      // Legacy footer links for backward compatibility
+      footerLinks: [],
+      // Children structure for Container-based composition
+      children: [
+        {
+          id: 'main-container',
+          type: 'container',
+          config: {
+            containerPadding: {
+              desktop: { top: 48, right: 24, bottom: 48, left: 24 },
+              tablet: { top: 40, right: 20, bottom: 40, left: 20 },
+              mobile: { top: 32, right: 16, bottom: 32, left: 16 }
+            },
+            containerMargin: {
+              desktop: { top: 0, right: 'auto', bottom: 0, left: 'auto' },
+              tablet: { top: 0, right: 'auto', bottom: 0, left: 'auto' },
+              mobile: { top: 0, right: 0, bottom: 0, left: 0 }
+            },
+            containerBackground: 'transparent',
+            containerBorderRadius: 0,
+            containerMaxWidth: '1200px',
+            containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+            containerFlexDirection: { desktop: 'column', tablet: 'column', mobile: 'column' },
+            containerAlignItems: 'stretch',
+            containerWrap: 'nowrap',
+            containerGap: { desktop: 32, tablet: 24, mobile: 16 },
+            children: [
+              {
+                id: 'footer-content-row',
+                type: 'container',
+                config: {
+                  containerPadding: {
+                    desktop: { top: 0, right: 0, bottom: 0, left: 0 }
+                  },
+                  containerDisplay: { desktop: 'flex', tablet: 'grid', mobile: 'grid' },
+                  containerGridCols: { desktop: 4, tablet: 2, mobile: 1 },
+                  containerGap: { desktop: 32, tablet: 24, mobile: 24 },
+                  containerFlexDirection: { desktop: 'row', tablet: 'row', mobile: 'column' },
+                  containerJustifyContent: 'space-around',
+                  containerAlignItems: 'stretch',
+                  containerWrap: 'nowrap',
+                  containerMaxWidth: '1200px',
+                  containerWidth: { desktop: 'auto', tablet: 'auto', mobile: 'auto' },
+                  containerGridAutoFlow: { desktop: 'row', tablet: 'row', mobile: 'row' },
+                  containerPlaceItems: '',
+                  children: [
+                    {
+                      id: 'footer-about-btn',
+                      type: 'button',
+                      position: 0,
+                      config: {
+                        label: 'About',
+                        url: '/about',
+                        variant: 'text',
+                        size: 'medium',
+                        fullWidth: { desktop: false, tablet: false, mobile: true }
+                      }
+                    },
+                    {
+                      id: 'footer-products-btn',
+                      type: 'button',
+                      position: 1,
+                      config: {
+                        label: 'Products',
+                        url: '/#products',
+                        variant: 'text',
+                        size: 'medium',
+                        fullWidth: { desktop: false, tablet: false, mobile: true }
+                      }
+                    },
+                    {
+                      id: 'footer-admin-btn',
+                      type: 'button',
+                      position: 2,
+                      config: {
+                        label: 'Admin Dashboard',
+                        url: '/admin/dashboard',
+                        variant: 'text',
+                        size: 'medium',
+                        fullWidth: { desktop: false, tablet: false, mobile: true },
+                        icon: 'Settings',
+                        visibilityRule: 'role',
+                        requiredRoles: ['admin']
+                      }
+                    },
+                    {
+                      id: 'footer-login-btn',
+                      type: 'button',
+                      position: 3,
+                      config: {
+                        label: 'Login',
+                        url: '/auth/login',
+                        variant: 'text',
+                        size: 'medium',
+                        fullWidth: { desktop: false, tablet: false, mobile: true },
+                        icon: 'LogIn',
+                        visibilityRule: 'unauthenticated'
+                      }
+                    }
+                  ]
+                },
+                position: 0
+              },
+              {
+                id: 'footer-copyright',
+                type: 'text',
+                config: {
+                  text: '© 2025 ${site.name}. All rights reserved.',
+                  alignment: 'center',
+                  fontSize: { desktop: 14, tablet: 14, mobile: 12 },
+                  color: 'theme:textSecondary'
+                },
+                position: 1
+              }
+            ]
+          },
+          position: 0
+        }
+      ]
     },
     container: {
       containerPadding: {

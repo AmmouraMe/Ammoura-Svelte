@@ -215,8 +215,22 @@ describe('Component Defaults', () => {
     it('should return default config for footer component', () => {
       const config = getDefaultConfig('footer');
       expect(config.copyright).toContain('2025');
-      expect(config.footerLinks).toHaveLength(2);
+      // New Container-based footer uses linkSections instead of footerLinks
+      expect(config.linkSections).toBeDefined();
+      expect(config.linkSections).toHaveLength(3);
+      expect(config.linkSections?.[0].title).toBe('Company');
+      expect(config.socialLinks).toHaveLength(4);
       expect(config.footerBackground).toBe('theme:surface');
+      // Legacy footerLinks is now empty for backward compatibility
+      expect(config.footerLinks).toHaveLength(0);
+      // Container-based children structure
+      expect(config.children).toBeDefined();
+      expect(config.children).toHaveLength(1);
+      expect(config.children?.[0].id).toBe('main-container');
+      expect(config.children?.[0].type).toBe('container');
+      expect(config.children?.[0].config.children).toHaveLength(2);
+      expect(config.children?.[0].config.children[0].id).toBe('footer-content-row');
+      expect(config.children?.[0].config.children[1].id).toBe('footer-copyright');
     });
 
     it('should return default config for composite component', () => {
