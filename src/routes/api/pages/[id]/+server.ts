@@ -79,7 +79,7 @@ export const PUT: RequestHandler = async ({ params, request, platform, locals })
 
 /**
  * DELETE /api/pages/[id]
- * Delete a page
+ * Delete a page (cannot delete built-in pages)
  */
 export const DELETE: RequestHandler = async ({ params, platform, locals }) => {
   const db = getDB(platform);
@@ -87,6 +87,16 @@ export const DELETE: RequestHandler = async ({ params, platform, locals }) => {
   const pageId = params.id;
 
   try {
+    // Check if page is built-in
+    const page = await pagesDb.getPageById(db, siteId, pageId);
+    if (!page) {
+      throw error(404, 'Page not found');
+    }
+
+    if (page.is_builtin) {
+      throw error(403, 'Built-in pages cannot be deleted');
+    }
+
     const deleted = await pagesDb.deletePage(db, siteId, pageId);
     if (!deleted) {
       throw error(404, 'Page not found');

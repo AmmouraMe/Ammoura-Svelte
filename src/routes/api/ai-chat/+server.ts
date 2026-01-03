@@ -274,6 +274,7 @@ Use this context to help the user with their current task.`;
                 const modelCosts: Record<string, { input: number; output: number }> = {
                   'gpt-4o': { input: 0.0025, output: 0.01 },
                   'gpt-4o-mini': { input: 0.00015, output: 0.0006 },
+                  'claude-sonnet-4-20250514': { input: 0.003, output: 0.015 },
                   'claude-3-5-sonnet-20241022': { input: 0.003, output: 0.015 },
                   'claude-3-5-haiku-20241022': { input: 0.0008, output: 0.004 }
                 };
@@ -402,7 +403,8 @@ Use this context to help the user with their current task.`;
     });
   } catch (err) {
     console.error('AI chat error:', err);
-    if (err instanceof Error && 'status' in err) {
+    // Re-throw HttpError from SvelteKit (has status property)
+    if (err && typeof err === 'object' && 'status' in err) {
       throw err;
     }
     const errorMessage = err instanceof Error ? err.message : 'Unknown error';

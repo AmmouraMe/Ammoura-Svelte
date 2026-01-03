@@ -5,14 +5,23 @@
   import { resolveThemeColor } from '$lib/utils/editor/colorThemes';
 
   export let config: WidgetConfig;
-  export let colorTheme: ColorTheme = 'default-light';
+  export let colorTheme: ColorTheme = 'vibrant';
   export let siteContext: SiteContext | undefined = undefined;
   export let user: UserInfo | null | undefined = undefined;
+  // When true, prevents navigation for links (used in builder preview)
+  export let isEditable = false;
 
   // Helper to substitute templates if site context is available
   $: userContext = createUserContext(user);
   const sub = (text: string): string =>
     siteContext ? substituteTemplate(text, { site: siteContext, user: userContext }) : text;
+
+  // Prevents link navigation when in edit mode (builder preview)
+  function handleLinkClick(event: MouseEvent): void {
+    if (isEditable) {
+      event.preventDefault();
+    }
+  }
 
   $: title = sub(config.title || 'Ready to Get Started?');
   $: subtitle = sub(config.subtitle || '');
@@ -34,7 +43,7 @@
       <p>{subtitle}</p>
     {/if}
     <div class="cta-actions">
-      <a href={primaryCtaLink} class="btn btn-primary btn-lg">
+      <a href={primaryCtaLink} class="btn btn-primary btn-lg" on:click={handleLinkClick}>
         <span>{primaryCtaText}</span>
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <path
@@ -46,7 +55,7 @@
         </svg>
       </a>
       {#if secondaryCtaText}
-        <a href={secondaryCtaLink} class="btn btn-secondary btn-lg">
+        <a href={secondaryCtaLink} class="btn btn-secondary btn-lg" on:click={handleLinkClick}>
           {secondaryCtaText}
         </a>
       {/if}

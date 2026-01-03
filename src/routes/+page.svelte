@@ -1,30 +1,30 @@
 <script lang="ts">
   import ProductCard from '../lib/components/ProductCard.svelte';
-  import Text from '../lib/components/builtin/Text.svelte';
-  import Image from '../lib/components/builtin/Image.svelte';
-  import SingleProduct from '../lib/components/builtin/SingleProduct.svelte';
-  import ProductList from '../lib/components/builtin/ProductList.svelte';
-  import Hero from '../lib/components/builtin/Hero.svelte';
-  import Button from '../lib/components/builtin/Button.svelte';
-  import Spacer from '../lib/components/builtin/Spacer.svelte';
-  import Divider from '../lib/components/builtin/Divider.svelte';
-  import Columns from '../lib/components/builtin/Columns.svelte';
-  import Heading from '../lib/components/builtin/Heading.svelte';
-  import Features from '../lib/components/builtin/Features.svelte';
-  import Pricing from '../lib/components/builtin/Pricing.svelte';
-  import CTA from '../lib/components/builtin/CTA.svelte';
-  import Dropdown from '../lib/components/builtin/Dropdown.svelte';
+  import FrontendComponentRenderer from '$lib/components/FrontendComponentRenderer.svelte';
+  import { themeRefToCssVar } from '$lib/utils/editor/colorThemes';
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
   import type { PageData } from './$types';
+  import type { PageProperties } from '$lib/types/pages';
 
   export let data: PageData;
   const products = data.products;
   const page = data.page ?? null;
   const components = data.components ?? [];
-  const isAdmin = data.isAdmin ?? false;
+  const pageProperties: PageProperties | undefined = data.pageProperties;
+  const _isAdmin = data.isAdmin ?? false;
   const systemLightTheme = data.systemLightTheme ?? 'vibrant';
   const systemDarkTheme = data.systemDarkTheme ?? 'midnight';
+
+  // Resolve a color value that may be a theme reference (e.g., 'theme:primary') to a CSS value
+  function resolveColorValue(value: string | undefined): string | undefined {
+    if (!value) return undefined;
+    // Check if it's a theme or color reference
+    const cssVar = themeRefToCssVar(value);
+    if (cssVar) return cssVar;
+    // Otherwise return the value as-is (it's a direct color value)
+    return value;
+  }
 
   let heroVisible = false;
   let colorTheme = data.colorTheme || systemLightTheme;
@@ -127,65 +127,27 @@
   />
 </svelte:head>
 
-{#if isAdmin}
-  <div class="edit-banner">
-    {#if page}
-      <a href="/admin/builder/{page.id}" class="edit-link">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path
-            d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          ></path>
-        </svg>
-        <span>Edit Home Page</span>
-      </a>
-    {:else}
-      <a href="/admin/builder?title=Home&slug=/" class="edit-link create-link">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path d="M12 5v14M5 12h14" stroke-width="2" stroke-linecap="round"></path>
-        </svg>
-        <span>Create Home Page</span>
-      </a>
-    {/if}
-  </div>
-{/if}
-
 {#if page && components.length > 0}
-  <!-- Render page with components -->
-  <div class="component-page">
+  <!-- Render page with components using FrontendComponentRenderer for proper container/children support -->
+  <div
+    class="component-page"
+    style:background-color={resolveColorValue(pageProperties?.backgroundColor)}
+    style:background-image={pageProperties?.backgroundImage
+      ? `url(${pageProperties.backgroundImage})`
+      : undefined}
+    style:min-height={pageProperties?.minHeight || undefined}
+    style:padding={pageProperties?.padding || undefined}
+    style:border-color={resolveColorValue(pageProperties?.borderColor)}
+    style:border-width={pageProperties?.borderWidth ? `${pageProperties.borderWidth}px` : undefined}
+    style:border-style={pageProperties?.borderStyle || undefined}
+    style:border-radius={pageProperties?.borderRadius
+      ? `${pageProperties.borderRadius}px`
+      : undefined}
+    style:box-shadow={pageProperties?.boxShadow || undefined}
+  >
     {#each components as component}
       <div class="component-container" data-component-type={component.type}>
-        {#if component.type === 'text'}
-          <Text config={component.config} />
-        {:else if component.type === 'image'}
-          <Image config={component.config} />
-        {:else if component.type === 'single_product'}
-          <SingleProduct config={component.config} />
-        {:else if component.type === 'product_list'}
-          <ProductList config={component.config} />
-        {:else if component.type === 'hero'}
-          <Hero config={component.config} {colorTheme} />
-        {:else if component.type === 'button'}
-          <Button config={component.config} />
-        {:else if component.type === 'spacer'}
-          <Spacer config={component.config} />
-        {:else if component.type === 'divider'}
-          <Divider config={component.config} {colorTheme} />
-        {:else if component.type === 'columns'}
-          <Columns config={component.config} />
-        {:else if component.type === 'heading'}
-          <Heading config={component.config} {colorTheme} />
-        {:else if component.type === 'features'}
-          <Features config={component.config} {colorTheme} />
-        {:else if component.type === 'pricing'}
-          <Pricing config={component.config} />
-        {:else if component.type === 'cta'}
-          <CTA config={component.config} {colorTheme} />
-        {:else if component.type === 'dropdown'}
-          <Dropdown config={component.config} />
-        {/if}
+        <FrontendComponentRenderer type={component.type} config={component.config} {colorTheme} />
       </div>
     {/each}
   </div>
@@ -406,42 +368,10 @@
 {/if}
 
 <style>
-  /* Edit Banner */
-  .edit-banner {
-    position: fixed;
-    top: 80px;
-    right: 20px;
-    z-index: 1000;
-  }
-
-  .edit-link {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: var(--color-secondary);
-    color: var(--color-text-inverse);
-    text-decoration: none;
-    border-radius: 6px;
-    font-weight: 500;
-    font-size: 0.875rem;
-    transition: background-color var(--transition-normal);
-    box-shadow: 0 2px 8px var(--color-shadow-medium);
-  }
-
-  .edit-link:hover {
-    background: var(--color-secondary-hover);
-  }
-
-  .edit-link svg {
-    flex-shrink: 0;
-  }
-
   /* Component Page */
   .component-page {
     width: 100%;
     min-height: 100vh;
-    background: var(--theme-background);
   }
 
   .component-container {

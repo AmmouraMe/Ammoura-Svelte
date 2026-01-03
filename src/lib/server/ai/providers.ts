@@ -279,7 +279,11 @@ class AnthropicProvider implements AIProviderInterface {
   }
 
   supportsVision(model: AIModel): boolean {
-    return model === 'claude-3-5-sonnet-20241022' || model === 'claude-3-5-haiku-20241022';
+    return (
+      model === 'claude-sonnet-4-20250514' ||
+      model === 'claude-3-5-sonnet-20241022' ||
+      model === 'claude-3-5-haiku-20241022'
+    );
   }
 
   async *streamCompletion(request: AICompletionRequest): AsyncGenerator<AIStreamChunk> {

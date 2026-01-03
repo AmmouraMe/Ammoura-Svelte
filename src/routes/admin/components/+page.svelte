@@ -2,6 +2,8 @@
   import type { PageData } from './$types';
   import { enhance } from '$app/forms';
   import { goto } from '$app/navigation';
+  import { confirmStore } from '$lib/stores/confirm';
+  import { toastStore } from '$lib/stores/toast';
   import type { Component } from '$lib/types/pages';
 
   export let data: PageData;
@@ -9,6 +11,33 @@
   let isDeleting = false;
   let isCloning = false;
   let isResetting = false;
+
+  async function handleDeleteComponent(componentId: string, componentName: string): Promise<void> {
+    const confirmed = await confirmStore.show(`Delete component "${componentName}"?`, {
+      title: 'Delete Component',
+      confirmText: 'Delete',
+      variant: 'danger'
+    });
+    if (confirmed) {
+      const form = document.getElementById(`delete-component-${componentId}`) as HTMLFormElement;
+      if (form) form.requestSubmit();
+    }
+  }
+
+  async function handleResetComponent(componentId: string, componentName: string): Promise<void> {
+    const confirmed = await confirmStore.show(
+      `Reset "${componentName}" to its original state? This will undo any customizations.`,
+      {
+        title: 'Reset Component',
+        confirmText: 'Reset',
+        variant: 'warning'
+      }
+    );
+    if (confirmed) {
+      const form = document.getElementById(`reset-component-${componentId}`) as HTMLFormElement;
+      if (form) form.requestSubmit();
+    }
+  }
 
   // Categories matching the builder sidebar
   const widgetCategories: Record<
@@ -29,7 +58,7 @@
     },
     media: {
       label: 'Media',
-      types: ['image'],
+      types: ['image', 'icon'],
       icon: '🖼️',
       color: '#ec4899'
     },
@@ -72,7 +101,13 @@
   function getCategoryForComponent(component: Component): string {
     // Special handling for composite components based on their name
     const nameLower = component.name.toLowerCase();
-    if (nameLower.includes('hero')) {
+    if (
+      nameLower.includes('hero') ||
+      nameLower.includes('features') ||
+      nameLower.includes('pricing') ||
+      nameLower.includes('call to action') ||
+      nameLower.includes('cta')
+    ) {
       return 'marketing';
     }
     // Default to type-based categorization
@@ -208,17 +243,16 @@
                 </button>
               </form>
               <form
+                id="delete-component-{component.id}"
                 method="POST"
                 action="?/delete"
-                use:enhance={({ cancel }) => {
-                  if (!confirm(`Delete component "${component.name}"?`)) {
-                    cancel();
-                    return;
-                  }
+                use:enhance={() => {
                   isDeleting = true;
                   return async ({ result, update }) => {
-                    if (result.type === 'failure') {
-                      alert(result.data?.error || 'Failed to delete component');
+                    if (result.type === 'failure' && result.data && 'error' in result.data) {
+                      toastStore.error(String(result.data.error) || 'Failed to delete component');
+                    } else if (result.type === 'failure') {
+                      toastStore.error('Failed to delete component');
                     }
                     await update();
                     isDeleting = false;
@@ -226,7 +260,12 @@
                 }}
               >
                 <input type="hidden" name="id" value={component.id} />
-                <button type="submit" class="btn btn-danger" disabled={isDeleting}>
+                <button
+                  type="button"
+                  class="btn btn-danger"
+                  disabled={isDeleting}
+                  on:click={() => handleDeleteComponent(String(component.id), component.name)}
+                >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path
                       d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"
@@ -341,16 +380,10 @@
                       </button>
                     </form>
                     <form
+                      id="reset-component-{component.id}"
                       method="POST"
                       action="?/reset"
                       use:enhance={() => {
-                        if (
-                          !confirm(
-                            `Reset "${component.name}" to its original state? This will undo any customizations.`
-                          )
-                        ) {
-                          return () => {};
-                        }
                         isResetting = true;
                         return async ({ update }) => {
                           await update();
@@ -359,7 +392,12 @@
                       }}
                     >
                       <input type="hidden" name="id" value={component.id} />
-                      <button type="submit" class="btn btn-warning" disabled={isResetting}>
+                      <button
+                        type="button"
+                        class="btn btn-warning"
+                        disabled={isResetting}
+                        on:click={() => handleResetComponent(String(component.id), component.name)}
+                      >
                         <svg
                           width="16"
                           height="16"

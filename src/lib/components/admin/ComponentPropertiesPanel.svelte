@@ -1,10 +1,13 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import type {
     PageComponent,
     ComponentConfig,
     Breakpoint,
     ColorTheme,
-    PositionConfig
+    PositionConfig,
+    ColorThemeDefinition,
+    ThemeColors
   } from '$lib/types/pages';
   import type { MediaLibraryItem } from '$lib/types';
   import MediaBrowser from './MediaBrowser.svelte';
@@ -13,18 +16,38 @@
   import ButtonIconPicker from './ButtonIconPicker.svelte';
   import TailwindContainerEditor from '../builder/TailwindContainerEditor.svelte';
   import ChildLayoutEditor from '../builder/ChildLayoutEditor.svelte';
+  import UniversalStyleEditor from '../builder/UniversalStyleEditor.svelte';
   import { GripVertical, Trash2 } from 'lucide-svelte';
+  import { getThemeColors } from '$lib/utils/editor/colorThemes';
 
   export let component: PageComponent;
   export let currentBreakpoint: Breakpoint;
   export let colorTheme: ColorTheme = 'default';
+  export let colorThemes: ColorThemeDefinition[] = [];
   export let onUpdate: (config: ComponentConfig) => void;
   export let onDeleteChild: ((childId: string) => void) | undefined = undefined;
   // Context from parent - when this component is a child of a container
   export let parentDisplayMode: 'flex' | 'grid' | 'block' | undefined = undefined;
+  // The currently selected child component ID (for auto-expanding)
+  export let selectedChildId: string | null = null;
+  // Whether content editing is allowed (false in layout mode - only structure editing allowed)
+  export let isContentEditable = true;
 
-  let activeTab: 'content' | 'style' | 'responsive' | 'advanced' = 'content';
+  // Compute theme colors from colorThemes array (database-loaded themes) or fallback to static lookup
+  $: currentThemeData = colorThemes.find((t) => t.id === colorTheme);
+  let themeColors: ThemeColors;
+  $: themeColors = currentThemeData?.colors || getThemeColors(colorTheme);
+
+  // Default to 'style' tab when content is not editable (layout mode)
+  let activeTab: 'content' | 'style' | 'responsive' | 'advanced' = isContentEditable
+    ? 'content'
+    : 'style';
   let lastComponentId = component.id;
+
+  // Reset to appropriate tab when isContentEditable changes
+  $: if (!isContentEditable && activeTab === 'content') {
+    activeTab = 'style';
+  }
   let showMediaBrowser = false;
   let selectedMediaItems: MediaLibraryItem[] = [];
 
@@ -47,6 +70,42 @@
   // Container children expand/collapse state
   let expandedChildren = new Set<string>();
 
+  // Auto-expand and scroll to selected child when selectedChildId changes
+  $: if (selectedChildId) {
+    // Find the child in this component's children (recursively)
+    const childPath = findChildPath(config.children, selectedChildId);
+    if (childPath.length > 0) {
+      // Expand all ancestors in the path
+      childPath.forEach((id) => expandedChildren.add(id));
+      expandedChildren = expandedChildren; // Trigger reactivity
+
+      // Scroll to the child panel after DOM updates
+      tick().then(() => {
+        const childPanel = document.getElementById(`child-panel-${selectedChildId}`);
+        if (childPanel) {
+          childPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          childPanel.classList.add('highlight');
+          setTimeout(() => childPanel.classList.remove('highlight'), 2000);
+        }
+      });
+    }
+  }
+
+  // Find path of IDs from root to target child
+  function findChildPath(children: PageComponent[] | undefined, targetId: string): string[] {
+    if (!children) return [];
+    for (const child of children) {
+      if (child.id === targetId) {
+        return [child.id];
+      }
+      const nestedPath = findChildPath(child.config?.children, targetId);
+      if (nestedPath.length > 0) {
+        return [child.id, ...nestedPath];
+      }
+    }
+    return [];
+  }
+
   // Debounce timer for handleUpdate
   let updateDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -59,7 +118,7 @@
 
     // Only apply defaults when explicitly requested (on component switch)
     if (applyDefaults && component.type === 'hero') {
-      if (newConfig.backgroundColor === undefined) newConfig.backgroundColor = '#3b82f6';
+      if (newConfig.backgroundColor === undefined) newConfig.backgroundColor = 'transparent';
       if (newConfig.backgroundImage === undefined) newConfig.backgroundImage = '';
       if (newConfig.title === undefined) newConfig.title = 'Hero Title';
       if (newConfig.subtitle === undefined) newConfig.subtitle = '';
@@ -99,10 +158,8 @@
           }
         ];
       }
-      if (newConfig.cardBackground === undefined)
-        newConfig.cardBackground = 'var(--color-bg-primary)';
-      if (newConfig.cardBorderColor === undefined)
-        newConfig.cardBorderColor = 'var(--color-border-secondary)';
+      if (newConfig.cardBackground === undefined) newConfig.cardBackground = 'theme:surface';
+      if (newConfig.cardBorderColor === undefined) newConfig.cardBorderColor = 'theme:border';
       if (newConfig.cardBorderRadius === undefined) newConfig.cardBorderRadius = 12;
       if (newConfig.featuresColumns === undefined) {
         newConfig.featuresColumns = { desktop: 3, tablet: 2, mobile: 1 };
@@ -496,14 +553,16 @@
 
 <div class="properties-panel">
   <div class="panel-tabs">
-    <button
-      type="button"
-      class="tab"
-      class:active={activeTab === 'content'}
-      on:click={() => (activeTab = 'content')}
-    >
-      Content
-    </button>
+    {#if isContentEditable}
+      <button
+        type="button"
+        class="tab"
+        class:active={activeTab === 'content'}
+        on:click={() => (activeTab = 'content')}
+      >
+        Content
+      </button>
+    {/if}
     {#if parentDisplayMode && component.type !== 'container'}
       <!-- Non-container child within a container: show Layout tab for child positioning -->
       <button
@@ -728,6 +787,72 @@
                   on:input={handleUpdate}
                   placeholder="https://..."
                 />
+              </label>
+            </div>
+          </div>
+        {:else if component.type === 'icon'}
+          <div class="section">
+            <h4>Icon</h4>
+            <div class="form-group">
+              <span class="field-label">Icon Name</span>
+              <ButtonIconPicker
+                value={config.iconName || 'Star'}
+                placeholder="Select an icon"
+                on:change={(e) => {
+                  config.iconName = e.detail || 'Star';
+                  handleImmediateUpdate();
+                }}
+              />
+              <p class="field-hint">Search from 1500+ Lucide icons or browse by category.</p>
+            </div>
+            <div class="form-group">
+              <label>
+                <span>Icon Size (px)</span>
+                <input
+                  type="number"
+                  bind:value={config.iconSize}
+                  on:input={handleUpdate}
+                  min="12"
+                  max="256"
+                  placeholder="24"
+                />
+              </label>
+            </div>
+            <div class="form-group">
+              <label>
+                <span>Stroke Width</span>
+                <input
+                  type="number"
+                  bind:value={config.strokeWidth}
+                  on:input={handleUpdate}
+                  min="0.5"
+                  max="4"
+                  step="0.5"
+                  placeholder="2"
+                />
+              </label>
+            </div>
+            <div class="form-group">
+              <ThemeColorInput
+                value={config.iconColor}
+                currentTheme={colorTheme}
+                {themeColors}
+                label="Icon Color"
+                defaultValue="theme:text"
+                onChange={(newValue) => {
+                  config.iconColor = newValue;
+                  handleImmediateUpdate();
+                }}
+              />
+            </div>
+            <div class="form-group">
+              <label>
+                <span>Alignment</span>
+                <select bind:value={config.alignment} on:change={handleImmediateUpdate}>
+                  <option value="left">Left</option>
+                  <option value="center">Center</option>
+                  <option value="right">Right</option>
+                </select>
               </label>
             </div>
           </div>
@@ -1483,6 +1608,16 @@
               </div>
             </div>
           </div>
+        {:else if component.type === 'pricing'}
+          <!-- Pricing Component - Container-based architecture -->
+          <!-- Properties are edited through child components in the builder -->
+          <div class="section">
+            <h4>Pricing Section</h4>
+            <p class="info-text">
+              This component uses Container-based architecture. Edit the header, pricing cards, and
+              CTA by selecting and modifying child components directly in the builder canvas.
+            </p>
+          </div>
         {:else if component.type === 'navbar'}
           <div class="section">
             <h4>Logo</h4>
@@ -1945,8 +2080,9 @@
               <ThemeColorInput
                 value={config.backgroundColor}
                 currentTheme={colorTheme}
+                {themeColors}
                 label="Background Color"
-                defaultValue="theme:primary"
+                defaultValue="transparent"
                 onChange={(newValue) => {
                   config.backgroundColor = newValue;
                   handleImmediateUpdate();
@@ -1987,6 +2123,7 @@
               <ThemeColorInput
                 value={config.titleColor}
                 currentTheme={colorTheme}
+                {themeColors}
                 label="Title Color"
                 defaultValue="theme:text"
                 onChange={(newValue) => {
@@ -1999,6 +2136,7 @@
               <ThemeColorInput
                 value={config.subtitleColor}
                 currentTheme={colorTheme}
+                {themeColors}
                 label="Subtitle Color"
                 defaultValue="theme:textSecondary"
                 onChange={(newValue) => {
@@ -2031,6 +2169,7 @@
               <ThemeColorInput
                 value={config.textColor}
                 currentTheme={colorTheme}
+                {themeColors}
                 label="Text Color"
                 defaultValue="theme:text"
                 onChange={(newValue) => {
@@ -2084,6 +2223,7 @@
               <ThemeColorInput
                 value={config.textColor}
                 currentTheme={colorTheme}
+                {themeColors}
                 label="Text Color"
                 defaultValue="theme:text"
                 onChange={(newValue) => {
@@ -2141,6 +2281,7 @@
                 <ThemeColorInput
                   value={config.ctaBackgroundColor}
                   currentTheme={colorTheme}
+                  {themeColors}
                   label="Button Background Color"
                   defaultValue="theme:primary"
                   onChange={(newValue) => {
@@ -2153,6 +2294,7 @@
                 <ThemeColorInput
                   value={config.ctaTextColor}
                   currentTheme={colorTheme}
+                  {themeColors}
                   label="Button Text Color"
                   defaultValue="theme:background"
                   onChange={(newValue) => {
@@ -2192,6 +2334,7 @@
                 <ThemeColorInput
                   value={config.secondaryCtaBackgroundColor}
                   currentTheme={colorTheme}
+                  {themeColors}
                   label="Button Background Color"
                   defaultValue="theme:secondary"
                   onChange={(newValue) => {
@@ -2204,6 +2347,7 @@
                 <ThemeColorInput
                   value={config.secondaryCtaTextColor}
                   currentTheme={colorTheme}
+                  {themeColors}
                   label="Button Text Color"
                   defaultValue="theme:text"
                   onChange={(newValue) => {
@@ -2216,6 +2360,7 @@
                 <ThemeColorInput
                   value={config.secondaryCtaBorderColor}
                   currentTheme={colorTheme}
+                  {themeColors}
                   label="Button Border Color"
                   defaultValue="theme:border"
                   onChange={(newValue) => {
@@ -2327,6 +2472,7 @@
               <ThemeColorInput
                 value={config.dividerColor}
                 currentTheme={colorTheme}
+                {themeColors}
                 label="Divider Color"
                 defaultValue="theme:border"
                 onChange={(newValue) => {
@@ -2394,6 +2540,7 @@
             {config}
             {currentBreakpoint}
             {colorTheme}
+            {colorThemes}
             showTabNavigation={false}
             activeTabOverride="style"
             on:update={(e) => {
@@ -2408,6 +2555,7 @@
               <ThemeColorInput
                 value={config.cardBackground}
                 currentTheme={colorTheme}
+                {themeColors}
                 label="Card Background Color"
                 defaultValue="theme:surface"
                 onChange={(newValue) => {
@@ -2420,6 +2568,7 @@
               <ThemeColorInput
                 value={config.cardBorderColor}
                 currentTheme={colorTheme}
+                {themeColors}
                 label="Card Border Color"
                 defaultValue="theme:border"
                 onChange={(newValue) => {
@@ -2427,6 +2576,18 @@
                   handleImmediateUpdate();
                 }}
               />
+            </div>
+            <div class="form-group">
+              <label>
+                <span>Border Width (px)</span>
+                <input
+                  type="number"
+                  bind:value={config.cardBorderWidth}
+                  on:input={handleUpdate}
+                  min="0"
+                  placeholder="1"
+                />
+              </label>
             </div>
             <div class="form-group">
               <label>
@@ -2441,6 +2602,25 @@
               </label>
             </div>
           </div>
+        {:else if component.type === 'pricing'}
+          <!-- Pricing Component - Container-based architecture -->
+          <div class="section">
+            <h4>Container Background</h4>
+            <div class="form-group">
+              <ThemeColorInput
+                value={config.containerBackground || config.backgroundColor}
+                currentTheme={colorTheme}
+                {themeColors}
+                label="Background"
+                defaultValue="linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%)"
+                onChange={(newValue) => {
+                  config.containerBackground = newValue;
+                  config.backgroundColor = newValue;
+                  handleImmediateUpdate();
+                }}
+              />
+            </div>
+          </div>
         {:else if component.type === 'navbar'}
           <div class="section">
             <h4>Colors</h4>
@@ -2448,8 +2628,9 @@
               <ThemeColorInput
                 value={config.navbarBackground}
                 currentTheme={colorTheme}
+                {themeColors}
                 label="Background Color"
-                defaultValue="#ffffff"
+                defaultValue="transparent"
                 onChange={(newValue) => {
                   config.navbarBackground = newValue;
                   handleImmediateUpdate();
@@ -2460,6 +2641,7 @@
               <ThemeColorInput
                 value={config.navbarTextColor}
                 currentTheme={colorTheme}
+                {themeColors}
                 label="Text Color"
                 defaultValue="#000000"
                 onChange={(newValue) => {
@@ -2472,6 +2654,7 @@
               <ThemeColorInput
                 value={config.navbarHoverColor}
                 currentTheme={colorTheme}
+                {themeColors}
                 label="Hover Color"
                 defaultValue="theme:primary"
                 onChange={(newValue) => {
@@ -2484,6 +2667,7 @@
               <ThemeColorInput
                 value={config.navbarBorderColor}
                 currentTheme={colorTheme}
+                {themeColors}
                 label="Border Color"
                 defaultValue="#e5e7eb"
                 onChange={(newValue) => {
@@ -2499,6 +2683,7 @@
               <ThemeColorInput
                 value={config.dropdownBackground}
                 currentTheme={colorTheme}
+                {themeColors}
                 label="Dropdown Background"
                 defaultValue="#ffffff"
                 onChange={(newValue) => {
@@ -2511,6 +2696,7 @@
               <ThemeColorInput
                 value={config.dropdownTextColor}
                 currentTheme={colorTheme}
+                {themeColors}
                 label="Dropdown Text Color"
                 defaultValue="#000000"
                 onChange={(newValue) => {
@@ -2523,6 +2709,7 @@
               <ThemeColorInput
                 value={config.dropdownHoverBackground}
                 currentTheme={colorTheme}
+                {themeColors}
                 label="Dropdown Hover Background"
                 defaultValue="#f3f4f6"
                 onChange={(newValue) => {
@@ -2576,6 +2763,20 @@
               </p>
             </div>
           </div>
+        {/if}
+
+        <!-- Universal Style Section - appears for all non-container components -->
+        {#if component.type !== 'container'}
+          <UniversalStyleEditor
+            {config}
+            {currentBreakpoint}
+            {colorTheme}
+            {colorThemes}
+            on:update={(e) => {
+              config = e.detail;
+              handleImmediateUpdate();
+            }}
+          />
         {/if}
 
         <!-- Universal Positioning Section - appears for all components -->
@@ -2689,6 +2890,7 @@
             {config}
             {currentBreakpoint}
             {colorTheme}
+            {colorThemes}
             showTabNavigation={false}
             activeTabOverride="layout"
             on:update={(e) => {
@@ -3933,9 +4135,9 @@
   /* Edit button for child widgets - now a link to scroll to panel */
   .btn-edit-child {
     padding: 0.25rem 0.75rem;
-    background: var(--color-primary);
-    color: white;
-    border: none;
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border-secondary);
     border-radius: 4px;
     font-size: 0.75rem;
     font-weight: 500;
@@ -3945,7 +4147,8 @@
   }
 
   .btn-edit-child:hover {
-    background: var(--color-primary-hover, #2563eb);
+    background: var(--color-bg-secondary);
+    border-color: var(--color-text-secondary);
     transform: translateY(-1px);
   }
 
@@ -3961,7 +4164,7 @@
     display: flex;
     flex-direction: column;
     background: var(--color-bg-primary);
-    border-top: 2px solid var(--color-primary);
+    border-top: 2px solid var(--color-border-secondary);
     margin-bottom: 1rem;
     transition: all 0.3s ease;
   }
@@ -3991,7 +4194,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 0.75rem 1rem;
-    background: var(--color-primary-light, rgba(59, 130, 246, 0.1));
+    background: var(--color-bg-tertiary);
     border-bottom: 1px solid var(--color-border-secondary);
     flex-shrink: 0;
   }
@@ -4009,7 +4212,7 @@
     justify-content: center;
     width: 24px;
     height: 24px;
-    background: var(--color-primary);
+    background: var(--color-text-secondary);
     color: white;
     border-radius: 50%;
     font-size: 0.75rem;
@@ -4017,7 +4220,7 @@
   }
 
   .child-panel-type {
-    color: var(--color-primary);
+    color: var(--color-text-primary);
     font-weight: 600;
     text-transform: capitalize;
   }

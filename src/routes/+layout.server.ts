@@ -56,7 +56,7 @@ export const load: LayoutServerLoad = async ({ platform, locals }) => {
     containerGridCols: { desktop: 3, tablet: 2, mobile: 1 },
     containerGridAutoFlow: { desktop: 'row', tablet: 'row', mobile: 'row' },
     visibilityRule: 'always',
-    sticky: true,
+    sticky: false,
     // Children are simplified for the fallback config - full structure is in database
     children: []
   };
@@ -66,6 +66,8 @@ export const load: LayoutServerLoad = async ({ platform, locals }) => {
     return {
       themeColorsLight: null,
       themeColorsDark: null,
+      systemLightThemeId: 'vibrant',
+      systemDarkThemeId: 'midnight',
       currentUser: locals.currentUser || null,
       storeName: 'Hermes eCommerce',
       layoutData: {
@@ -201,6 +203,8 @@ export const load: LayoutServerLoad = async ({ platform, locals }) => {
     return {
       themeColorsLight: mapThemeColors(lightTheme as never),
       themeColorsDark: mapThemeColors(darkTheme as never),
+      systemLightThemeId: systemLightThemeId || 'vibrant',
+      systemDarkThemeId: systemDarkThemeId || 'midnight',
       currentUser: locals.currentUser || null,
       storeName: generalSettings.storeName || 'Hermes eCommerce',
       siteContext: createSiteContext(generalSettings),
@@ -211,6 +215,8 @@ export const load: LayoutServerLoad = async ({ platform, locals }) => {
     return {
       themeColorsLight: null,
       themeColorsDark: null,
+      systemLightThemeId: 'vibrant',
+      systemDarkThemeId: 'midnight',
       currentUser: locals.currentUser || null,
       storeName: 'Hermes eCommerce',
       siteContext: createDefaultSiteContext(),

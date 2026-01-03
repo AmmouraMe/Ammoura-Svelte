@@ -5,9 +5,11 @@
   import { resolveThemeColor } from '$lib/utils/editor/colorThemes';
 
   export let config: WidgetConfig;
-  export let colorTheme: ColorTheme = 'default-light';
+  export let colorTheme: ColorTheme = 'vibrant';
   export let siteContext: SiteContext | undefined = undefined;
   export let user: UserInfo | null | undefined = undefined;
+  // When true, prevents navigation for links (used in builder preview)
+  export let isEditable = false;
 
   $: rawHeading = config.heading || 'Heading';
   $: userContext = createUserContext(user);
@@ -18,6 +20,13 @@
   $: alignment = config.alignment || 'left';
   $: textColor = resolveThemeColor(config.textColor, colorTheme, 'inherit', true);
   $: link = config.link || '';
+
+  // Prevents link navigation when in edit mode (builder preview)
+  function handleLinkClick(event: MouseEvent): void {
+    if (isEditable) {
+      event.preventDefault();
+    }
+  }
 </script>
 
 <div
@@ -27,27 +36,27 @@
 >
   {#if level === 1}
     <h1>
-      {#if link}<a href={link}>{heading}</a>{:else}{heading}{/if}
+      {#if link}<a href={link} on:click={handleLinkClick}>{heading}</a>{:else}{heading}{/if}
     </h1>
   {:else if level === 2}
     <h2>
-      {#if link}<a href={link}>{heading}</a>{:else}{heading}{/if}
+      {#if link}<a href={link} on:click={handleLinkClick}>{heading}</a>{:else}{heading}{/if}
     </h2>
   {:else if level === 3}
     <h3>
-      {#if link}<a href={link}>{heading}</a>{:else}{heading}{/if}
+      {#if link}<a href={link} on:click={handleLinkClick}>{heading}</a>{:else}{heading}{/if}
     </h3>
   {:else if level === 4}
     <h4>
-      {#if link}<a href={link}>{heading}</a>{:else}{heading}{/if}
+      {#if link}<a href={link} on:click={handleLinkClick}>{heading}</a>{:else}{heading}{/if}
     </h4>
   {:else if level === 5}
     <h5>
-      {#if link}<a href={link}>{heading}</a>{:else}{heading}{/if}
+      {#if link}<a href={link} on:click={handleLinkClick}>{heading}</a>{:else}{heading}{/if}
     </h5>
   {:else}
     <h6>
-      {#if link}<a href={link}>{heading}</a>{:else}{heading}{/if}
+      {#if link}<a href={link} on:click={handleLinkClick}>{heading}</a>{:else}{heading}{/if}
     </h6>
   {/if}
 </div>
@@ -66,6 +75,7 @@
   h6 {
     margin: 0;
     padding: 0;
+    color: inherit;
   }
 
   h1 {

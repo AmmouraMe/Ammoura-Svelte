@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, tick } from 'svelte';
-  import { Copy, Trash2, MoveUp, MoveDown, RotateCcw } from 'lucide-svelte';
+  import { Copy, Trash2, MoveUp, MoveDown, RotateCcw, Palette } from 'lucide-svelte';
   import type {
     PageComponent,
     LayoutComponent,
@@ -11,7 +11,11 @@
   import type { SiteContext, UserInfo } from '$lib/utils/templateSubstitution';
   import ComponentRenderer from '$lib/components/admin/ComponentRenderer.svelte';
   import { stableSortComponents } from '$lib/utils/componentPositions';
-  import { getThemeColors, generateThemeStyles } from '$lib/utils/editor/colorThemes';
+  import {
+    getThemeColors,
+    generateThemeStyles,
+    resolveThemeColor
+  } from '$lib/utils/editor/colorThemes';
   import { getComponentDisplayLabel } from '$lib/utils/editor/componentDefaults';
 
   type BuilderMode = 'page' | 'layout' | 'component' | 'primitive';
@@ -51,6 +55,20 @@
   export let canDeleteComponents = true;
   export let siteContext: SiteContext | undefined = undefined;
   export let user: UserInfo | null | undefined = undefined;
+  // Page/component root properties (background, border, etc.)
+  export let pageProperties:
+    | {
+        backgroundColor?: string;
+        backgroundImage?: string;
+        minHeight?: string;
+        borderColor?: string;
+        borderWidth?: string;
+        borderStyle?: string;
+        borderRadius?: string;
+        padding?: string;
+        boxShadow?: string;
+      }
+    | undefined = undefined;
 
   const dispatch = createEventDispatcher();
 
@@ -62,6 +80,13 @@
   // Check if we're previewing a different theme than the user's current site theme
   // This should compare against the user's active theme, not the page's saved theme
   $: isPreviewingDifferentTheme = colorTheme !== userCurrentThemeId;
+
+  // Theme debug panel collapsed state (collapsed by default)
+  let themeDebugCollapsed = true;
+
+  function toggleThemeDebugPanel(): void {
+    themeDebugCollapsed = !themeDebugCollapsed;
+  }
 
   // Map theme variables to global color variables for component compatibility
   $: componentThemeOverrides = `
@@ -78,6 +103,59 @@
     --color-danger: ${themeColors.error};
     --color-error: ${themeColors.error};
   `.trim();
+
+  // Compute resolved page properties styles for live preview
+  // Resolves theme: references to actual colors
+  $: pagePropertiesStyle = (() => {
+    if (!pageProperties) return '';
+
+    const styles: string[] = [];
+
+    // Background color - resolve theme references
+    if (pageProperties.backgroundColor) {
+      const bgColor = resolveThemeColor(pageProperties.backgroundColor, colorTheme, '', true);
+      if (bgColor) styles.push(`background-color: ${bgColor}`);
+    }
+
+    // Background image
+    if (pageProperties.backgroundImage) {
+      styles.push(`background-image: url('${pageProperties.backgroundImage}')`);
+      styles.push('background-size: cover');
+      styles.push('background-position: center');
+      styles.push('background-repeat: no-repeat');
+    }
+
+    // Min height
+    if (pageProperties.minHeight) {
+      styles.push(`min-height: ${pageProperties.minHeight}`);
+    }
+
+    // Border
+    if (pageProperties.borderWidth && pageProperties.borderWidth !== '0') {
+      const borderColor = pageProperties.borderColor
+        ? resolveThemeColor(pageProperties.borderColor, colorTheme, '', true)
+        : 'var(--color-border)';
+      const borderStyle = pageProperties.borderStyle || 'solid';
+      styles.push(`border: ${pageProperties.borderWidth} ${borderStyle} ${borderColor}`);
+    }
+
+    // Border radius
+    if (pageProperties.borderRadius && pageProperties.borderRadius !== '0') {
+      styles.push(`border-radius: ${pageProperties.borderRadius}`);
+    }
+
+    // Padding
+    if (pageProperties.padding) {
+      styles.push(`padding: ${pageProperties.padding}`);
+    }
+
+    // Box shadow
+    if (pageProperties.boxShadow) {
+      styles.push(`box-shadow: ${pageProperties.boxShadow}`);
+    }
+
+    return styles.join('; ');
+  })();
 
   // Compute sorted components reactively using stable sort
   // This ensures consistent ordering even with duplicate positions
@@ -215,51 +293,149 @@
   function resetToActiveTheme() {
     dispatch('resetTheme');
   }
+
+  // Determine if we're in fit-content mode (component/primitive/layout editing)
+  // Layout mode also uses fit-content so the preview pane resizes to fit contents without scrollbars
+  $: isFitContentMode = mode === 'component' || mode === 'primitive' || mode === 'layout';
+
+  // Layout mode: can add/remove/reorder components but cannot edit their content inline
+  $: isContentEditable = mode !== 'layout';
 </script>
 
 <div
   class="builder-canvas"
+  class:fit-content-mode={isFitContentMode}
   bind:this={canvasElement}
   on:click={handleCanvasClick}
   role="presentation"
 >
-  <!-- Debug: Show current theme (only when previewing a different theme) -->
+  <!-- Theme Preview Indicator (only when previewing a different theme) -->
   {#if isPreviewingDifferentTheme}
-    <div class="theme-debug-panel">
-      <div class="theme-debug-header">
-        <strong>Theme Preview</strong>
+    <div class="theme-debug-indicator">
+      {#if themeDebugCollapsed}
+        <!-- Collapsed state: just an icon button -->
         <button
-          class="btn-reset-theme"
-          on:click|stopPropagation={resetToActiveTheme}
-          aria-label="Reset to active theme"
-          title="Reset to active theme"
+          class="theme-debug-toggle"
+          on:click|stopPropagation={toggleThemeDebugPanel}
+          aria-label="Show theme preview details"
+          title="Theme Preview Active - Click to expand"
         >
-          <RotateCcw size={14} />
+          <Palette size={18} />
+          <span class="theme-debug-pulse"></span>
         </button>
-      </div>
-      <div class="theme-debug-content">
-        ID: {colorTheme}<br />
-        {#if currentThemeData}
-          Name: {currentThemeData.name}<br />
-        {/if}
-        <div class="theme-debug-colors">
-          BG: <span class="color-swatch" style="background: {themeColors.background};"
-            >{themeColors.background}</span
-          ><br />
-          Text:
-          <span class="color-swatch" style="background: {themeColors.text};"
-            >{themeColors.text}</span
-          ><br />
-          Primary:
-          <span class="color-swatch" style="background: {themeColors.primary};"
-            >{themeColors.primary}</span
-          >
+      {:else}
+        <!-- Expanded state: full panel -->
+        <div class="theme-debug-panel">
+          <div class="theme-debug-header">
+            <div class="theme-debug-title">
+              <Palette size={14} />
+              <strong>Theme Preview</strong>
+            </div>
+            <button
+              class="theme-debug-collapse"
+              on:click|stopPropagation={toggleThemeDebugPanel}
+              aria-label="Collapse panel"
+              title="Collapse"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M6 9L12 15L18 9"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
+          <div class="theme-debug-content">
+            <div class="theme-debug-info">
+              <span class="theme-debug-label">Theme</span>
+              <span class="theme-debug-value">{currentThemeData?.name || colorTheme}</span>
+            </div>
+            <div class="theme-debug-colors">
+              <div class="color-grid">
+                <div class="color-row">
+                  <span class="color-label">Primary</span>
+                  <span class="color-swatch" style="background: {themeColors.primary};"></span>
+                  <span class="color-hex">{themeColors.primary}</span>
+                </div>
+                <div class="color-row">
+                  <span class="color-label">Secondary</span>
+                  <span class="color-swatch" style="background: {themeColors.secondary};"></span>
+                  <span class="color-hex">{themeColors.secondary}</span>
+                </div>
+                <div class="color-row">
+                  <span class="color-label">Accent</span>
+                  <span class="color-swatch" style="background: {themeColors.accent};"></span>
+                  <span class="color-hex">{themeColors.accent}</span>
+                </div>
+                <div class="color-row">
+                  <span class="color-label">Background</span>
+                  <span class="color-swatch" style="background: {themeColors.background};"></span>
+                  <span class="color-hex">{themeColors.background}</span>
+                </div>
+                <div class="color-row">
+                  <span class="color-label">Surface</span>
+                  <span class="color-swatch" style="background: {themeColors.surface};"></span>
+                  <span class="color-hex">{themeColors.surface}</span>
+                </div>
+                <div class="color-row">
+                  <span class="color-label">Text</span>
+                  <span class="color-swatch" style="background: {themeColors.text};"></span>
+                  <span class="color-hex">{themeColors.text}</span>
+                </div>
+                <div class="color-row">
+                  <span class="color-label">Text 2nd</span>
+                  <span class="color-swatch" style="background: {themeColors.textSecondary};"
+                  ></span>
+                  <span class="color-hex">{themeColors.textSecondary}</span>
+                </div>
+                <div class="color-row">
+                  <span class="color-label">Border</span>
+                  <span class="color-swatch" style="background: {themeColors.border};"></span>
+                  <span class="color-hex">{themeColors.border}</span>
+                </div>
+                <div class="color-row">
+                  <span class="color-label">Success</span>
+                  <span class="color-swatch" style="background: {themeColors.success};"></span>
+                  <span class="color-hex">{themeColors.success}</span>
+                </div>
+                <div class="color-row">
+                  <span class="color-label">Warning</span>
+                  <span class="color-swatch" style="background: {themeColors.warning};"></span>
+                  <span class="color-hex">{themeColors.warning}</span>
+                </div>
+                <div class="color-row">
+                  <span class="color-label">Error</span>
+                  <span class="color-swatch" style="background: {themeColors.error};"></span>
+                  <span class="color-hex">{themeColors.error}</span>
+                </div>
+              </div>
+            </div>
+            <button
+              class="btn-reset-theme"
+              on:click|stopPropagation={resetToActiveTheme}
+              aria-label="Stop previewing theme"
+              title="Stop previewing and return to active theme"
+            >
+              <RotateCcw size={14} />
+              <span>Quit Previewing</span>
+            </button>
+          </div>
         </div>
-      </div>
+      {/if}
     </div>
   {/if}
-  <div class="canvas-viewport" style="width: {canvasWidth}; max-width: 100%;">
-    <div class="canvas-content" style="{themeStyles}; {componentThemeOverrides}">
+  <div
+    class="canvas-viewport"
+    class:fit-content={mode === 'component' || mode === 'primitive' || mode === 'layout'}
+    style="width: {canvasWidth}; max-width: 100%; background-color: {themeColors.background};"
+  >
+    <div
+      class="canvas-content"
+      style="{themeStyles}; {componentThemeOverrides}; {pagePropertiesStyle}"
+    >
       {#if showLayoutContext}
         <!-- Page mode with layout: render layout components with page content in yield area -->
         {#each sortedLayoutComponents as layoutComponent, _layoutIndex (layoutComponent.id)}
@@ -352,7 +528,7 @@
                         {siteContext}
                         {user}
                         onUpdate={(newConfig) => handleComponentConfigUpdate(component, newConfig)}
-                        isEditable={true}
+                        isEditable={isContentEditable}
                         onSelectComponent={handleSelectChildComponent}
                       />
                     </div>
@@ -473,7 +649,7 @@
                 {siteContext}
                 {user}
                 onUpdate={(newConfig) => handleComponentConfigUpdate(component, newConfig)}
-                isEditable={true}
+                isEditable={isContentEditable}
                 onSelectComponent={handleSelectChildComponent}
               />
             </div>
@@ -520,8 +696,7 @@
 <style>
   .builder-canvas {
     flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden; /* No scrollbars on outer container */
     background: var(--color-bg-secondary);
     padding: 2rem;
     display: flex;
@@ -530,15 +705,51 @@
     min-height: 0; /* Critical for flex scrolling */
   }
 
+  /* Fit-content mode: allow outer container to scroll if needed (component/primitive editing) */
+  .builder-canvas.fit-content-mode {
+    overflow: auto;
+    align-items: flex-start; /* Keep aligned to top to prevent clipping */
+  }
+
   .canvas-viewport {
     background: var(--color-bg-primary, white);
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     border-radius: 8px;
-    overflow: visible;
-    transition: all 0.3s ease;
+    overflow-y: auto; /* Vertical scrolling for content */
+    overflow-x: hidden; /* Hide horizontal overflow - content should fit */
+    transition: width 0.3s ease;
     margin: 0 auto;
-    align-self: stretch; /* Allow it to grow vertically */
-    min-height: min-content; /* Grow to fit content */
+    /* Use flex layout to fill available height properly */
+    height: 100%;
+    max-height: calc(100vh - 140px); /* Leave room for toolbar and padding */
+    flex-shrink: 1; /* Allow shrinking if needed */
+  }
+
+  /* Component/Primitive/Layout mode: scale to fit content, no scrollbars */
+  .canvas-viewport.fit-content {
+    overflow: visible; /* No scrollbars - content scales to fit */
+    height: auto; /* Let content determine height */
+    max-height: none; /* Remove height constraint */
+    flex-shrink: 0; /* Don't shrink - let it grow to fit content */
+  }
+
+  /* Style the scrollbar to be more visible */
+  .canvas-viewport::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .canvas-viewport::-webkit-scrollbar-track {
+    background: var(--color-bg-tertiary, #e5e7eb);
+    border-radius: 4px;
+  }
+
+  .canvas-viewport::-webkit-scrollbar-thumb {
+    background: var(--color-text-secondary, #9ca3af);
+    border-radius: 4px;
+  }
+
+  .canvas-viewport::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-primary, #6b7280);
   }
 
   .canvas-content {
@@ -547,6 +758,61 @@
     background: var(--color-bg-primary);
     color: var(--color-text-primary);
     min-height: 400px;
+    width: 100%; /* Ensure content fills container width */
+    overflow: hidden; /* Prevent horizontal overflow */
+    overflow-wrap: break-word; /* Allow text to wrap */
+    word-wrap: break-word; /* Legacy support */
+  }
+
+  /* Fit-content mode: reduce min-height for component/primitive/layout editing */
+  .fit-content > .canvas-content {
+    min-height: auto !important; /* Let content determine height */
+    padding: 0; /* Remove padding to fit content exactly */
+  }
+
+  .fit-content > .canvas-content > .empty-canvas {
+    min-height: 200px; /* Smaller empty state for component/primitive/layout mode */
+    padding: 1.5rem 1rem;
+  }
+
+  /* Force all direct children and component content to respect viewport width */
+  .canvas-content > *,
+  .canvas-content :global(.component-content),
+  .canvas-content :global(.container-drop-zone),
+  .canvas-content :global(.navbar-container-based) {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Ensure flex containers and their children can shrink to fit viewport */
+  .canvas-content :global(.container-drop-zone.flex-layout) {
+    min-width: 0; /* Allow flex container to shrink below content size */
+  }
+
+  /* Allow general containers to wrap when needed, but NOT navbar containers */
+  .canvas-content :global(.container-drop-zone.flex-layout:not([data-drop-zone-id^='navbar'])) {
+    flex-wrap: wrap; /* Allow items to wrap in preview for content containers */
+  }
+
+  /* Navbar containers should respect their inline flex-wrap setting (usually nowrap) */
+  .canvas-content :global(.navbar-container-based .container-drop-zone.flex-layout),
+  .canvas-content :global(.navbar-container-based .container-drop-zone.flex-row) {
+    flex-wrap: nowrap; /* Navbar items should stay in a row */
+  }
+
+  /* Ensure child components within containers can shrink */
+  .canvas-content :global(.child-component) {
+    min-width: 0; /* Allow flex items to shrink */
+    flex-shrink: 1; /* Allow shrinking */
+  }
+
+  /* Ensure text within child components can wrap */
+  .canvas-content :global(.child-component a),
+  .canvas-content :global(.child-component span),
+  .canvas-content :global(.child-component button) {
+    white-space: normal; /* Allow text to wrap if needed */
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .component-wrapper {
@@ -555,15 +821,16 @@
   }
 
   .component-wrapper.hovered {
-    outline: 2px dashed var(--color-primary);
-    outline-offset: -2px;
+    outline: 2px dashed #3b82f6;
+    outline-offset: 2px;
   }
 
   .component-wrapper.selected {
-    outline: 2px solid var(--color-primary);
-    outline-offset: -2px;
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
   }
 
+  /* Editor controls use fixed colors to avoid being affected by theme preview */
   .component-controls {
     position: absolute;
     top: 0;
@@ -572,8 +839,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: var(--color-primary, #3b82f6);
-    color: var(--color-bg-primary, white);
+    background: #3b82f6;
+    color: white;
     padding: 0.25rem 0.5rem;
     font-size: 0.75rem;
     z-index: 10;
@@ -596,16 +863,16 @@
     width: 24px;
     height: 24px;
     padding: 0;
-    background: var(--color-primary-light, rgba(255, 255, 255, 0.2));
+    background: rgba(255, 255, 255, 0.2);
     border: none;
     border-radius: 4px;
-    color: var(--color-bg-primary, white);
+    color: white;
     cursor: pointer;
     transition: background 0.2s;
   }
 
   .btn-control:hover:not(:disabled) {
-    background: var(--color-primary-hover, rgba(255, 255, 255, 0.3));
+    background: rgba(255, 255, 255, 0.3);
   }
 
   .btn-control:disabled {
@@ -614,7 +881,7 @@
   }
 
   .btn-control.btn-danger:hover:not(:disabled) {
-    background: var(--color-danger);
+    background: #ef4444;
   }
 
   .component-content {
@@ -699,69 +966,305 @@
       box-shadow: none;
     }
   }
-  .theme-debug-panel {
+
+  /* Theme Debug Indicator - Collapsible floating panel at bottom right */
+  .theme-debug-indicator {
     position: fixed;
-    top: 60px;
-    right: 10px;
-    background: var(--color-overlay, rgba(0, 0, 0, 0.9));
-    color: var(--color-bg-primary, white);
+    bottom: 1rem;
+    right: 5rem; /* Position to the left of BuildInfo panel */
+    z-index: 9998; /* Just below BuildInfo (9999) */
+    font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  }
+
+  /* Collapsed toggle button */
+  .theme-debug-toggle {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: all 0.3s ease;
     padding: 0;
-    border-radius: 6px;
-    font-size: 11px;
-    z-index: 9999;
-    max-width: 250px;
-    font-family: monospace;
-    box-shadow: var(--shadow-lg, 0 4px 12px rgba(0, 0, 0, 0.3));
+  }
+
+  .theme-debug-toggle:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+  }
+
+  .theme-debug-toggle:active {
+    transform: scale(1.05);
+  }
+
+  .theme-debug-pulse {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    opacity: 0.5;
+    animation: themeDebugPulse 2s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes themeDebugPulse {
+    0%,
+    100% {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 0.5;
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(1.3);
+      opacity: 0;
+    }
+  }
+
+  /* Expanded panel */
+  .theme-debug-panel {
+    background: rgba(24, 24, 27, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    min-width: 240px;
+    max-width: 280px;
+    overflow: hidden;
+    backdrop-filter: blur(12px);
   }
 
   .theme-debug-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 10px;
-    background: var(--color-bg-tertiary, rgba(255, 255, 255, 0.05));
-    border-bottom: 1px solid var(--color-border-secondary, rgba(255, 255, 255, 0.1));
-    border-radius: 6px 6px 0 0;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
 
-  .theme-debug-header strong {
+  .theme-debug-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #a78bfa;
+  }
+
+  .theme-debug-title strong {
     font-size: 11px;
     font-weight: 600;
+    color: #e4e4e7;
+    letter-spacing: 0.3px;
+  }
+
+  .theme-debug-collapse {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: #a1a1aa;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .theme-debug-collapse:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #e4e4e7;
+  }
+
+  .theme-debug-content {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .theme-debug-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .theme-debug-label {
+    font-size: 10px;
+    font-weight: 500;
+    color: #71717a;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .theme-debug-value {
+    font-size: 12px;
+    font-weight: 600;
+    color: #e4e4e7;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .theme-debug-colors {
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .theme-debug-colors .color-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .color-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .color-row .color-label {
+    font-size: 9px;
+    font-weight: 500;
+    color: #71717a;
+    width: 50px;
+    flex-shrink: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .color-row .color-swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    flex-shrink: 0;
+  }
+
+  .color-row .color-hex {
+    font-size: 8px;
+    font-weight: 500;
+    color: #a1a1aa;
+    font-family: 'Monaco', 'Menlo', monospace;
+    display: none; /* Hide hex on desktop for compact view */
   }
 
   .btn-reset-theme {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 4px;
-    background: var(--color-bg-tertiary, rgba(255, 255, 255, 0.1));
-    border: 1px solid var(--color-border-secondary, rgba(255, 255, 255, 0.2));
-    border-radius: 3px;
-    color: var(--color-bg-primary, white);
+    gap: 6px;
+    width: 100%;
+    padding: 8px 12px;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 6px;
+    color: #fca5a5;
+    font-size: 11px;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
   }
 
   .btn-reset-theme:hover {
-    background: var(--color-bg-secondary, rgba(255, 255, 255, 0.2));
-    border-color: var(--color-border-primary, rgba(255, 255, 255, 0.3));
+    background: rgba(239, 68, 68, 0.25);
+    border-color: rgba(239, 68, 68, 0.5);
+    color: #fecaca;
   }
 
-  .theme-debug-content {
-    padding: 10px;
+  .btn-reset-theme:active {
+    transform: scale(0.98);
   }
 
-  .theme-debug-colors {
-    margin-top: 6px;
-    padding: 4px;
-    background: var(--color-bg-tertiary, rgba(255, 255, 255, 0.1));
-    border-radius: 3px;
+  /* Mobile responsive styles for theme debug indicator */
+  @media (max-width: 768px) {
+    .theme-debug-indicator {
+      bottom: 0.75rem;
+      right: 3.5rem; /* Adjust for mobile BuildInfo */
+    }
+
+    .theme-debug-toggle {
+      width: 40px;
+      height: 40px;
+    }
+
+    .theme-debug-panel {
+      min-width: 240px;
+      max-width: calc(100vw - 4rem);
+      max-height: calc(100vh - 6rem);
+      overflow-y: auto;
+    }
+
+    .theme-debug-header {
+      padding: 8px 10px;
+    }
+
+    .theme-debug-content {
+      padding: 10px;
+      gap: 8px;
+    }
+
+    .theme-debug-colors {
+      padding: 6px;
+      max-height: 160px;
+    }
+
+    .theme-debug-colors .color-grid {
+      grid-template-columns: 1fr; /* Single column on mobile */
+    }
+
+    .color-row .color-swatch {
+      width: 14px;
+      height: 14px;
+    }
+
+    .color-row .color-label {
+      width: 60px;
+    }
+
+    .btn-reset-theme {
+      padding: 8px 10px;
+    }
   }
 
-  .color-swatch {
-    padding: 2px 6px;
-    border-radius: 2px;
-    border: 1px solid var(--color-border-secondary, rgba(255, 255, 255, 0.2));
+  /* Extra small screens */
+  @media (max-width: 375px) {
+    .theme-debug-indicator {
+      bottom: 0.5rem;
+      right: 0.5rem;
+    }
+
+    .theme-debug-toggle {
+      width: 36px;
+      height: 36px;
+    }
+
+    .theme-debug-panel {
+      min-width: 180px;
+    }
+
+    .theme-debug-title strong {
+      font-size: 10px;
+    }
+
+    .theme-debug-info {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+    }
   }
 
   /* Layout component styles for page mode */

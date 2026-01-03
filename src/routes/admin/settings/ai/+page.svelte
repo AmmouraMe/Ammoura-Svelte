@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { invalidate } from '$app/navigation';
+  import { confirmStore } from '$lib/stores/confirm';
   import { toastStore } from '$lib/stores/toast';
   import ToggleSwitch from '$lib/components/ToggleSwitch.svelte';
   import type { PageData, ActionData } from './$types';
@@ -186,19 +187,27 @@
               </button>
 
               {#if hasKey}
-                <form method="POST" action="?/deleteApiKey" use:enhance>
-                  <input type="hidden" name="provider" value={provider} />
-                  <button
-                    type="submit"
-                    class="btn btn-danger-outline"
-                    on:click={(e) => {
-                      if (!confirm(`Delete ${getProviderName(provider)} API key?`)) {
-                        e.preventDefault();
+                <form
+                  method="POST"
+                  action="?/deleteApiKey"
+                  use:enhance={() => {
+                    return async ({ update, result: _result }) => {
+                      const confirmed = await confirmStore.show(
+                        `Delete ${getProviderName(provider)} API key?`,
+                        {
+                          title: 'Delete API Key',
+                          confirmText: 'Delete',
+                          variant: 'danger'
+                        }
+                      );
+                      if (confirmed) {
+                        await update();
                       }
-                    }}
-                  >
-                    Delete
-                  </button>
+                    };
+                  }}
+                >
+                  <input type="hidden" name="provider" value={provider} />
+                  <button type="submit" class="btn btn-danger-outline">Delete</button>
                 </form>
               {/if}
             </div>

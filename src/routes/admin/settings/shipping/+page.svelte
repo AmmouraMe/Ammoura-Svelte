@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { confirmStore } from '$lib/stores/confirm';
   import { toastStore } from '$lib/stores/toast';
   import ToggleSwitch from '$lib/components/ToggleSwitch.svelte';
   import type { ShippingOption } from '$lib/types/shipping';
@@ -125,7 +126,12 @@
   }
 
   async function handleDelete(option: ShippingOption) {
-    if (!confirm(`Are you sure you want to delete "${option.name}"?`)) {
+    const confirmed = await confirmStore.show(`Are you sure you want to delete "${option.name}"?`, {
+      title: 'Delete Shipping Option',
+      confirmText: 'Delete',
+      variant: 'danger'
+    });
+    if (!confirmed) {
       return;
     }
 

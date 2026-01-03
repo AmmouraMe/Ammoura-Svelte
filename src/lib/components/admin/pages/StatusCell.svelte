@@ -3,20 +3,26 @@
 
   export let row: EnrichedPage;
 
-  // Determine individual status flags
-  $: isPublished = !!row.published_at;
-  $: hasDraft = row.has_unpublished_changes || (row.draft_at && !row.published_at);
+  // A page is considered published if:
+  // 1. It has a published_at timestamp (from published_revision_id join), OR
+  // 2. Its status field is 'published'
+  $: isPublished = !!row.published_at || row.status === 'published';
+
+  // A page has unpublished draft changes if:
+  // 1. It has the has_unpublished_changes flag (draft is newer than published), OR
+  // 2. It's never been published but has a draft
+  $: hasUnpublishedDraft = row.has_unpublished_changes || (!isPublished && !!row.draft_at);
 </script>
 
-{#if isPublished && row.has_unpublished_changes}
-  <!-- Show two separate badges when page has both published and draft versions -->
+{#if isPublished && hasUnpublishedDraft}
+  <!-- Show two separate badges when page has both published and unpublished draft -->
   <div class="status-badges">
     <span class="status-badge published">Published</span>
     <span class="status-badge draft">Draft</span>
   </div>
 {:else if isPublished}
   <span class="status-badge published">Published</span>
-{:else if hasDraft}
+{:else if hasUnpublishedDraft}
   <span class="status-badge draft">Draft</span>
 {:else}
   <span class="status-badge">{row.status || 'Draft'}</span>

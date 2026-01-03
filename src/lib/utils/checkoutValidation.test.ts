@@ -185,7 +185,7 @@ describe('Checkout Validation', () => {
       cardNumber: '4532015112830366', // Valid test card number
       cardHolderName: 'John Doe',
       expiryMonth: '12',
-      expiryYear: '2025',
+      expiryYear: '2027',
       cvv: '123'
     };
 
@@ -338,7 +338,7 @@ describe('Checkout Validation', () => {
         cardNumber: '4532015112830366',
         cardHolderName: 'John Doe',
         expiryMonth: '12',
-        expiryYear: '2025',
+        expiryYear: '2027',
         cvv: '123'
       }
     };

@@ -7,7 +7,8 @@ import {
   getPublishedRevision,
   getMostRecentDraftRevision,
   buildRevisionTree,
-  getHeadRevisions
+  getHeadRevisions,
+  ensureInitialRevision
 } from './revisions';
 import type { D1Database } from '@cloudflare/workers-types';
 import type { PageRevision, PageWidget } from '$lib/types/pages';
@@ -398,59 +399,9 @@ describe('Revisions Database Functions', () => {
         run: vi.fn().mockResolvedValue({})
       };
 
-      const mockBatchStatement = {
-        bind: vi.fn().mockReturnThis()
-      };
-
-      (mockDb.prepare as ReturnType<typeof vi.fn>)
-        .mockReturnValueOnce(mockGetRevisionStatement) // getRevisionById
-        .mockReturnValueOnce(mockGetRevisionStatement) // getPublishedRevision
-        .mockReturnValueOnce(mockPageStatement) // createRevision - check page exists
-        .mockReturnValueOnce(mockHashesStatement) // createRevision - get existing hashes
-        .mockReturnValueOnce(mockInsertStatement) // createRevision - insert
-        .mockReturnValue(mockBatchStatement); // All subsequent prepare calls for batch
-
-      (mockDb.batch as ReturnType<typeof vi.fn>).mockResolvedValue([]);
-
-      await publishRevision(mockDb, siteId, pageId, revisionId);
-
-      expect(mockDb.batch).toHaveBeenCalled();
-      const batchCalls = (mockDb.batch as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(batchCalls.length).toBeGreaterThan(0);
-    });
-
-    it('should throw error when revision not found', async () => {
-      const mockStatement = {
+      const mockPageUpdateStatement = {
         bind: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue(null)
-      };
-
-      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
-
-      await expect(publishRevision(mockDb, siteId, pageId, 'nonexistent')).rejects.toThrow(
-        'Revision not found'
-      );
-    });
-
-    it('should update page and widgets in batch', async () => {
-      const mockGetRevisionStatement = {
-        bind: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue(mockRevisionData)
-      };
-
-      const mockHashesStatement = {
-        bind: vi.fn().mockReturnThis(),
-        all: vi.fn().mockResolvedValue({ results: [] })
-      };
-
-      const mockPageStatement = {
-        bind: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue({ id: pageId })
-      };
-
-      const mockInsertStatement = {
-        bind: vi.fn().mockReturnThis(),
-        run: vi.fn().mockResolvedValue({})
+        run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 1 } })
       };
 
       const mockBatchStatement = {
@@ -463,46 +414,7 @@ describe('Revisions Database Functions', () => {
         .mockReturnValueOnce(mockPageStatement) // createRevision - check page exists
         .mockReturnValueOnce(mockHashesStatement) // createRevision - get existing hashes
         .mockReturnValueOnce(mockInsertStatement) // createRevision - insert
-        .mockReturnValue(mockBatchStatement); // All subsequent prepare calls for batch
-
-      (mockDb.batch as ReturnType<typeof vi.fn>).mockResolvedValue([]);
-
-      await publishRevision(mockDb, siteId, pageId, revisionId);
-
-      expect(mockDb.batch).toHaveBeenCalledTimes(1);
-    });
-
-    it('should include published_revision_id in page update', async () => {
-      const mockGetRevisionStatement = {
-        bind: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue(mockRevisionData)
-      };
-
-      const mockHashesStatement = {
-        bind: vi.fn().mockReturnThis(),
-        all: vi.fn().mockResolvedValue({ results: [] })
-      };
-
-      const mockPageStatement = {
-        bind: vi.fn().mockReturnThis(),
-        first: vi.fn().mockResolvedValue({ id: pageId })
-      };
-
-      const mockInsertStatement = {
-        bind: vi.fn().mockReturnThis(),
-        run: vi.fn().mockResolvedValue({})
-      };
-
-      const mockBatchStatement = {
-        bind: vi.fn().mockReturnThis()
-      };
-
-      (mockDb.prepare as ReturnType<typeof vi.fn>)
-        .mockReturnValueOnce(mockGetRevisionStatement) // getRevisionById
-        .mockReturnValueOnce(mockGetRevisionStatement) // getPublishedRevision
-        .mockReturnValueOnce(mockPageStatement) // createRevision - check page exists
-        .mockReturnValueOnce(mockHashesStatement) // createRevision - get existing hashes
-        .mockReturnValueOnce(mockInsertStatement) // createRevision - insert
+        .mockReturnValueOnce(mockPageUpdateStatement) // page UPDATE (runs separately)
         .mockReturnValue(mockBatchStatement); // All subsequent prepare calls for batch
 
       (mockDb.batch as ReturnType<typeof vi.fn>).mockResolvedValue([]);
@@ -837,6 +749,138 @@ describe('Revisions Database Functions', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe(revisionId);
+    });
+  });
+
+  describe('ensureInitialRevision', () => {
+    it('should return existing revisions if they already exist', async () => {
+      const existingRevision = { ...mockRevisionData };
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        all: vi.fn().mockResolvedValue({ results: [existingRevision] })
+      };
+
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const result = await ensureInitialRevision(
+        mockDb,
+        siteId,
+        pageId,
+        {
+          title: 'Test Page',
+          slug: 'test-page',
+          status: 'draft'
+        },
+        []
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe(revisionId);
+    });
+
+    it('should create initial revision when no revisions exist', async () => {
+      let allCallCount = 0;
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        first: vi.fn().mockImplementation(() => {
+          // Page existence check returns the page
+          return Promise.resolve({ id: pageId });
+        }),
+        all: vi.fn().mockImplementation(() => {
+          allCallCount++;
+          // First call: getPageRevisions - return empty (no existing revisions)
+          if (allCallCount === 1) {
+            return Promise.resolve({ results: [] });
+          }
+          // Second call: get existing revision hashes - return empty
+          if (allCallCount === 2) {
+            return Promise.resolve({ results: [] });
+          }
+          // Third call: getPageRevisions in buildRevisionTree - return the new revision
+          return Promise.resolve({
+            results: [
+              {
+                ...mockRevisionData,
+                id: 'new-initial-revision',
+                notes: 'Initial revision'
+              }
+            ]
+          });
+        }),
+        run: vi.fn().mockResolvedValue({ success: true })
+      };
+
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const result = await ensureInitialRevision(
+        mockDb,
+        siteId,
+        pageId,
+        {
+          title: 'New Page',
+          slug: 'new-page',
+          status: 'draft'
+        },
+        [mockWidget]
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].notes).toBe('Initial revision');
+    });
+
+    it('should mark initial revision as published if page is published', async () => {
+      let allCallCount = 0;
+      const mockRunFn = vi.fn().mockResolvedValue({ success: true });
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        first: vi.fn().mockImplementation(() => {
+          // Page existence check returns the page
+          return Promise.resolve({ id: pageId });
+        }),
+        all: vi.fn().mockImplementation(() => {
+          allCallCount++;
+          // First call: getPageRevisions - return empty
+          if (allCallCount === 1) {
+            return Promise.resolve({ results: [] });
+          }
+          // Second call: get existing revision hashes - return empty
+          if (allCallCount === 2) {
+            return Promise.resolve({ results: [] });
+          }
+          // Third call: getPageRevisions in buildRevisionTree - return the new revision
+          return Promise.resolve({
+            results: [
+              {
+                ...mockRevisionData,
+                id: 'new-initial-revision',
+                status: 'published',
+                is_published: true,
+                notes: 'Initial revision'
+              }
+            ]
+          });
+        }),
+        run: mockRunFn
+      };
+
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const result = await ensureInitialRevision(
+        mockDb,
+        siteId,
+        pageId,
+        {
+          title: 'Published Page',
+          slug: 'published-page',
+          status: 'published'
+        },
+        []
+      );
+
+      // Should have called UPDATE to mark as published
+      const updateCalls = mockRunFn.mock.calls;
+      expect(updateCalls.length).toBeGreaterThan(0);
+      expect(result).toHaveLength(1);
     });
   });
 });

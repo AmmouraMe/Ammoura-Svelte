@@ -27,18 +27,70 @@
   ];
 
   // Prepare comprehensive entity data for AI context
+  // Helper to flatten components with hierarchy info for AI
+  function flattenComponentsForAI(
+    comps: PageComponent[],
+    parentId?: string
+  ): Array<{
+    id: string;
+    type: string;
+    position: number;
+    config: Record<string, unknown>;
+    parent_id?: string;
+    children?: Array<{ id: string; type: string; position: number }>;
+  }> {
+    return comps.map((c) => {
+      const childArray = (c.config?.children as PageComponent[]) || [];
+      return {
+        id: c.id,
+        type: c.type,
+        position: c.position,
+        config: { ...c.config, children: undefined }, // Exclude children from config to avoid duplication
+        parent_id: parentId,
+        ...(childArray.length > 0
+          ? {
+              children: childArray.map((child) => ({
+                id: child.id,
+                type: child.type,
+                position: child.position
+              }))
+            }
+          : {})
+      };
+    });
+  }
+
+  // Build a hierarchical view showing all widgets with their structure
+  function buildWidgetHierarchy(comps: PageComponent[]): string {
+    const lines: string[] = [];
+
+    function processComponent(comp: PageComponent, indent: number = 0): void {
+      const prefix = '  '.repeat(indent);
+      const childArray = (comp.config?.children as PageComponent[]) || [];
+      lines.push(`${prefix}- ${comp.type} (id: ${comp.id}, position: ${comp.position})`);
+
+      for (const child of childArray) {
+        processComponent(child as PageComponent, indent + 1);
+      }
+    }
+
+    for (const comp of comps) {
+      processComponent(comp);
+    }
+
+    return lines.join('\n');
+  }
+
   $: entityData = {
     builder: {
       mode: builderContext.mode || 'page',
       entityId: builderContext.entityId,
       entityName: title,
       slug,
-      components: components.map((c) => ({
-        id: c.id,
-        type: c.type,
-        position: c.position,
-        config: c.config
-      })),
+      // Flat list with parent_id references for easy lookup
+      components: flattenComponentsForAI(components),
+      // Human-readable hierarchy for better AI understanding
+      widgetHierarchy: buildWidgetHierarchy(components),
       layoutId: builderContext.layoutId,
       availableComponentTypes,
       componentCount: components.length
@@ -79,13 +131,23 @@
   function handleApplyChanges(event: CustomEvent) {
     const { type, data } = event.detail;
 
-    if (type === 'component_changes') {
+    if (type === 'component_changes' || type === 'widget_changes') {
       // Import component changes utility
       import('$lib/utils/componentChanges').then(({ applyComponentChanges }) => {
+        // Normalize the data structure - AI may use 'widgets' instead of 'components'
+        // Also handle parentId/targetId for nested widget placement
+        const normalizedData = {
+          ...data,
+          components: data.components || data.widgets,
+          componentIds: data.componentIds || data.widgetIds,
+          parentId: data.parentId,
+          targetId: data.targetId
+        };
+
         // Apply changes to current components
         const updatedComponents = applyComponentChanges(components, {
           type: 'component_changes',
-          changes: data
+          changes: normalizedData
         });
 
         // Dispatch the updated components back to AdvancedBuilder

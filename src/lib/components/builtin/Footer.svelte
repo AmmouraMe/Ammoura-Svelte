@@ -21,6 +21,8 @@
   export let config: WidgetConfig = {};
   export let siteContext: SiteContext | undefined = undefined;
   export let user: UserInfo | undefined = undefined;
+  // When true, prevents navigation for links (used in builder preview)
+  export let isEditable = false;
 
   // Create user context for template substitution
   $: userContext = createUserContext(user);
@@ -47,6 +49,13 @@
   function sub(text: string, vars: typeof templateVars): string {
     if (!text) return text;
     return substituteTemplate(text, vars);
+  }
+
+  // Prevents link navigation when in edit mode (builder preview)
+  function handleLinkClick(event: MouseEvent): void {
+    if (isEditable) {
+      event.preventDefault();
+    }
   }
 
   // Container configuration - Footer uses Container as its base
@@ -161,7 +170,7 @@
         {#if hasLogo || tagline}
           <div class="footer-brand">
             {#if logo.image}
-              <a href={logo.url || '/'} class="logo-link">
+              <a href={logo.url || '/'} class="logo-link" on:click={handleLinkClick}>
                 <img
                   src={logo.image}
                   alt={logo.text || 'Logo'}
@@ -170,7 +179,12 @@
                 />
               </a>
             {:else if logo.text}
-              <a href={logo.url || '/'} class="logo-link logo-text" style="color: {textColor};">
+              <a
+                href={logo.url || '/'}
+                class="logo-link logo-text"
+                style="color: {textColor};"
+                on:click={handleLinkClick}
+              >
                 {sub(logo.text, templateVars)}
               </a>
             {/if}
@@ -198,6 +212,7 @@
                       style="color: {textColor};"
                       target={link.openInNewTab ? '_blank' : '_self'}
                       rel={link.openInNewTab ? 'noopener noreferrer' : undefined}
+                      on:click={handleLinkClick}
                     >
                       {sub(link.text, templateVars)}
                     </a>
@@ -221,6 +236,7 @@
                   target="_blank"
                   rel="noopener noreferrer"
                   style="color: {textColor};"
+                  on:click={handleLinkClick}
                 >
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path
@@ -247,6 +263,7 @@
               style="color: {textColor};"
               target={link.openInNewTab ? '_blank' : '_self'}
               rel={link.openInNewTab ? 'noopener noreferrer' : undefined}
+              on:click={handleLinkClick}
             >
               {sub(link.text, templateVars)}
             </a>

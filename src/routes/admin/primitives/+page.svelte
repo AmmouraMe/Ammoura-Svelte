@@ -1,10 +1,28 @@
 <script lang="ts">
   import type { PageData } from './$types';
   import { enhance } from '$app/forms';
+  import { confirmStore } from '$lib/stores/confirm';
 
   export let data: PageData;
 
   let isResetting = false;
+  let _pendingResetId: string | null = null;
+
+  async function handleReset(componentId: string, componentName: string): Promise<void> {
+    const confirmed = await confirmStore.show(
+      `Reset "${componentName}" to its original defaults? This will undo any customizations.`,
+      {
+        title: 'Reset Component',
+        confirmText: 'Reset',
+        variant: 'warning'
+      }
+    );
+    if (confirmed) {
+      _pendingResetId = componentId;
+      const form = document.getElementById(`reset-primitive-${componentId}`) as HTMLFormElement;
+      if (form) form.requestSubmit();
+    }
+  }
 </script>
 
 <svelte:head>
@@ -55,25 +73,25 @@
                 Edit Defaults
               </a>
               <form
+                id="reset-primitive-{component.id}"
                 method="POST"
                 action="?/reset"
                 use:enhance={() => {
-                  if (
-                    !confirm(
-                      `Reset "${component.name}" to its original defaults? This will undo any customizations.`
-                    )
-                  ) {
-                    return () => {};
-                  }
                   isResetting = true;
                   return async ({ update }) => {
                     await update();
                     isResetting = false;
+                    _pendingResetId = null;
                   };
                 }}
               >
                 <input type="hidden" name="id" value={component.id} />
-                <button type="submit" class="btn btn-warning" disabled={isResetting}>
+                <button
+                  type="button"
+                  class="btn btn-warning"
+                  disabled={isResetting}
+                  on:click={() => handleReset(String(component.id), component.name)}
+                >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path
                       d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"

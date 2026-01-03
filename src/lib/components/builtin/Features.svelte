@@ -5,7 +5,7 @@
   import { resolveThemeColor } from '$lib/utils/editor/colorThemes';
 
   export let config: WidgetConfig;
-  export let colorTheme: ColorTheme = 'default-light';
+  export let colorTheme: ColorTheme = 'vibrant';
   export let siteContext: SiteContext | undefined = undefined;
   export let user: UserInfo | null | undefined = undefined;
 
@@ -17,18 +17,9 @@
   $: title = sub(config.title || 'Features');
   $: subtitle = sub(config.subtitle || '');
   $: allFeatures = config.features || [];
-  $: cardBackground = resolveThemeColor(
-    config.cardBackground,
-    colorTheme,
-    'var(--color-bg-primary)',
-    true
-  );
-  $: cardBorderColor = resolveThemeColor(
-    config.cardBorderColor,
-    colorTheme,
-    'var(--color-border-secondary)',
-    true
-  );
+  $: cardBackground = resolveThemeColor(config.cardBackground, colorTheme, 'theme:surface', true);
+  $: cardBorderColor = resolveThemeColor(config.cardBorderColor, colorTheme, 'theme:border', true);
+  $: cardBorderWidth = config.cardBorderWidth !== undefined ? config.cardBorderWidth : 1;
   $: cardBorderRadius = config.cardBorderRadius !== undefined ? config.cardBorderRadius : 12;
 
   // Responsive column and gap values
@@ -77,7 +68,7 @@
         class:desktop-hidden={desktopLimit && index >= desktopLimit}
         class:tablet-hidden={tabletLimit && index >= tabletLimit}
         class:mobile-hidden={mobileLimit && index >= mobileLimit}
-        style="background: {cardBackground}; border-color: {cardBorderColor}; border-radius: {cardBorderRadius}px;"
+        style="background: {cardBackground}; border: {cardBorderWidth}px solid {cardBorderColor}; border-radius: {cardBorderRadius}px;"
       >
         <div class="feature-icon">{feature.icon}</div>
         <h3>{feature.title}</h3>
@@ -119,7 +110,6 @@
   }
 
   .feature-card {
-    border: 1px solid;
     padding: 2rem;
     text-align: center;
     transition: all 0.3s ease;

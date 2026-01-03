@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ColorTheme, ThemeSpecificColor } from '$lib/types/pages';
+  import type { ColorTheme, ThemeSpecificColor, ThemeColors } from '$lib/types/pages';
   import { getThemeColors } from '$lib/utils/editor/colorThemes';
   import ColorPicker from './ColorPicker.svelte';
 
@@ -9,6 +9,8 @@
   export let defaultValue: string | undefined = undefined;
   export let onChange: (newValue: string | ThemeSpecificColor) => void;
   export let onClear: (() => void) | undefined = undefined;
+  // Optional: Allow passing theme colors directly (for builder with loaded themes from DB)
+  export let themeColors: ThemeColors | undefined = undefined;
 
   // Determine default theme color based on label
   function getDefaultThemeColor(label: string): string {
@@ -26,23 +28,25 @@
     return 'theme:text';
   }
 
-  // Use the provided value or default to appropriate theme color
-  $: effectiveValue = value || getDefaultThemeColor(label);
+  // Use the provided value, or the explicit defaultValue prop if provided, or fall back to label-based default
+  $: effectiveValue = value || defaultValue || getDefaultThemeColor(label);
   $: hasExplicitValue = !!value;
 
   let showColorPicker = false;
   let colorPickerButton: HTMLButtonElement | null = null;
 
-  // Get current theme colors for presets
-  $: currentThemeColors = getThemeColors(currentTheme);
+  // Get current theme colors for presets - use passed themeColors if available, otherwise lookup
+  $: currentThemeColors = themeColors || getThemeColors(currentTheme);
 
   // Get the resolved color for the current theme
   $: isThemeRef = typeof effectiveValue === 'string' && effectiveValue.startsWith('theme:');
+  $: isTransparent = typeof effectiveValue === 'string' && effectiveValue === 'transparent';
   $: isCustomColor =
     typeof effectiveValue === 'string' &&
     !effectiveValue.startsWith('theme:') &&
     !effectiveValue.startsWith('color:') &&
-    !effectiveValue.startsWith('var(--');
+    !effectiveValue.startsWith('var(--') &&
+    effectiveValue !== 'transparent';
 
   $: resolvedColor = (() => {
     if (isThemeRef && typeof effectiveValue === 'string') {
@@ -56,6 +60,9 @@
   })();
 
   $: selectedColorName = (() => {
+    if (typeof effectiveValue === 'string' && effectiveValue === 'transparent') {
+      return 'Transparent';
+    }
     if (isThemeRef && typeof effectiveValue === 'string') {
       const colorKey = effectiveValue.replace('theme:', '');
       return colorKey.charAt(0).toUpperCase() + colorKey.slice(1);
@@ -99,9 +106,13 @@
       class:muted={!hasExplicitValue}
       bind:this={colorPickerButton}
       on:click={toggleColorPicker}
-      title="{selectedColorName} - {resolvedColor.toUpperCase()}"
+      title="{selectedColorName} - {isTransparent ? 'Transparent' : resolvedColor.toUpperCase()}"
     >
-      <div class="preview-swatch" style="background-color: {resolvedColor};" />
+      <div
+        class="preview-swatch"
+        class:transparent-swatch={isTransparent}
+        style="background-color: {resolvedColor};"
+      />
       <svg
         class="dropdown-icon"
         width="16"
@@ -119,6 +130,7 @@
   {#if showColorPicker}
     <ColorPicker
       {currentTheme}
+      themeColors={currentThemeColors}
       selectedValue={typeof effectiveValue === 'string' ? effectiveValue : 'theme:text'}
       {defaultValue}
       anchorElement={colorPickerButton}
@@ -212,6 +224,22 @@
       inset 0 1px 2px rgba(0, 0, 0, 0.1),
       0 2px 4px rgba(0, 0, 0, 0.05);
     flex-shrink: 0;
+  }
+
+  /* Transparent swatch with checkerboard pattern */
+  .preview-swatch.transparent-swatch {
+    background-image:
+      linear-gradient(45deg, #ccc 25%, transparent 25%),
+      linear-gradient(-45deg, #ccc 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #ccc 75%),
+      linear-gradient(-45deg, transparent 75%, #ccc 75%) !important;
+    background-size: 8px 8px;
+    background-position:
+      0 0,
+      0 4px,
+      4px -4px,
+      -4px 0px;
+    background-color: #fff !important;
   }
 
   .dropdown-icon {

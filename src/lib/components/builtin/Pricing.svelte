@@ -1,321 +1,295 @@
 <script lang="ts">
-  import type { WidgetConfig } from '$lib/types/pages';
+  /**
+   * Pricing - Container-based pricing component
+   * Built using the same architecture as Hero, NavBar, and Footer components
+   *
+   * Architecture:
+   * - Uses children array for component composition
+   * - ContainerDropZone for builder mode drag-drop editing
+   * - Direct child rendering for frontend display
+   * - Default children structure creates the visual design
+   */
+  import type {
+    WidgetConfig,
+    ColorTheme,
+    PageComponent,
+    ComponentConfig,
+    Breakpoint,
+    ComponentType
+  } from '$lib/types/pages';
+  import type { SiteContext, UserInfo } from '$lib/utils/templateSubstitution';
+  import { createUserContext } from '$lib/utils/templateSubstitution';
+  import { resolveThemeColor } from '$lib/utils/editor/colorThemes';
+  import ContainerDropZone from '$lib/components/builder/ContainerDropZone.svelte';
+  import { getDefaultConfig } from '$lib/utils/editor/componentDefaults';
 
   export let config: WidgetConfig;
+  export let colorTheme: ColorTheme = 'vibrant';
+  export let siteContext: SiteContext | undefined = undefined;
+  export let user: UserInfo | null | undefined = undefined;
 
-  $: title = config.title || 'Pricing';
-  $: tagline = config.tagline || '';
-  $: subtitle = config.subtitle || '';
-  $: pricingFeatures = config.pricingFeatures || [];
-  $: tiers = config.tiers || [];
-  $: ctaText = config.ctaText || 'Get Started';
-  $: ctaLink = config.ctaLink || '#';
-  $: ctaNote = config.ctaNote || '';
+  // Builder mode props - enables WYSIWYG editing while maintaining visual fidelity
+  export let isEditable = false;
+  export let onUpdate: ((config: ComponentConfig) => void) | undefined = undefined;
+  export let onSelectComponent: ((component: PageComponent) => void) | undefined = undefined;
+  export let currentBreakpoint: Breakpoint = 'desktop';
+  export let componentId = ''; // Required for container-based pricing
+  export let pageId = ''; // Required for creating new child components
+
+  // Create user context for template substitution (passed to children)
+  $: userContext = createUserContext(user);
+  $: _templateContext = { site: siteContext, user: userContext };
+
+  // Get children from config
+  $: children = (config.children as PageComponent[] | undefined) || [];
+  $: hasChildren = children.length > 0;
+
+  // Container styling from config
+  $: containerBackground = resolveThemeColor(
+    config.containerBackground || config.backgroundColor,
+    colorTheme,
+    'linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%)',
+    true
+  );
+  $: containerMinHeight = getBreakpointValue(config.containerMinHeight) || 'auto';
+  $: containerPadding = getBreakpointValue(config.containerPadding);
+  $: containerMaxWidth = config.containerMaxWidth || '100%';
+  $: containerDisplay = getBreakpointValue(config.containerDisplay) || 'flex';
+  $: containerFlexDirection = getBreakpointValue(config.containerFlexDirection) || 'column';
+  $: containerJustifyContent = config.containerJustifyContent || 'center';
+  $: containerAlignItems = config.containerAlignItems || 'center';
+  $: containerGap = getBreakpointValue(config.containerGap) || 48;
+
+  function getBreakpointValue<T>(
+    value: T | { mobile?: T; tablet?: T; desktop: T } | undefined
+  ): T | undefined {
+    if (value === undefined) return undefined;
+    if (typeof value === 'object' && value !== null && 'desktop' in value) {
+      const responsive = value as { mobile?: T; tablet?: T; desktop: T };
+      return responsive[currentBreakpoint] ?? responsive.desktop;
+    }
+    return value as T;
+  }
+
+  // Handle dropping a new component into the pricing container
+  function handleContainerDrop(
+    event: CustomEvent<{ containerId: string; componentType: string; insertIndex: number }>
+  ): void {
+    if (!onUpdate) return;
+    const { componentType: rawComponentType, insertIndex } = event.detail;
+
+    // Determine the actual component type and config
+    let actualType: ComponentType;
+    let componentConfig: ComponentConfig;
+
+    // Check if this is a custom component reference (format: "component:123")
+    if (rawComponentType.startsWith('component:')) {
+      const refComponentId = parseInt(rawComponentType.split(':')[1]);
+      actualType = 'component_ref';
+      componentConfig = { componentId: refComponentId };
+    } else {
+      actualType = rawComponentType as ComponentType;
+      componentConfig = getDefaultConfig(actualType);
+    }
+
+    const newChild: PageComponent = {
+      id: `temp-${Date.now()}`,
+      type: actualType,
+      config: componentConfig,
+      position: insertIndex,
+      page_id: pageId,
+      created_at: Date.now(),
+      updated_at: Date.now()
+    };
+
+    // Update this component's children
+    const updatedChildren = [...children];
+    updatedChildren.splice(insertIndex, 0, newChild);
+
+    // Update positions for all children to match their array index
+    const childrenWithUpdatedPositions = updatedChildren.map((child, index) => ({
+      ...child,
+      position: index
+    }));
+
+    onUpdate({ ...config, children: childrenWithUpdatedPositions });
+  }
+
+  // Handle reordering components within the pricing container
+  function handleContainerReorder(
+    event: CustomEvent<{ containerId: string; fromIndex: number; toIndex: number }>
+  ): void {
+    if (!onUpdate) return;
+    const { fromIndex, toIndex } = event.detail;
+
+    const updatedChildren = [...children];
+    const [movedComponent] = updatedChildren.splice(fromIndex, 1);
+    updatedChildren.splice(toIndex, 0, movedComponent);
+
+    // Update positions for all children to match their array index
+    const childrenWithUpdatedPositions = updatedChildren.map((child, index) => ({
+      ...child,
+      position: index
+    }));
+
+    onUpdate({ ...config, children: childrenWithUpdatedPositions });
+  }
+
+  function handleChildClick(event: CustomEvent<{ childId: string }>): void {
+    const { childId } = event.detail;
+    const childComponent = children.find((child) => child.id === childId);
+    if (childComponent && onSelectComponent) {
+      onSelectComponent(childComponent);
+    }
+  }
+
+  // Handle deleting a child component from the pricing container
+  function handleChildDelete(event: CustomEvent<{ childId: string; index: number }>): void {
+    if (!onUpdate) return;
+    const { index } = event.detail;
+
+    const updatedChildren = [...children];
+    updatedChildren.splice(index, 1);
+
+    // Update positions for all remaining children
+    const childrenWithUpdatedPositions = updatedChildren.map((child, idx) => ({
+      ...child,
+      position: idx
+    }));
+
+    onUpdate({ ...config, children: childrenWithUpdatedPositions });
+  }
 </script>
 
-<div class="pricing-widget" id={config.anchorName || undefined}>
-  <div class="section-header">
-    <h2>{title}</h2>
-    {#if tagline}
-      <p class="pricing-tagline">{tagline}</p>
-    {/if}
-    {#if subtitle}
-      <p class="pricing-subtitle">{subtitle}</p>
-    {/if}
-  </div>
-
-  <div class="pricing-container">
-    {#if pricingFeatures.length > 0}
-      <div class="pricing-model">
-        <div class="model-header">
-          <span class="model-icon">💰</span>
-          <h3>Pay-as-You-Grow</h3>
-          <p>All features included, always.</p>
-        </div>
-
-        <ul class="features-list">
-          {#each pricingFeatures as feature}
-            <li>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path
-                  d="M5 13l4 4L19 7"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-              <span>{feature}</span>
-            </li>
-          {/each}
-        </ul>
+{#if hasChildren || isEditable}
+  <!-- Container-based Pricing with children (new architecture) -->
+  <section
+    class="pricing-container"
+    class:is-editable={isEditable}
+    id={config.anchorName || undefined}
+    style="
+      background: {containerBackground};
+      min-height: {containerMinHeight};
+      max-width: {containerMaxWidth};
+      width: 100%;
+      box-sizing: border-box;
+      padding: {containerPadding
+      ? `${containerPadding.top || 0}px ${containerPadding.right || 0}px ${containerPadding.bottom || 0}px ${containerPadding.left || 0}px`
+      : '80px 24px'};
+    "
+  >
+    {#if isEditable}
+      <!-- Editable mode: use ContainerDropZone for drag-drop -->
+      <ContainerDropZone
+        containerId={componentId}
+        {children}
+        isActive={false}
+        allowedTypes={[]}
+        displayMode={containerDisplay === 'grid' ? 'grid' : 'flex'}
+        showLayoutHints={true}
+        label="Pricing Section"
+        containerStyles="
+          display: {containerDisplay};
+          flex-direction: {containerFlexDirection};
+          justify-content: {containerJustifyContent};
+          align-items: {containerAlignItems};
+          gap: {containerGap}px;
+          min-height: {containerMinHeight};
+          width: 100%;
+          max-width: 1200px;
+          margin: 0 auto;
+        "
+        on:drop={handleContainerDrop}
+        on:reorder={handleContainerReorder}
+        on:childClick={handleChildClick}
+        on:delete={handleChildDelete}
+      >
+        <svelte:fragment slot="child" let:child>
+          <slot name="child" {child} />
+        </svelte:fragment>
+      </ContainerDropZone>
+    {:else}
+      <!-- Frontend mode: render children directly -->
+      <div
+        class="pricing-content-wrapper"
+        style="
+          display: {containerDisplay};
+          flex-direction: {containerFlexDirection};
+          justify-content: {containerJustifyContent};
+          align-items: {containerAlignItems};
+          gap: {containerGap}px;
+          min-height: {containerMinHeight};
+          width: 100%;
+          max-width: 1200px;
+          margin: 0 auto;
+        "
+      >
+        {#each children as child (child.id)}
+          <slot name="child" {child} />
+        {/each}
       </div>
     {/if}
-
-    {#if tiers.length > 0}
-      <div class="revenue-share">
-        <div class="revenue-header">
-          <span class="revenue-icon">💎</span>
-          <h3>Revenue Share (includes payment processor fees)</h3>
-        </div>
-
-        <div class="revenue-table">
-          <div class="table-header">
-            <span>Monthly Sales</span>
-            <span>Total Transaction Fee</span>
-          </div>
-          {#each tiers as tier}
-            <div class="table-row" class:highlight={tier.highlight}>
-              <div class="tier-range">
-                <span class="range-value">{tier.range}</span>
-                <span class="range-description">{tier.description}</span>
-              </div>
-              <div class="tier-fee">{tier.fee}</div>
-            </div>
-          {/each}
-          <div class="table-footer">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path
-                d="M12 5v14M5 12l7 7 7-7"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </div>
-        </div>
-      </div>
-    {/if}
-  </div>
-
-  <div class="pricing-footer">
-    <a href={ctaLink} class="btn btn-primary btn-large">
-      <span>{ctaText}</span>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-        <path
-          d="M5 12h14M12 5l7 7-7 7"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-      </svg>
-    </a>
-    {#if ctaNote}
-      <p class="pricing-note">{ctaNote}</p>
-    {/if}
-  </div>
-</div>
+  </section>
+{:else}
+  <!-- Empty state when no children and not in edit mode -->
+  <section
+    class="pricing-container pricing-empty"
+    id={config.anchorName || undefined}
+    style="
+      background: {containerBackground};
+      min-height: 400px;
+      padding: 80px 24px;
+    "
+  >
+    <div class="empty-message">
+      <span class="empty-icon">💎</span>
+      <p>Pricing section - Add components to customize</p>
+    </div>
+  </section>
+{/if}
 
 <style>
-  .pricing-widget {
-    padding: 4rem 0;
-    background: var(--color-bg-secondary);
-  }
-
-  .section-header {
-    text-align: center;
-    margin-bottom: 3rem;
-  }
-
-  .section-header h2 {
-    color: var(--color-text-primary);
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin: 0 0 1rem 0;
-  }
-
-  .pricing-tagline {
-    color: var(--color-primary);
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0 0 0.5rem 0;
-  }
-
-  .pricing-subtitle {
-    color: var(--color-text-secondary);
-    font-size: 1.125rem;
-    margin: 0;
-  }
-
   .pricing-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    gap: 2rem;
-    max-width: 1200px;
-    margin: 0 auto 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
   }
 
-  .pricing-model,
-  .revenue-share {
-    background: var(--color-bg-primary);
-    border: 1px solid var(--color-border-secondary);
-    border-radius: 12px;
-    padding: 2rem;
+  .pricing-container.is-editable {
+    min-height: 400px;
   }
 
-  .model-header,
-  .revenue-header {
+  .pricing-content-wrapper {
+    width: 100%;
+  }
+
+  .pricing-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .empty-message {
     text-align: center;
-    margin-bottom: 2rem;
+    color: rgba(255, 255, 255, 0.5);
   }
 
-  .model-icon,
-  .revenue-icon {
+  .empty-icon {
     font-size: 3rem;
     display: block;
     margin-bottom: 1rem;
   }
 
-  .model-header h3,
-  .revenue-header h3 {
-    color: var(--color-text-primary);
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin: 0 0 0.5rem 0;
-  }
-
-  .model-header p {
-    color: var(--color-text-secondary);
+  .empty-message p {
     margin: 0;
+    font-size: 1rem;
   }
 
-  .features-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-
-  .features-list li {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1rem 0;
-    border-bottom: 1px solid var(--color-border-secondary);
-  }
-
-  .features-list li:last-child {
-    border-bottom: none;
-  }
-
-  .features-list svg {
-    color: var(--color-success);
-    flex-shrink: 0;
-  }
-
-  .revenue-table {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .table-header {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 1rem;
-    padding: 1rem;
-    background: var(--color-bg-secondary);
-    border-radius: 8px;
-    font-weight: 600;
-    margin-bottom: 1rem;
-  }
-
-  .table-row {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 1rem;
-    padding: 1rem;
-    border: 1px solid var(--color-border-secondary);
-    border-radius: 8px;
-    margin-bottom: 0.5rem;
-    transition: all 0.2s;
-  }
-
-  .table-row:hover {
-    border-color: var(--color-primary);
-    background: var(--color-bg-secondary);
-  }
-
-  .table-row.highlight {
-    border-color: var(--color-primary);
-    background: rgba(59, 130, 246, 0.1);
-  }
-
-  .tier-range {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .range-value {
-    font-weight: 600;
-    color: var(--color-text-primary);
-  }
-
-  .range-description {
-    font-size: 0.875rem;
-    color: var(--color-text-secondary);
-  }
-
-  .tier-fee {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--color-primary);
-  }
-
-  .table-footer {
-    text-align: center;
-    padding: 1rem;
-    color: var(--color-text-secondary);
-  }
-
-  .pricing-footer {
-    text-align: center;
-  }
-
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: 600;
-    transition: all 0.2s;
-  }
-
-  .btn-primary {
-    background: var(--color-primary);
-    color: white;
-  }
-
-  .btn-primary:hover {
-    background: var(--color-primary-hover);
-  }
-
-  .btn-large {
-    padding: 1rem 2rem;
-    font-size: 1.125rem;
-  }
-
-  .pricing-note {
-    color: var(--color-text-secondary);
-    margin: 1rem 0 0;
-    font-size: 0.875rem;
-  }
-
+  /* Responsive adjustments */
   @media (max-width: 768px) {
-    .pricing-widget {
-      padding: 2rem 0;
-    }
-
-    .section-header h2 {
-      font-size: 2rem;
-    }
-
     .pricing-container {
-      grid-template-columns: 1fr;
-    }
-
-    .pricing-model,
-    .revenue-share {
-      padding: 1.5rem;
+      padding: 48px 16px;
     }
   }
 </style>

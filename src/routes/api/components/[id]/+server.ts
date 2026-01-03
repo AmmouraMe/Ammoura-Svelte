@@ -159,6 +159,7 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
         name: data.name,
         description: data.description,
         type: data.type,
+        config: data.config,
         children: data.children
       });
       return json({ success: true, component: componentWithChildren });

@@ -3,41 +3,461 @@ import type { ComponentType, ComponentConfig } from '$lib/types/pages';
 export function getDefaultConfig(type: ComponentType): ComponentConfig {
   switch (type) {
     case 'text':
-      return { text: 'Enter your text here', alignment: 'left' };
+      return { text: 'Enter your text here', alignment: 'left', backgroundColor: 'transparent' };
 
     case 'heading':
       return {
         heading: 'Heading Text',
         level: 2,
-        textColor: 'theme:text'
+        textColor: 'theme:text',
+        backgroundColor: 'transparent'
       };
 
     case 'image':
-      return { src: '', alt: '', imageWidth: '100%', imageHeight: 'auto' };
+      return {
+        src: '',
+        alt: '',
+        imageWidth: '100%',
+        imageHeight: 'auto',
+        backgroundColor: 'transparent'
+      };
 
     case 'hero':
+      // Container-based architecture matching Navigation Bar and Footer patterns
+      // Hero component is composed of primitives for maximum customization
       return {
-        title: 'Hero Title',
-        subtitle: 'Hero subtitle text',
-        backgroundColor: 'theme:primary',
-        backgroundImage: '',
-        heroHeight: { desktop: '500px', tablet: '400px', mobile: '300px' },
-        contentAlign: 'center',
-        overlay: false,
-        overlayOpacity: 50,
-        ctaText: 'Get Started',
-        ctaLink: '#',
-        ctaBackgroundColor: 'theme:surface',
-        ctaTextColor: 'theme:primary',
-        ctaFontSize: '16px',
-        ctaFontWeight: '600',
-        secondaryCtaText: '',
-        secondaryCtaLink: '#',
-        secondaryCtaBackgroundColor: 'transparent',
-        secondaryCtaTextColor: 'theme:text',
-        secondaryCtaBorderColor: 'theme:border',
-        secondaryCtaFontSize: '16px',
-        secondaryCtaFontWeight: '600'
+        // Root component background
+        backgroundColor: 'transparent',
+        // Outer container styling
+        containerPadding: {
+          desktop: { top: 0, right: 0, bottom: 0, left: 0 },
+          tablet: { top: 0, right: 0, bottom: 0, left: 0 },
+          mobile: { top: 0, right: 0, bottom: 0, left: 0 }
+        },
+        containerMargin: {
+          desktop: { top: 0, right: 0, bottom: 0, left: 0 },
+          tablet: { top: 0, right: 0, bottom: 0, left: 0 },
+          mobile: { top: 0, right: 0, bottom: 0, left: 0 }
+        },
+        containerBackground: 'transparent',
+        containerBorderRadius: 0,
+        containerMaxWidth: '100%',
+        containerMinHeight: { desktop: '600px', tablet: '500px', mobile: '450px' },
+        containerDisplay: { desktop: 'block', tablet: 'block', mobile: 'block' },
+        containerWidth: { desktop: '100%', tablet: '100%', mobile: '100%' },
+        visibilityRule: 'always',
+        // Children structure for Container-based composition
+        children: [
+          {
+            id: 'hero-main-container',
+            type: 'container',
+            position: 0,
+            config: {
+              containerPadding: {
+                desktop: { top: 80, right: 24, bottom: 80, left: 24 },
+                tablet: { top: 60, right: 20, bottom: 60, left: 20 },
+                mobile: { top: 48, right: 16, bottom: 48, left: 16 }
+              },
+              containerMargin: {
+                desktop: { top: 0, right: 'auto', bottom: 0, left: 'auto' },
+                tablet: { top: 0, right: 'auto', bottom: 0, left: 'auto' },
+                mobile: { top: 0, right: 0, bottom: 0, left: 0 }
+              },
+              containerBackground: 'transparent',
+              containerBorderRadius: 0,
+              containerMaxWidth: '1200px',
+              containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+              containerFlexDirection: { desktop: 'column', tablet: 'column', mobile: 'column' },
+              containerAlignItems: 'center',
+              containerJustifyContent: 'center',
+              containerWrap: 'nowrap',
+              containerGap: { desktop: 24, tablet: 20, mobile: 16 },
+              children: [
+                {
+                  id: 'hero-badge',
+                  type: 'button',
+                  position: 0,
+                  config: {
+                    label: '✨ Start Selling Online Today',
+                    url: '#',
+                    variant: 'outline',
+                    size: 'small',
+                    fullWidth: { desktop: false, tablet: false, mobile: false },
+                    buttonAlign: 'center',
+                    borderRadius: 999,
+                    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+                    textColor: '#e2e8f0',
+                    borderColor: 'rgba(71, 85, 105, 0.5)',
+                    padding: { desktop: { top: 8, right: 20, bottom: 8, left: 20 } },
+                    fontSize: { desktop: 14, tablet: 13, mobile: 12 }
+                  }
+                },
+                {
+                  id: 'hero-title-container',
+                  type: 'container',
+                  position: 1,
+                  config: {
+                    containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+                    containerFlexDirection: { desktop: 'row', tablet: 'row', mobile: 'column' },
+                    containerAlignItems: 'center',
+                    containerJustifyContent: 'center',
+                    containerGap: { desktop: 12, tablet: 10, mobile: 4 },
+                    containerWrap: 'wrap',
+                    children: [
+                      {
+                        id: 'hero-title-part1',
+                        type: 'text',
+                        position: 0,
+                        config: {
+                          text: 'Create Your Own',
+                          alignment: 'center',
+                          fontSize: { desktop: 56, tablet: 42, mobile: 32 },
+                          textColor: '#ffffff',
+                          typography: {
+                            fontWeight: 'bold',
+                            lineHeight: 1.1
+                          }
+                        }
+                      },
+                      {
+                        id: 'hero-title-part2',
+                        type: 'text',
+                        position: 1,
+                        config: {
+                          text: 'Online Store',
+                          alignment: 'center',
+                          fontSize: { desktop: 56, tablet: 42, mobile: 32 },
+                          textColor: '#a78bfa',
+                          typography: {
+                            fontWeight: 'bold',
+                            lineHeight: 1.1
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  id: 'hero-subtitle-container',
+                  type: 'container',
+                  position: 2,
+                  config: {
+                    containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+                    containerFlexDirection: {
+                      desktop: 'column',
+                      tablet: 'column',
+                      mobile: 'column'
+                    },
+                    containerAlignItems: 'center',
+                    containerGap: { desktop: 4, tablet: 4, mobile: 4 },
+                    children: [
+                      {
+                        id: 'hero-subtitle-line1',
+                        type: 'text',
+                        position: 0,
+                        config: {
+                          text: 'Everything you need to start selling products online.',
+                          alignment: 'center',
+                          fontSize: { desktop: 20, tablet: 18, mobile: 16 },
+                          textColor: '#94a3b8',
+                          typography: {
+                            lineHeight: 1.6
+                          }
+                        }
+                      },
+                      {
+                        id: 'hero-subtitle-line2',
+                        type: 'container',
+                        position: 1,
+                        config: {
+                          containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+                          containerFlexDirection: { desktop: 'row', tablet: 'row', mobile: 'row' },
+                          containerAlignItems: 'center',
+                          containerJustifyContent: 'center',
+                          containerGap: { desktop: 6, tablet: 5, mobile: 4 },
+                          containerWrap: 'wrap',
+                          children: [
+                            {
+                              id: 'hero-subtitle-line2-styled',
+                              type: 'text',
+                              position: 0,
+                              config: {
+                                text: 'Simple, beautiful,',
+                                alignment: 'center',
+                                fontSize: { desktop: 20, tablet: 18, mobile: 16 },
+                                textColor: '#a78bfa',
+                                typography: {
+                                  fontStyle: 'italic',
+                                  lineHeight: 1.6
+                                }
+                              }
+                            },
+                            {
+                              id: 'hero-subtitle-line2-plain',
+                              type: 'text',
+                              position: 1,
+                              config: {
+                                text: 'and ready for your business.',
+                                alignment: 'center',
+                                fontSize: { desktop: 20, tablet: 18, mobile: 16 },
+                                textColor: '#94a3b8',
+                                typography: {
+                                  lineHeight: 1.6
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  id: 'hero-buttons-row',
+                  type: 'container',
+                  position: 3,
+                  config: {
+                    containerPadding: {
+                      desktop: { top: 16, right: 0, bottom: 0, left: 0 }
+                    },
+                    containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+                    containerFlexDirection: { desktop: 'row', tablet: 'row', mobile: 'column' },
+                    containerGap: { desktop: 16, tablet: 12, mobile: 12 },
+                    containerAlignItems: 'center',
+                    containerJustifyContent: 'center',
+                    children: [
+                      {
+                        id: 'hero-cta-primary',
+                        type: 'button',
+                        position: 0,
+                        config: {
+                          label: 'See Example Store',
+                          url: '#products',
+                          variant: 'outline',
+                          size: 'large',
+                          fullWidth: { desktop: false, tablet: false, mobile: true },
+                          backgroundColor: 'transparent',
+                          textColor: '#ffffff',
+                          borderColor: 'rgba(148, 163, 184, 0.4)',
+                          iconAfter: '→',
+                          borderRadius: 8,
+                          padding: { desktop: { top: 14, right: 28, bottom: 14, left: 28 } },
+                          fontSize: { desktop: 16, tablet: 15, mobile: 14 }
+                        }
+                      },
+                      {
+                        id: 'hero-cta-secondary',
+                        type: 'button',
+                        position: 1,
+                        config: {
+                          label: 'Start Your Store',
+                          url: '/auth/login',
+                          variant: 'secondary',
+                          size: 'large',
+                          fullWidth: { desktop: false, tablet: false, mobile: true },
+                          backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                          textColor: '#ffffff',
+                          borderColor: 'rgba(71, 85, 105, 0.5)',
+                          borderRadius: 8,
+                          padding: { desktop: { top: 14, right: 28, bottom: 14, left: 28 } },
+                          fontSize: { desktop: 16, tablet: 15, mobile: 14 }
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  id: 'hero-stats-row',
+                  type: 'container',
+                  position: 4,
+                  config: {
+                    containerPadding: {
+                      desktop: { top: 32, right: 64, bottom: 32, left: 64 },
+                      tablet: { top: 24, right: 32, bottom: 24, left: 32 },
+                      mobile: { top: 20, right: 16, bottom: 20, left: 16 }
+                    },
+                    containerMargin: {
+                      desktop: { top: 32, right: 0, bottom: 0, left: 0 }
+                    },
+                    containerBackground: 'transparent',
+                    containerBorderRadius: 0,
+                    containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+                    containerFlexDirection: { desktop: 'row', tablet: 'row', mobile: 'column' },
+                    containerGap: { desktop: 48, tablet: 32, mobile: 24 },
+                    containerAlignItems: 'center',
+                    containerJustifyContent: 'center',
+                    children: [
+                      {
+                        id: 'hero-stat-1',
+                        type: 'container',
+                        position: 0,
+                        config: {
+                          containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+                          containerFlexDirection: {
+                            desktop: 'column',
+                            tablet: 'column',
+                            mobile: 'column'
+                          },
+                          containerAlignItems: 'center',
+                          containerGap: { desktop: 4, tablet: 4, mobile: 4 },
+                          children: [
+                            {
+                              id: 'hero-stat-1-value',
+                              type: 'text',
+                              position: 0,
+                              config: {
+                                text: 'Simple',
+                                alignment: 'center',
+                                fontSize: { desktop: 20, tablet: 18, mobile: 18 },
+                                textColor: '#a78bfa',
+                                typography: {
+                                  fontWeight: 'bold'
+                                }
+                              }
+                            },
+                            {
+                              id: 'hero-stat-1-label',
+                              type: 'text',
+                              position: 1,
+                              config: {
+                                text: 'SETUP',
+                                alignment: 'center',
+                                fontSize: { desktop: 12, tablet: 11, mobile: 11 },
+                                textColor: '#64748b',
+                                typography: {
+                                  textTransform: 'uppercase',
+                                  letterSpacing: 1.5
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        id: 'hero-stat-divider-1',
+                        type: 'divider',
+                        position: 1,
+                        config: {
+                          thickness: 1,
+                          dividerColor: '#334155',
+                          dividerStyle: 'solid',
+                          dividerWidth: '1px',
+                          dividerHeight: '40px',
+                          orientation: 'vertical'
+                        }
+                      },
+                      {
+                        id: 'hero-stat-2',
+                        type: 'container',
+                        position: 2,
+                        config: {
+                          containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+                          containerFlexDirection: {
+                            desktop: 'column',
+                            tablet: 'column',
+                            mobile: 'column'
+                          },
+                          containerAlignItems: 'center',
+                          containerGap: { desktop: 4, tablet: 4, mobile: 4 },
+                          children: [
+                            {
+                              id: 'hero-stat-2-value',
+                              type: 'text',
+                              position: 0,
+                              config: {
+                                text: 'Beautiful',
+                                alignment: 'center',
+                                fontSize: { desktop: 20, tablet: 18, mobile: 18 },
+                                textColor: '#a78bfa',
+                                typography: {
+                                  fontWeight: 'bold'
+                                }
+                              }
+                            },
+                            {
+                              id: 'hero-stat-2-label',
+                              type: 'text',
+                              position: 1,
+                              config: {
+                                text: 'DESIGN',
+                                alignment: 'center',
+                                fontSize: { desktop: 12, tablet: 11, mobile: 11 },
+                                textColor: '#64748b',
+                                typography: {
+                                  textTransform: 'uppercase',
+                                  letterSpacing: 1.5
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        id: 'hero-stat-divider-2',
+                        type: 'divider',
+                        position: 3,
+                        config: {
+                          thickness: 1,
+                          dividerColor: '#334155',
+                          dividerStyle: 'solid',
+                          dividerWidth: '1px',
+                          dividerHeight: '40px',
+                          orientation: 'vertical'
+                        }
+                      },
+                      {
+                        id: 'hero-stat-3',
+                        type: 'container',
+                        position: 4,
+                        config: {
+                          containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+                          containerFlexDirection: {
+                            desktop: 'column',
+                            tablet: 'column',
+                            mobile: 'column'
+                          },
+                          containerAlignItems: 'center',
+                          containerGap: { desktop: 4, tablet: 4, mobile: 4 },
+                          children: [
+                            {
+                              id: 'hero-stat-3-value',
+                              type: 'text',
+                              position: 0,
+                              config: {
+                                text: 'Your',
+                                alignment: 'center',
+                                fontSize: { desktop: 20, tablet: 18, mobile: 18 },
+                                textColor: '#a78bfa',
+                                typography: {
+                                  fontWeight: 'bold'
+                                }
+                              }
+                            },
+                            {
+                              id: 'hero-stat-3-label',
+                              type: 'text',
+                              position: 1,
+                              config: {
+                                text: 'BRAND',
+                                alignment: 'center',
+                                fontSize: { desktop: 12, tablet: 11, mobile: 11 },
+                                textColor: '#64748b',
+                                typography: {
+                                  textTransform: 'uppercase',
+                                  letterSpacing: 1.5
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
       };
 
     case 'button':
@@ -46,25 +466,38 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
         url: '#',
         variant: 'primary',
         size: 'medium',
-        fullWidth: { desktop: false, tablet: false, mobile: true }
+        fullWidth: { desktop: false, tablet: false, mobile: true },
+        backgroundColor: 'transparent'
+      };
+
+    case 'icon':
+      return {
+        iconName: 'Star',
+        iconSize: 24,
+        iconColor: 'theme:text',
+        strokeWidth: 2,
+        alignment: 'center',
+        backgroundColor: 'transparent'
       };
 
     case 'spacer':
-      return { space: { desktop: 40, tablet: 30, mobile: 20 } };
+      return { space: { desktop: 40, tablet: 30, mobile: 20 }, backgroundColor: 'transparent' };
 
     case 'divider':
       return {
         thickness: 1,
         dividerColor: 'theme:border',
         dividerStyle: 'solid',
-        spacing: { desktop: 20, tablet: 15, mobile: 10 }
+        spacing: { desktop: 20, tablet: 15, mobile: 10 },
+        backgroundColor: 'transparent'
       };
 
     case 'columns':
       return {
         columnCount: { desktop: 2, tablet: 2, mobile: 1 },
         gap: { desktop: 20 },
-        verticalAlign: 'stretch'
+        verticalAlign: 'stretch',
+        backgroundColor: 'transparent'
       };
 
     case 'single_product':
@@ -72,7 +505,8 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
         productId: '',
         layout: 'card',
         showPrice: true,
-        showDescription: true
+        showDescription: true,
+        backgroundColor: 'transparent'
       };
 
     case 'product_list':
@@ -81,35 +515,1279 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
         limit: 6,
         sortBy: 'created_at',
         sortOrder: 'desc',
-        columns: { desktop: 3, tablet: 2, mobile: 1 }
+        columns: { desktop: 3, tablet: 2, mobile: 1 },
+        backgroundColor: 'transparent'
       };
 
     case 'features':
+      // Container-based architecture matching Hero and Navigation Bar patterns
+      // Features section is composed of primitives for maximum customization
       return {
-        title: 'Features',
-        subtitle: 'Why choose us',
-        features: [
-          { icon: '🎯', title: 'Feature 1', description: 'Description of feature 1' },
-          { icon: '✨', title: 'Feature 2', description: 'Description of feature 2' },
-          { icon: '📦', title: 'Feature 3', description: 'Description of feature 3' }
-        ],
-        cardBackground: 'theme:surface',
-        cardBorderColor: 'theme:border'
+        // Root component background
+        backgroundColor: 'transparent',
+        // Outer container styling
+        containerPadding: {
+          desktop: { top: 0, right: 0, bottom: 0, left: 0 },
+          tablet: { top: 0, right: 0, bottom: 0, left: 0 },
+          mobile: { top: 0, right: 0, bottom: 0, left: 0 }
+        },
+        containerMargin: {
+          desktop: { top: 0, right: 0, bottom: 0, left: 0 },
+          tablet: { top: 0, right: 0, bottom: 0, left: 0 },
+          mobile: { top: 0, right: 0, bottom: 0, left: 0 }
+        },
+        containerBackground: 'transparent',
+        containerBorderRadius: 0,
+        containerMaxWidth: '100%',
+        containerDisplay: { desktop: 'block', tablet: 'block', mobile: 'block' },
+        containerWidth: { desktop: '100%', tablet: '100%', mobile: '100%' },
+        visibilityRule: 'always',
+        // Children structure for Container-based composition
+        children: [
+          {
+            id: 'features-main-container',
+            type: 'container',
+            position: 0,
+            config: {
+              containerPadding: {
+                desktop: { top: 80, right: 24, bottom: 80, left: 24 },
+                tablet: { top: 60, right: 20, bottom: 60, left: 20 },
+                mobile: { top: 48, right: 16, bottom: 48, left: 16 }
+              },
+              containerMargin: {
+                desktop: { top: 0, right: 'auto', bottom: 0, left: 'auto' },
+                tablet: { top: 0, right: 'auto', bottom: 0, left: 'auto' },
+                mobile: { top: 0, right: 0, bottom: 0, left: 0 }
+              },
+              containerBackground: 'transparent',
+              containerBorderRadius: 0,
+              containerMaxWidth: '1200px',
+              containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+              containerFlexDirection: { desktop: 'column', tablet: 'column', mobile: 'column' },
+              containerAlignItems: 'center',
+              containerJustifyContent: 'center',
+              containerWrap: 'nowrap',
+              containerGap: { desktop: 48, tablet: 40, mobile: 32 },
+              children: [
+                {
+                  id: 'features-header',
+                  type: 'container',
+                  position: 0,
+                  config: {
+                    containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+                    containerFlexDirection: {
+                      desktop: 'column',
+                      tablet: 'column',
+                      mobile: 'column'
+                    },
+                    containerAlignItems: 'center',
+                    containerGap: { desktop: 16, tablet: 12, mobile: 10 },
+                    children: [
+                      {
+                        id: 'features-title',
+                        type: 'text',
+                        position: 0,
+                        config: {
+                          text: 'Everything You Need to Succeed',
+                          alignment: 'center',
+                          fontSize: { desktop: 48, tablet: 36, mobile: 28 },
+                          textColor: '#ffffff',
+                          typography: {
+                            fontWeight: 'bold',
+                            lineHeight: 1.2
+                          }
+                        }
+                      },
+                      {
+                        id: 'features-subtitle',
+                        type: 'text',
+                        position: 1,
+                        config: {
+                          text: 'All the tools to run your online business, right out of the box',
+                          alignment: 'center',
+                          fontSize: { desktop: 18, tablet: 16, mobile: 14 },
+                          textColor: '#94a3b8',
+                          typography: {
+                            lineHeight: 1.6
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  id: 'features-grid',
+                  type: 'container',
+                  position: 1,
+                  config: {
+                    containerDisplay: { desktop: 'grid', tablet: 'grid', mobile: 'flex' },
+                    containerFlexDirection: { desktop: 'row', tablet: 'row', mobile: 'column' },
+                    containerGridCols: { desktop: 3, tablet: 2, mobile: 1 },
+                    containerGap: { desktop: 24, tablet: 20, mobile: 16 },
+                    containerAlignItems: 'stretch',
+                    containerWidth: { desktop: '100%', tablet: '100%', mobile: '100%' },
+                    children: [
+                      {
+                        id: 'feature-card-1',
+                        type: 'container',
+                        position: 0,
+                        config: {
+                          containerPadding: {
+                            desktop: { top: 32, right: 24, bottom: 32, left: 24 },
+                            tablet: { top: 24, right: 20, bottom: 24, left: 20 },
+                            mobile: { top: 24, right: 16, bottom: 24, left: 16 }
+                          },
+                          containerBackground: 'rgba(15, 23, 42, 0.6)',
+                          containerBorderRadius: 12,
+                          containerBorderWidth: 1,
+                          containerBorderColor: 'theme:border',
+                          containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+                          containerFlexDirection: {
+                            desktop: 'column',
+                            tablet: 'column',
+                            mobile: 'column'
+                          },
+                          containerAlignItems: 'flex-start',
+                          containerGap: { desktop: 16, tablet: 12, mobile: 12 },
+                          children: [
+                            {
+                              id: 'feature-1-icon',
+                              type: 'text',
+                              position: 0,
+                              config: {
+                                text: '🎯',
+                                fontSize: { desktop: 48, tablet: 40, mobile: 36 }
+                              }
+                            },
+                            {
+                              id: 'feature-1-title',
+                              type: 'text',
+                              position: 1,
+                              config: {
+                                text: 'Easy Setup',
+                                fontSize: { desktop: 20, tablet: 18, mobile: 16 },
+                                textColor: '#ffffff',
+                                typography: { fontWeight: '600' }
+                              }
+                            },
+                            {
+                              id: 'feature-1-desc',
+                              type: 'text',
+                              position: 2,
+                              config: {
+                                text: 'Get your online store up and running in minutes, no technical skills needed',
+                                fontSize: { desktop: 15, tablet: 14, mobile: 14 },
+                                textColor: '#94a3b8',
+                                typography: { lineHeight: 1.6 }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        id: 'feature-card-2',
+                        type: 'container',
+                        position: 1,
+                        config: {
+                          containerPadding: {
+                            desktop: { top: 32, right: 24, bottom: 32, left: 24 },
+                            tablet: { top: 24, right: 20, bottom: 24, left: 20 },
+                            mobile: { top: 24, right: 16, bottom: 24, left: 16 }
+                          },
+                          containerBackground: 'rgba(15, 23, 42, 0.6)',
+                          containerBorderRadius: 12,
+                          containerBorderWidth: 1,
+                          containerBorderColor: 'theme:border',
+                          containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+                          containerFlexDirection: {
+                            desktop: 'column',
+                            tablet: 'column',
+                            mobile: 'column'
+                          },
+                          containerAlignItems: 'flex-start',
+                          containerGap: { desktop: 16, tablet: 12, mobile: 12 },
+                          children: [
+                            {
+                              id: 'feature-2-icon',
+                              type: 'text',
+                              position: 0,
+                              config: {
+                                text: '✨',
+                                fontSize: { desktop: 48, tablet: 40, mobile: 36 }
+                              }
+                            },
+                            {
+                              id: 'feature-2-title',
+                              type: 'text',
+                              position: 1,
+                              config: {
+                                text: 'Beautiful Design',
+                                fontSize: { desktop: 20, tablet: 18, mobile: 16 },
+                                textColor: '#ffffff',
+                                typography: { fontWeight: '600' }
+                              }
+                            },
+                            {
+                              id: 'feature-2-desc',
+                              type: 'text',
+                              position: 2,
+                              config: {
+                                text: 'Gorgeous, modern storefront that looks professional on any device',
+                                fontSize: { desktop: 15, tablet: 14, mobile: 14 },
+                                textColor: '#94a3b8',
+                                typography: { lineHeight: 1.6 }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        id: 'feature-card-3',
+                        type: 'container',
+                        position: 2,
+                        config: {
+                          containerPadding: {
+                            desktop: { top: 32, right: 24, bottom: 32, left: 24 },
+                            tablet: { top: 24, right: 20, bottom: 24, left: 20 },
+                            mobile: { top: 24, right: 16, bottom: 24, left: 16 }
+                          },
+                          containerBackground: 'rgba(15, 23, 42, 0.6)',
+                          containerBorderRadius: 12,
+                          containerBorderWidth: 1,
+                          containerBorderColor: 'theme:border',
+                          containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+                          containerFlexDirection: {
+                            desktop: 'column',
+                            tablet: 'column',
+                            mobile: 'column'
+                          },
+                          containerAlignItems: 'flex-start',
+                          containerGap: { desktop: 16, tablet: 12, mobile: 12 },
+                          children: [
+                            {
+                              id: 'feature-3-icon',
+                              type: 'text',
+                              position: 0,
+                              config: {
+                                text: '📦',
+                                fontSize: { desktop: 48, tablet: 40, mobile: 36 }
+                              }
+                            },
+                            {
+                              id: 'feature-3-title',
+                              type: 'text',
+                              position: 1,
+                              config: {
+                                text: 'Manage Products',
+                                fontSize: { desktop: 20, tablet: 18, mobile: 16 },
+                                textColor: '#ffffff',
+                                typography: { fontWeight: '600' }
+                              }
+                            },
+                            {
+                              id: 'feature-3-desc',
+                              type: 'text',
+                              position: 2,
+                              config: {
+                                text: 'Simple dashboard to add, edit, and organize your products effortlessly',
+                                fontSize: { desktop: 15, tablet: 14, mobile: 14 },
+                                textColor: '#94a3b8',
+                                typography: { lineHeight: 1.6 }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        id: 'feature-card-4',
+                        type: 'container',
+                        position: 3,
+                        config: {
+                          containerPadding: {
+                            desktop: { top: 32, right: 24, bottom: 32, left: 24 },
+                            tablet: { top: 24, right: 20, bottom: 24, left: 20 },
+                            mobile: { top: 24, right: 16, bottom: 24, left: 16 }
+                          },
+                          containerBackground: 'rgba(15, 23, 42, 0.6)',
+                          containerBorderRadius: 12,
+                          containerBorderWidth: 1,
+                          containerBorderColor: 'theme:border',
+                          containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+                          containerFlexDirection: {
+                            desktop: 'column',
+                            tablet: 'column',
+                            mobile: 'column'
+                          },
+                          containerAlignItems: 'flex-start',
+                          containerGap: { desktop: 16, tablet: 12, mobile: 12 },
+                          children: [
+                            {
+                              id: 'feature-4-icon',
+                              type: 'text',
+                              position: 0,
+                              config: {
+                                text: '💳',
+                                fontSize: { desktop: 48, tablet: 40, mobile: 36 }
+                              }
+                            },
+                            {
+                              id: 'feature-4-title',
+                              type: 'text',
+                              position: 1,
+                              config: {
+                                text: 'Accept Payments',
+                                fontSize: { desktop: 20, tablet: 18, mobile: 16 },
+                                textColor: '#ffffff',
+                                typography: { fontWeight: '600' }
+                              }
+                            },
+                            {
+                              id: 'feature-4-desc',
+                              type: 'text',
+                              position: 2,
+                              config: {
+                                text: 'Secure checkout ready to connect with your preferred payment processor',
+                                fontSize: { desktop: 15, tablet: 14, mobile: 14 },
+                                textColor: '#94a3b8',
+                                typography: { lineHeight: 1.6 }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        id: 'feature-card-5',
+                        type: 'container',
+                        position: 4,
+                        config: {
+                          containerPadding: {
+                            desktop: { top: 32, right: 24, bottom: 32, left: 24 },
+                            tablet: { top: 24, right: 20, bottom: 24, left: 20 },
+                            mobile: { top: 24, right: 16, bottom: 24, left: 16 }
+                          },
+                          containerBackground: 'rgba(15, 23, 42, 0.6)',
+                          containerBorderRadius: 12,
+                          containerBorderWidth: 1,
+                          containerBorderColor: 'theme:border',
+                          containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+                          containerFlexDirection: {
+                            desktop: 'column',
+                            tablet: 'column',
+                            mobile: 'column'
+                          },
+                          containerAlignItems: 'flex-start',
+                          containerGap: { desktop: 16, tablet: 12, mobile: 12 },
+                          children: [
+                            {
+                              id: 'feature-5-icon',
+                              type: 'text',
+                              position: 0,
+                              config: {
+                                text: '🎨',
+                                fontSize: { desktop: 48, tablet: 40, mobile: 36 }
+                              }
+                            },
+                            {
+                              id: 'feature-5-title',
+                              type: 'text',
+                              position: 1,
+                              config: {
+                                text: 'Customize Everything',
+                                fontSize: { desktop: 20, tablet: 18, mobile: 16 },
+                                textColor: '#ffffff',
+                                typography: { fontWeight: '600' }
+                              }
+                            },
+                            {
+                              id: 'feature-5-desc',
+                              type: 'text',
+                              position: 2,
+                              config: {
+                                text: 'Make your store uniquely yours with flexible customization options',
+                                fontSize: { desktop: 15, tablet: 14, mobile: 14 },
+                                textColor: '#94a3b8',
+                                typography: { lineHeight: 1.6 }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        id: 'feature-card-6',
+                        type: 'container',
+                        position: 5,
+                        config: {
+                          containerPadding: {
+                            desktop: { top: 32, right: 24, bottom: 32, left: 24 },
+                            tablet: { top: 24, right: 20, bottom: 24, left: 20 },
+                            mobile: { top: 24, right: 16, bottom: 24, left: 16 }
+                          },
+                          containerBackground: 'rgba(15, 23, 42, 0.6)',
+                          containerBorderRadius: 12,
+                          containerBorderWidth: 1,
+                          containerBorderColor: 'theme:border',
+                          containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+                          containerFlexDirection: {
+                            desktop: 'column',
+                            tablet: 'column',
+                            mobile: 'column'
+                          },
+                          containerAlignItems: 'flex-start',
+                          containerGap: { desktop: 16, tablet: 12, mobile: 12 },
+                          children: [
+                            {
+                              id: 'feature-6-icon',
+                              type: 'text',
+                              position: 0,
+                              config: {
+                                text: '📱',
+                                fontSize: { desktop: 48, tablet: 40, mobile: 36 }
+                              }
+                            },
+                            {
+                              id: 'feature-6-title',
+                              type: 'text',
+                              position: 1,
+                              config: {
+                                text: 'Mobile Ready',
+                                fontSize: { desktop: 20, tablet: 18, mobile: 16 },
+                                textColor: '#ffffff',
+                                typography: { fontWeight: '600' }
+                              }
+                            },
+                            {
+                              id: 'feature-6-desc',
+                              type: 'text',
+                              position: 2,
+                              config: {
+                                text: 'Your customers can shop from anywhere, on any device',
+                                fontSize: { desktop: 15, tablet: 14, mobile: 14 },
+                                textColor: '#94a3b8',
+                                typography: { lineHeight: 1.6 }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
       };
 
     case 'pricing':
+      // Container-based architecture matching Hero, NavBar, and Footer patterns
+      // Pricing component is composed of primitives for maximum customization
       return {
-        title: 'Pricing',
-        tagline: 'Simple and transparent pricing',
-        subtitle: 'Choose the plan that works for you',
-        pricingFeatures: ['Feature 1', 'Feature 2', 'Feature 3'],
-        tiers: [
-          { range: '$0 - $100', fee: '5%', description: 'Starter' },
-          { range: '$100+', fee: '3%', description: 'Professional', highlight: true }
-        ],
-        ctaText: 'Get Started',
-        ctaLink: '#',
-        ctaNote: 'No credit card required'
+        // Root component background
+        backgroundColor: 'transparent',
+        // Container styling
+        containerPadding: {
+          desktop: { top: 80, right: 24, bottom: 80, left: 24 },
+          tablet: { top: 60, right: 20, bottom: 60, left: 20 },
+          mobile: { top: 48, right: 16, bottom: 48, left: 16 }
+        },
+        containerMargin: {
+          desktop: { top: 0, right: 0, bottom: 0, left: 0 },
+          tablet: { top: 0, right: 0, bottom: 0, left: 0 },
+          mobile: { top: 0, right: 0, bottom: 0, left: 0 }
+        },
+        containerBackground: 'transparent',
+        containerBorderRadius: 0,
+        containerMaxWidth: '100%',
+        containerMinHeight: { desktop: 'auto', tablet: 'auto', mobile: 'auto' },
+        containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+        containerFlexDirection: { desktop: 'column', tablet: 'column', mobile: 'column' },
+        containerAlignItems: 'center',
+        containerJustifyContent: 'center',
+        containerGap: { desktop: 48, tablet: 40, mobile: 32 },
+        visibilityRule: 'always',
+        // Children structure for Container-based composition
+        children: [
+          // Header Section
+          {
+            id: 'pricing-header',
+            type: 'container',
+            position: 0,
+            config: {
+              containerPadding: {
+                desktop: { top: 0, right: 0, bottom: 0, left: 0 }
+              },
+              containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+              containerFlexDirection: { desktop: 'column', tablet: 'column', mobile: 'column' },
+              containerAlignItems: 'center',
+              containerJustifyContent: 'center',
+              containerGap: { desktop: 16, tablet: 12, mobile: 8 },
+              containerMaxWidth: '800px',
+              children: [
+                {
+                  id: 'pricing-icon',
+                  type: 'text',
+                  position: 0,
+                  config: {
+                    text: '🚀',
+                    alignment: 'center',
+                    fontSize: { desktop: 48, tablet: 40, mobile: 36 }
+                  }
+                },
+                {
+                  id: 'pricing-title',
+                  type: 'heading',
+                  position: 1,
+                  config: {
+                    heading: 'Hermes eCommerce Pricing',
+                    level: 2,
+                    textColor: '#ffffff',
+                    alignment: 'center',
+                    fontSize: { desktop: 48, tablet: 40, mobile: 32 },
+                    fontWeight: 800
+                  }
+                },
+                {
+                  id: 'pricing-tagline',
+                  type: 'text',
+                  position: 2,
+                  config: {
+                    text: 'Zero monthly fees. We win when you win.',
+                    alignment: 'center',
+                    color: '#94a3b8',
+                    fontSize: { desktop: 20, tablet: 18, mobile: 16 },
+                    fontWeight: 500
+                  }
+                },
+                {
+                  id: 'pricing-subtitle',
+                  type: 'text',
+                  position: 3,
+                  config: {
+                    text: 'Every store gets full access — we only earn a small % per sale.',
+                    alignment: 'center',
+                    color: '#64748b',
+                    fontSize: { desktop: 16, tablet: 15, mobile: 14 }
+                  }
+                }
+              ]
+            }
+          },
+          // Two-Column Pricing Cards
+          {
+            id: 'pricing-cards',
+            type: 'container',
+            position: 1,
+            config: {
+              containerPadding: {
+                desktop: { top: 0, right: 0, bottom: 0, left: 0 }
+              },
+              containerDisplay: { desktop: 'grid', tablet: 'grid', mobile: 'flex' },
+              containerGridCols: { desktop: 2, tablet: 2, mobile: 1 },
+              containerFlexDirection: { desktop: 'row', tablet: 'row', mobile: 'column' },
+              containerGap: { desktop: 32, tablet: 24, mobile: 24 },
+              containerMaxWidth: '1200px',
+              containerWidth: { desktop: '100%', tablet: '100%', mobile: '100%' },
+              children: [
+                // Left Card: Features
+                {
+                  id: 'features-card',
+                  type: 'container',
+                  position: 0,
+                  config: {
+                    containerPadding: {
+                      desktop: { top: 32, right: 32, bottom: 32, left: 32 },
+                      tablet: { top: 24, right: 24, bottom: 24, left: 24 },
+                      mobile: { top: 24, right: 20, bottom: 24, left: 20 }
+                    },
+                    containerBackground: 'rgba(30, 41, 59, 0.6)',
+                    containerBorderRadius: 16,
+                    containerBorderWidth: 1,
+                    containerBorderColor: 'rgba(71, 85, 105, 0.5)',
+                    containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+                    containerFlexDirection: {
+                      desktop: 'column',
+                      tablet: 'column',
+                      mobile: 'column'
+                    },
+                    containerGap: { desktop: 24, tablet: 20, mobile: 16 },
+                    children: [
+                      // Card Header
+                      {
+                        id: 'features-header',
+                        type: 'container',
+                        position: 0,
+                        config: {
+                          containerDisplay: {
+                            desktop: 'flex',
+                            tablet: 'flex',
+                            mobile: 'flex'
+                          },
+                          containerFlexDirection: {
+                            desktop: 'column',
+                            tablet: 'column',
+                            mobile: 'column'
+                          },
+                          containerAlignItems: 'center',
+                          containerGap: { desktop: 8, tablet: 8, mobile: 6 },
+                          children: [
+                            {
+                              id: 'features-icon',
+                              type: 'text',
+                              position: 0,
+                              config: {
+                                text: '💰',
+                                alignment: 'center',
+                                fontSize: { desktop: 40, tablet: 36, mobile: 32 }
+                              }
+                            },
+                            {
+                              id: 'features-title',
+                              type: 'heading',
+                              position: 1,
+                              config: {
+                                heading: 'Pay-as-You-Grow',
+                                level: 3,
+                                textColor: '#ffffff',
+                                alignment: 'center',
+                                fontSize: { desktop: 24, tablet: 22, mobile: 20 },
+                                fontWeight: 700
+                              }
+                            },
+                            {
+                              id: 'features-subtitle',
+                              type: 'text',
+                              position: 2,
+                              config: {
+                                text: 'All features included, always.',
+                                alignment: 'center',
+                                color: '#94a3b8',
+                                fontSize: { desktop: 15, tablet: 14, mobile: 14 }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      // Features List
+                      {
+                        id: 'features-list',
+                        type: 'container',
+                        position: 1,
+                        config: {
+                          containerDisplay: {
+                            desktop: 'flex',
+                            tablet: 'flex',
+                            mobile: 'flex'
+                          },
+                          containerFlexDirection: {
+                            desktop: 'column',
+                            tablet: 'column',
+                            mobile: 'column'
+                          },
+                          containerGap: { desktop: 0, tablet: 0, mobile: 0 },
+                          children: [
+                            {
+                              id: 'feature-1',
+                              type: 'text',
+                              position: 0,
+                              config: {
+                                text: '✓ Unlimited products',
+                                color: '#e2e8f0',
+                                fontSize: { desktop: 15, tablet: 14, mobile: 14 },
+                                padding: {
+                                  desktop: { top: 16, right: 0, bottom: 16, left: 0 }
+                                },
+                                borderBottom: '1px solid rgba(71, 85, 105, 0.3)'
+                              }
+                            },
+                            {
+                              id: 'feature-2',
+                              type: 'text',
+                              position: 1,
+                              config: {
+                                text: '✓ Free custom domain (optional)',
+                                color: '#e2e8f0',
+                                fontSize: { desktop: 15, tablet: 14, mobile: 14 },
+                                padding: {
+                                  desktop: { top: 16, right: 0, bottom: 16, left: 0 }
+                                },
+                                borderBottom: '1px solid rgba(71, 85, 105, 0.3)'
+                              }
+                            },
+                            {
+                              id: 'feature-3',
+                              type: 'text',
+                              position: 2,
+                              config: {
+                                text: '✓ AI-powered builder (voice + text)',
+                                color: '#e2e8f0',
+                                fontSize: { desktop: 15, tablet: 14, mobile: 14 },
+                                padding: {
+                                  desktop: { top: 16, right: 0, bottom: 16, left: 0 }
+                                },
+                                borderBottom: '1px solid rgba(71, 85, 105, 0.3)'
+                              }
+                            },
+                            {
+                              id: 'feature-4',
+                              type: 'text',
+                              position: 3,
+                              config: {
+                                text: '✓ Real-time analytics',
+                                color: '#e2e8f0',
+                                fontSize: { desktop: 15, tablet: 14, mobile: 14 },
+                                padding: {
+                                  desktop: { top: 16, right: 0, bottom: 16, left: 0 }
+                                },
+                                borderBottom: '1px solid rgba(71, 85, 105, 0.3)'
+                              }
+                            },
+                            {
+                              id: 'feature-5',
+                              type: 'text',
+                              position: 4,
+                              config: {
+                                text: '✓ Secure checkout (credit card/crypto)',
+                                color: '#e2e8f0',
+                                fontSize: { desktop: 15, tablet: 14, mobile: 14 },
+                                padding: {
+                                  desktop: { top: 16, right: 0, bottom: 16, left: 0 }
+                                },
+                                borderBottom: '1px solid rgba(71, 85, 105, 0.3)'
+                              }
+                            },
+                            {
+                              id: 'feature-6',
+                              type: 'text',
+                              position: 5,
+                              config: {
+                                text: '✓ AI product video generator',
+                                color: '#e2e8f0',
+                                fontSize: { desktop: 15, tablet: 14, mobile: 14 },
+                                padding: {
+                                  desktop: { top: 16, right: 0, bottom: 16, left: 0 }
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                // Right Card: Revenue Tiers
+                {
+                  id: 'tiers-card',
+                  type: 'container',
+                  position: 1,
+                  config: {
+                    containerPadding: {
+                      desktop: { top: 32, right: 32, bottom: 32, left: 32 },
+                      tablet: { top: 24, right: 24, bottom: 24, left: 24 },
+                      mobile: { top: 24, right: 20, bottom: 24, left: 20 }
+                    },
+                    containerBackground: 'rgba(30, 41, 59, 0.6)',
+                    containerBorderRadius: 16,
+                    containerBorderWidth: 1,
+                    containerBorderColor: 'rgba(71, 85, 105, 0.5)',
+                    containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+                    containerFlexDirection: {
+                      desktop: 'column',
+                      tablet: 'column',
+                      mobile: 'column'
+                    },
+                    containerGap: { desktop: 24, tablet: 20, mobile: 16 },
+                    children: [
+                      // Card Header
+                      {
+                        id: 'tiers-header',
+                        type: 'container',
+                        position: 0,
+                        config: {
+                          containerDisplay: {
+                            desktop: 'flex',
+                            tablet: 'flex',
+                            mobile: 'flex'
+                          },
+                          containerFlexDirection: {
+                            desktop: 'column',
+                            tablet: 'column',
+                            mobile: 'column'
+                          },
+                          containerAlignItems: 'center',
+                          containerGap: { desktop: 8, tablet: 8, mobile: 6 },
+                          children: [
+                            {
+                              id: 'tiers-icon',
+                              type: 'text',
+                              position: 0,
+                              config: {
+                                text: '💎',
+                                alignment: 'center',
+                                fontSize: { desktop: 40, tablet: 36, mobile: 32 }
+                              }
+                            },
+                            {
+                              id: 'tiers-title',
+                              type: 'heading',
+                              position: 1,
+                              config: {
+                                heading: 'Revenue Share',
+                                level: 3,
+                                textColor: '#ffffff',
+                                alignment: 'center',
+                                fontSize: { desktop: 24, tablet: 22, mobile: 20 },
+                                fontWeight: 700
+                              }
+                            },
+                            {
+                              id: 'tiers-subtitle',
+                              type: 'text',
+                              position: 2,
+                              config: {
+                                text: 'Includes payment processor fees',
+                                alignment: 'center',
+                                color: '#94a3b8',
+                                fontSize: { desktop: 15, tablet: 14, mobile: 14 }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      // Tiers Table
+                      {
+                        id: 'tiers-table',
+                        type: 'container',
+                        position: 1,
+                        config: {
+                          containerDisplay: {
+                            desktop: 'flex',
+                            tablet: 'flex',
+                            mobile: 'flex'
+                          },
+                          containerFlexDirection: {
+                            desktop: 'column',
+                            tablet: 'column',
+                            mobile: 'column'
+                          },
+                          containerGap: { desktop: 8, tablet: 6, mobile: 6 },
+                          children: [
+                            // Table Header
+                            {
+                              id: 'table-header',
+                              type: 'container',
+                              position: 0,
+                              config: {
+                                containerDisplay: {
+                                  desktop: 'flex',
+                                  tablet: 'flex',
+                                  mobile: 'flex'
+                                },
+                                containerFlexDirection: {
+                                  desktop: 'row',
+                                  tablet: 'row',
+                                  mobile: 'row'
+                                },
+                                containerJustifyContent: 'space-between',
+                                containerPadding: {
+                                  desktop: { top: 8, right: 16, bottom: 8, left: 16 }
+                                },
+                                children: [
+                                  {
+                                    id: 'header-sales',
+                                    type: 'text',
+                                    position: 0,
+                                    config: {
+                                      text: 'MONTHLY SALES',
+                                      color: '#94a3b8',
+                                      fontSize: { desktop: 11, tablet: 10, mobile: 10 },
+                                      fontWeight: 600,
+                                      letterSpacing: '0.05em'
+                                    }
+                                  },
+                                  {
+                                    id: 'header-fee',
+                                    type: 'text',
+                                    position: 1,
+                                    config: {
+                                      text: 'FEE',
+                                      color: '#94a3b8',
+                                      fontSize: { desktop: 11, tablet: 10, mobile: 10 },
+                                      fontWeight: 600,
+                                      letterSpacing: '0.05em'
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            // Tier Rows
+                            {
+                              id: 'tier-1',
+                              type: 'container',
+                              position: 1,
+                              config: {
+                                containerDisplay: {
+                                  desktop: 'flex',
+                                  tablet: 'flex',
+                                  mobile: 'flex'
+                                },
+                                containerFlexDirection: {
+                                  desktop: 'row',
+                                  tablet: 'row',
+                                  mobile: 'row'
+                                },
+                                containerJustifyContent: 'space-between',
+                                containerAlignItems: 'center',
+                                containerPadding: {
+                                  desktop: { top: 16, right: 20, bottom: 16, left: 20 }
+                                },
+                                containerBackground: 'rgba(30, 41, 59, 0.4)',
+                                containerBorderRadius: 12,
+                                containerBorderWidth: 1,
+                                containerBorderColor: 'rgba(71, 85, 105, 0.3)',
+                                children: [
+                                  {
+                                    id: 'tier-1-info',
+                                    type: 'container',
+                                    position: 0,
+                                    config: {
+                                      containerDisplay: {
+                                        desktop: 'flex',
+                                        tablet: 'flex',
+                                        mobile: 'flex'
+                                      },
+                                      containerFlexDirection: {
+                                        desktop: 'column',
+                                        tablet: 'column',
+                                        mobile: 'column'
+                                      },
+                                      containerGap: { desktop: 4, tablet: 4, mobile: 2 },
+                                      children: [
+                                        {
+                                          id: 'tier-1-range',
+                                          type: 'text',
+                                          position: 0,
+                                          config: {
+                                            text: '$0 – $1,000',
+                                            color: '#ffffff',
+                                            fontSize: { desktop: 16, tablet: 15, mobile: 14 },
+                                            fontWeight: 600
+                                          }
+                                        },
+                                        {
+                                          id: 'tier-1-desc',
+                                          type: 'text',
+                                          position: 1,
+                                          config: {
+                                            text: 'Perfect for getting started',
+                                            color: '#94a3b8',
+                                            fontSize: { desktop: 14, tablet: 13, mobile: 12 }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    id: 'tier-1-fee',
+                                    type: 'text',
+                                    position: 1,
+                                    config: {
+                                      text: '8%',
+                                      color: '#a78bfa',
+                                      fontSize: { desktop: 28, tablet: 24, mobile: 22 },
+                                      fontWeight: 700
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              id: 'tier-2',
+                              type: 'container',
+                              position: 2,
+                              config: {
+                                containerDisplay: {
+                                  desktop: 'flex',
+                                  tablet: 'flex',
+                                  mobile: 'flex'
+                                },
+                                containerFlexDirection: {
+                                  desktop: 'row',
+                                  tablet: 'row',
+                                  mobile: 'row'
+                                },
+                                containerJustifyContent: 'space-between',
+                                containerAlignItems: 'center',
+                                containerPadding: {
+                                  desktop: { top: 16, right: 20, bottom: 16, left: 20 }
+                                },
+                                containerBackground: 'rgba(30, 41, 59, 0.4)',
+                                containerBorderRadius: 12,
+                                containerBorderWidth: 1,
+                                containerBorderColor: 'rgba(71, 85, 105, 0.3)',
+                                children: [
+                                  {
+                                    id: 'tier-2-info',
+                                    type: 'container',
+                                    position: 0,
+                                    config: {
+                                      containerDisplay: {
+                                        desktop: 'flex',
+                                        tablet: 'flex',
+                                        mobile: 'flex'
+                                      },
+                                      containerFlexDirection: {
+                                        desktop: 'column',
+                                        tablet: 'column',
+                                        mobile: 'column'
+                                      },
+                                      containerGap: { desktop: 4, tablet: 4, mobile: 2 },
+                                      children: [
+                                        {
+                                          id: 'tier-2-range',
+                                          type: 'text',
+                                          position: 0,
+                                          config: {
+                                            text: '$1,001 – $5,000',
+                                            color: '#ffffff',
+                                            fontSize: { desktop: 16, tablet: 15, mobile: 14 },
+                                            fontWeight: 600
+                                          }
+                                        },
+                                        {
+                                          id: 'tier-2-desc',
+                                          type: 'text',
+                                          position: 1,
+                                          config: {
+                                            text: 'Growing your business',
+                                            color: '#94a3b8',
+                                            fontSize: { desktop: 14, tablet: 13, mobile: 12 }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    id: 'tier-2-fee',
+                                    type: 'text',
+                                    position: 1,
+                                    config: {
+                                      text: '6%',
+                                      color: '#a78bfa',
+                                      fontSize: { desktop: 28, tablet: 24, mobile: 22 },
+                                      fontWeight: 700
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              id: 'tier-3',
+                              type: 'container',
+                              position: 3,
+                              config: {
+                                containerDisplay: {
+                                  desktop: 'flex',
+                                  tablet: 'flex',
+                                  mobile: 'flex'
+                                },
+                                containerFlexDirection: {
+                                  desktop: 'row',
+                                  tablet: 'row',
+                                  mobile: 'row'
+                                },
+                                containerJustifyContent: 'space-between',
+                                containerAlignItems: 'center',
+                                containerPadding: {
+                                  desktop: { top: 16, right: 20, bottom: 16, left: 20 }
+                                },
+                                containerBackground: 'rgba(30, 41, 59, 0.4)',
+                                containerBorderRadius: 12,
+                                containerBorderWidth: 1,
+                                containerBorderColor: 'rgba(71, 85, 105, 0.3)',
+                                children: [
+                                  {
+                                    id: 'tier-3-info',
+                                    type: 'container',
+                                    position: 0,
+                                    config: {
+                                      containerDisplay: {
+                                        desktop: 'flex',
+                                        tablet: 'flex',
+                                        mobile: 'flex'
+                                      },
+                                      containerFlexDirection: {
+                                        desktop: 'column',
+                                        tablet: 'column',
+                                        mobile: 'column'
+                                      },
+                                      containerGap: { desktop: 4, tablet: 4, mobile: 2 },
+                                      children: [
+                                        {
+                                          id: 'tier-3-range',
+                                          type: 'text',
+                                          position: 0,
+                                          config: {
+                                            text: '$5,001 – $20,000',
+                                            color: '#ffffff',
+                                            fontSize: { desktop: 16, tablet: 15, mobile: 14 },
+                                            fontWeight: 600
+                                          }
+                                        },
+                                        {
+                                          id: 'tier-3-desc',
+                                          type: 'text',
+                                          position: 1,
+                                          config: {
+                                            text: 'Established sales',
+                                            color: '#94a3b8',
+                                            fontSize: { desktop: 14, tablet: 13, mobile: 12 }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    id: 'tier-3-fee',
+                                    type: 'text',
+                                    position: 1,
+                                    config: {
+                                      text: '4%',
+                                      color: '#a78bfa',
+                                      fontSize: { desktop: 28, tablet: 24, mobile: 22 },
+                                      fontWeight: 700
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            // Highlighted Tier
+                            {
+                              id: 'tier-4',
+                              type: 'container',
+                              position: 4,
+                              config: {
+                                containerDisplay: {
+                                  desktop: 'flex',
+                                  tablet: 'flex',
+                                  mobile: 'flex'
+                                },
+                                containerFlexDirection: {
+                                  desktop: 'row',
+                                  tablet: 'row',
+                                  mobile: 'row'
+                                },
+                                containerJustifyContent: 'space-between',
+                                containerAlignItems: 'center',
+                                containerPadding: {
+                                  desktop: { top: 16, right: 20, bottom: 16, left: 20 }
+                                },
+                                containerBackground: 'rgba(139, 92, 246, 0.15)',
+                                containerBorderRadius: 12,
+                                containerBorderWidth: 2,
+                                containerBorderColor: '#8b5cf6',
+                                children: [
+                                  {
+                                    id: 'tier-4-info',
+                                    type: 'container',
+                                    position: 0,
+                                    config: {
+                                      containerDisplay: {
+                                        desktop: 'flex',
+                                        tablet: 'flex',
+                                        mobile: 'flex'
+                                      },
+                                      containerFlexDirection: {
+                                        desktop: 'column',
+                                        tablet: 'column',
+                                        mobile: 'column'
+                                      },
+                                      containerGap: { desktop: 4, tablet: 4, mobile: 2 },
+                                      children: [
+                                        {
+                                          id: 'tier-4-range',
+                                          type: 'text',
+                                          position: 0,
+                                          config: {
+                                            text: '$20,001+',
+                                            color: '#ffffff',
+                                            fontSize: { desktop: 16, tablet: 15, mobile: 14 },
+                                            fontWeight: 600
+                                          }
+                                        },
+                                        {
+                                          id: 'tier-4-desc',
+                                          type: 'text',
+                                          position: 1,
+                                          config: {
+                                            text: 'High volume discounts',
+                                            color: '#94a3b8',
+                                            fontSize: { desktop: 14, tablet: 13, mobile: 12 }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    id: 'tier-4-fee',
+                                    type: 'text',
+                                    position: 1,
+                                    config: {
+                                      text: '3%',
+                                      color: '#a78bfa',
+                                      fontSize: { desktop: 28, tablet: 24, mobile: 22 },
+                                      fontWeight: 700
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          // CTA Section
+          {
+            id: 'pricing-cta',
+            type: 'container',
+            position: 2,
+            config: {
+              containerPadding: {
+                desktop: { top: 0, right: 0, bottom: 0, left: 0 }
+              },
+              containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+              containerFlexDirection: { desktop: 'column', tablet: 'column', mobile: 'column' },
+              containerAlignItems: 'center',
+              containerGap: { desktop: 16, tablet: 12, mobile: 8 },
+              children: [
+                {
+                  id: 'cta-button',
+                  type: 'button',
+                  position: 0,
+                  config: {
+                    label: 'Get Started Free →',
+                    url: '#',
+                    variant: 'filled',
+                    size: 'large',
+                    fullWidth: { desktop: false, tablet: false, mobile: true },
+                    borderRadius: 12,
+                    backgroundColor: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+                    textColor: '#ffffff',
+                    padding: {
+                      desktop: { top: 16, right: 40, bottom: 16, left: 40 }
+                    },
+                    fontSize: { desktop: 18, tablet: 16, mobile: 16 },
+                    fontWeight: 600
+                  }
+                }
+              ]
+            }
+          }
+        ]
       };
 
     case 'cta':
@@ -120,11 +1798,12 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
         primaryCtaLink: '#',
         secondaryCtaText: 'Learn More',
         secondaryCtaLink: '#',
-        backgroundColor: 'theme:primary'
+        backgroundColor: 'transparent'
       };
 
     case 'container':
       return {
+        backgroundColor: 'transparent',
         containerPadding: {
           desktop: { top: 40, right: 40, bottom: 40, left: 40 },
           tablet: { top: 30, right: 30, bottom: 30, left: 30 },
@@ -137,6 +1816,9 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
         },
         containerBackground: 'transparent',
         containerBorderRadius: 0,
+        containerBorderWidth: 0,
+        containerBorderColor: 'theme:border',
+        containerBorderStyle: 'solid',
         containerMaxWidth: '1200px',
         containerGap: { desktop: 16, tablet: 12, mobile: 8 },
         containerJustifyContent: 'flex-start',
@@ -147,41 +1829,255 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
 
     case 'navbar':
       // The navbar uses a container-based architecture with children widgets.
-      // This config matches the Navigation Bar component designed in the builder.
-      // Note: We use type assertion because the runtime config is more flexible
-      // than the strict TypeScript types (e.g., 'auto' margins, simplified children)
+      // This is the SINGLE SOURCE OF TRUTH for navbar default configuration.
+      // Both the database seed and resetBuiltInComponent use this exact structure.
       return {
+        // Root component background
+        backgroundColor: 'transparent',
+        // Outer wrapper - transparent, can be set to sticky positioning if desired
         containerPadding: {
-          desktop: { top: 16, right: 24, bottom: 16, left: 24 },
-          tablet: { top: 12, right: 20, bottom: 12, left: 20 },
-          mobile: { top: 12, right: 16, bottom: 12, left: 16 }
+          desktop: { top: 0, right: 0, bottom: 0, left: 0 },
+          tablet: { top: 0, right: 0, bottom: 0, left: 0 },
+          mobile: { top: 0, right: 0, bottom: 0, left: 0 }
         },
         containerMargin: {
           desktop: { top: 0, right: 0, bottom: 0, left: 0 },
           tablet: { top: 0, right: 0, bottom: 0, left: 0 },
           mobile: { top: 0, right: 0, bottom: 0, left: 0 }
         },
-        containerBackground: 'theme:secondary',
+        containerBackground: 'transparent',
         containerBorderRadius: 0,
-        containerMaxWidth: '1400px',
-        containerJustifyContent: 'space-between',
-        containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
-        containerFlexDirection: { desktop: 'row', tablet: 'row', mobile: 'column' },
-        containerAlignItems: 'stretch',
-        containerWrap: 'nowrap',
-        containerGap: { desktop: 16, tablet: 16, mobile: 16 },
-        containerWidth: { desktop: 'auto', tablet: 'auto', mobile: 'auto' },
-        containerGridCols: { desktop: 3, tablet: 2, mobile: 1 },
-        containerGridAutoFlow: { desktop: 'row', tablet: 'row', mobile: 'row' },
+        containerMaxWidth: '100%',
+        containerDisplay: { desktop: 'block', tablet: 'block', mobile: 'block' },
+        containerWidth: { desktop: '100%', tablet: '100%', mobile: '100%' },
         visibilityRule: 'always',
-        sticky: true,
-        // Children are simplified for the default config - full structure is in database migration
-        children: []
+        position: {
+          desktop: { type: 'static' },
+          tablet: { type: 'static' },
+          mobile: { type: 'static' }
+        },
+        children: [
+          {
+            id: 'main-container',
+            type: 'container',
+            position: 0,
+            config: {
+              containerPadding: {
+                desktop: { top: 16, right: 24, bottom: 16, left: 24 },
+                tablet: { top: 12, right: 20, bottom: 12, left: 20 },
+                mobile: { top: 12, right: 16, bottom: 12, left: 16 }
+              },
+              containerMargin: {
+                desktop: { top: 0, right: 'auto', bottom: 0, left: 'auto' },
+                tablet: { top: 0, right: 'auto', bottom: 0, left: 'auto' },
+                mobile: { top: 0, right: 0, bottom: 0, left: 0 }
+              },
+              containerBackground: 'transparent',
+              containerBorderRadius: 0,
+              containerMaxWidth: '1400px',
+              containerJustifyContent: 'space-between',
+              containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+              containerFlexDirection: { desktop: 'row', tablet: 'row', mobile: 'column' },
+              containerAlignItems: 'stretch',
+              containerWrap: 'nowrap',
+              containerGap: { desktop: 16, tablet: 16, mobile: 16 },
+              containerWidth: { desktop: 'auto', tablet: 'auto', mobile: 'auto' },
+              containerGridCols: { desktop: 3, tablet: 2, mobile: 1 },
+              containerGridAutoFlow: { desktop: 'row', tablet: 'row', mobile: 'row' },
+              containerPlaceItems: null,
+              children: [
+                {
+                  id: 'logo-container',
+                  type: 'container',
+                  position: 0,
+                  config: {
+                    containerPadding: {
+                      desktop: { top: 0, right: 0, bottom: 0, left: 0 },
+                      tablet: { top: 0, right: 0, bottom: 0, left: 0 },
+                      mobile: { top: 0, right: 0, bottom: 0, left: 0 }
+                    },
+                    containerMargin: {
+                      desktop: { top: 0, right: 0, bottom: 0, left: 0 },
+                      tablet: { top: 0, right: 0, bottom: 0, left: 0 },
+                      mobile: { top: 0, right: 0, bottom: 0, left: 0 }
+                    },
+                    containerBackground: 'transparent',
+                    containerBorderRadius: 0,
+                    containerMaxWidth: '1200px',
+                    containerGap: { desktop: 16, tablet: 12, mobile: 8 },
+                    containerJustifyContent: 'flex-start',
+                    containerAlignItems: 'center',
+                    containerWrap: 'wrap',
+                    children: [
+                      {
+                        id: 'site-name-heading',
+                        type: 'heading',
+                        position: 0,
+                        config: {
+                          heading: '${site.name}',
+                          level: 2,
+                          textColor: 'theme:text',
+                          link: '/'
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  id: 'nav-links-container',
+                  type: 'container',
+                  position: 1,
+                  config: {
+                    containerPadding: {
+                      desktop: { top: 0, right: 0, bottom: 0, left: 0 },
+                      tablet: { top: 0, right: 0, bottom: 0, left: 0 },
+                      mobile: { top: 0, right: 0, bottom: 0, left: 0 }
+                    },
+                    containerMargin: {
+                      desktop: { top: 0, right: 0, bottom: 0, left: 0 },
+                      tablet: { top: 0, right: 0, bottom: 0, left: 0 },
+                      mobile: { top: 0, right: 0, bottom: 0, left: 0 }
+                    },
+                    containerBackground: 'transparent',
+                    containerBorderRadius: 0,
+                    containerMaxWidth: '1200px',
+                    containerGap: { desktop: 16, tablet: 12, mobile: 8 },
+                    containerJustifyContent: 'flex-end',
+                    containerAlignItems: 'center',
+                    containerWrap: 'wrap',
+                    containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+                    containerFlexDirection: { desktop: 'row', tablet: 'row', mobile: 'column' },
+                    containerWidth: { desktop: 'auto', tablet: 'auto', mobile: 'auto' },
+                    containerGridCols: { desktop: 3, tablet: 2, mobile: 1 },
+                    containerGridAutoFlow: { desktop: 'row', tablet: 'row', mobile: 'row' },
+                    children: [
+                      {
+                        id: 'products-link',
+                        type: 'button',
+                        position: 0,
+                        config: {
+                          label: 'Products',
+                          url: '/#products',
+                          variant: 'text',
+                          size: 'medium',
+                          fullWidth: { desktop: false, tablet: false, mobile: true }
+                        }
+                      },
+                      {
+                        id: 'pricing-link',
+                        type: 'button',
+                        position: 1,
+                        config: {
+                          label: 'Pricing',
+                          url: '/#pricing',
+                          variant: 'text',
+                          size: 'medium',
+                          fullWidth: { desktop: false, tablet: false, mobile: true }
+                        }
+                      },
+                      {
+                        id: 'login-button',
+                        type: 'button',
+                        position: 2,
+                        config: {
+                          label: 'Login',
+                          url: '/auth/login',
+                          variant: 'outline',
+                          size: 'medium',
+                          fullWidth: { desktop: false, tablet: false, mobile: true },
+                          icon: 'LogIn',
+                          visibilityRule: 'unauthenticated'
+                        }
+                      },
+                      {
+                        id: 'user-dropdown',
+                        type: 'dropdown',
+                        position: 3,
+                        config: {
+                          triggerLabel: '${user.display_name}',
+                          triggerIcon: '',
+                          triggerVariant: 'text',
+                          menuAlign: 'left',
+                          visibilityRule: 'authenticated',
+                          children: [
+                            {
+                              id: 'admin-dashboard-link',
+                              type: 'button',
+                              position: 0,
+                              config: {
+                                label: 'Admin Dashboard',
+                                url: '/admin/dashboard',
+                                variant: 'text',
+                                size: 'medium',
+                                fullWidth: { desktop: false, tablet: false, mobile: true },
+                                visibilityRule: 'role',
+                                requiredRoles: ['admin']
+                              }
+                            },
+                            {
+                              id: 'dropdown-divider',
+                              type: 'divider',
+                              position: 1,
+                              config: {
+                                thickness: 1,
+                                dividerColor: 'theme:border',
+                                dividerStyle: 'solid',
+                                spacing: { desktop: 8, tablet: 8, mobile: 8 }
+                              }
+                            },
+                            {
+                              id: 'profile-button',
+                              type: 'button',
+                              position: 2,
+                              config: {
+                                label: 'Profile',
+                                url: '/profile',
+                                variant: 'text',
+                                size: 'medium',
+                                fullWidth: { desktop: false, tablet: false, mobile: true }
+                              }
+                            },
+                            {
+                              id: 'logout-button',
+                              type: 'button',
+                              position: 3,
+                              config: {
+                                label: 'Logout',
+                                url: '/auth/logout',
+                                variant: 'text',
+                                size: 'medium',
+                                fullWidth: { desktop: false, tablet: false, mobile: true }
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        id: 'cart-button',
+                        type: 'button',
+                        position: 4,
+                        config: {
+                          label: 'Cart',
+                          url: '/cart',
+                          variant: 'text',
+                          size: 'medium',
+                          fullWidth: { desktop: false, tablet: false, mobile: true },
+                          icon: 'ShoppingCart'
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
       };
 
     case 'footer':
       // Container-based architecture matching Navigation Bar pattern
       return {
+        backgroundColor: 'transparent',
         containerPadding: {
           desktop: { top: 0, right: 0, bottom: 0, left: 0 },
           tablet: { top: 0, right: 0, bottom: 0, left: 0 },
@@ -199,7 +2095,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
         containerWidth: { desktop: '100%', tablet: '100%', mobile: '100%' },
         visibilityRule: 'always',
         // Footer-specific styling
-        footerBackground: 'theme:surface',
+        footerBackground: 'transparent',
         footerTextColor: 'theme:textSecondary',
         footerHoverColor: 'theme:primary',
         footerBorderColor: 'theme:border',
@@ -371,11 +2267,13 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
 
     case 'composite':
       return {
+        backgroundColor: 'transparent',
         children: []
       };
 
     case 'dropdown':
       return {
+        backgroundColor: 'transparent',
         triggerLabel: 'Menu',
         triggerIcon: '',
         triggerVariant: 'text',
@@ -391,13 +2289,14 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
 
     case 'theme_toggle':
       return {
+        backgroundColor: 'transparent',
         size: 'medium',
         toggleVariant: 'icon',
         alignment: 'left'
       };
 
     case 'yield':
-      return {};
+      return { backgroundColor: 'transparent' };
 
     default:
       return {};
@@ -409,7 +2308,8 @@ export function getComponentLabel(type: ComponentType): string {
     text: 'Text Content',
     heading: 'Heading',
     image: 'Image',
-    hero: 'Hero Section',
+    icon: 'Icon',
+    hero: 'Hero',
     button: 'Button',
     dropdown: 'Dropdown',
     spacer: 'Spacer',

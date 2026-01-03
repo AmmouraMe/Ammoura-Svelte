@@ -6,6 +6,23 @@
 import { executeOne, execute, generateId, getCurrentTimestamp } from './connection.js';
 import type { WidgetConfig } from '$lib/types/pages.js';
 
+// Raw database row interface (before boolean conversion)
+interface DBPageRaw {
+  id: string;
+  site_id: string;
+  title: string;
+  slug: string;
+  status: 'draft' | 'published';
+  content?: string;
+  colorTheme?: string;
+  layout_id?: number;
+  published_revision_id?: string;
+  draft_revision_id?: string;
+  is_builtin: number | boolean; // Database stores as 0/1
+  created_at: number;
+  updated_at: number;
+}
+
 export interface DBPage {
   id: string;
   site_id: string;
@@ -17,8 +34,19 @@ export interface DBPage {
   layout_id?: number;
   published_revision_id?: string;
   draft_revision_id?: string;
+  is_builtin: boolean; // If true, this is a system page that cannot be deleted
   created_at: number;
   updated_at: number;
+}
+
+/**
+ * Convert raw database page to properly typed page
+ */
+function mapPageFromDB(page: DBPageRaw): DBPage {
+  return {
+    ...page,
+    is_builtin: Boolean(page.is_builtin)
+  };
 }
 
 export interface EnrichedPage extends DBPage {
@@ -118,10 +146,12 @@ export async function getPageById(
   siteId: string,
   pageId: string
 ): Promise<DBPage | null> {
-  return await executeOne<DBPage>(db, 'SELECT * FROM pages WHERE id = ? AND site_id = ?', [
-    pageId,
-    siteId
-  ]);
+  const result = await executeOne<DBPageRaw>(
+    db,
+    'SELECT * FROM pages WHERE id = ? AND site_id = ?',
+    [pageId, siteId]
+  );
+  return result ? mapPageFromDB(result) : null;
 }
 
 /**
@@ -132,22 +162,24 @@ export async function getPageBySlug(
   siteId: string,
   slug: string
 ): Promise<DBPage | null> {
-  return await executeOne<DBPage>(db, 'SELECT * FROM pages WHERE slug = ? AND site_id = ?', [
-    slug,
-    siteId
-  ]);
+  const result = await executeOne<DBPageRaw>(
+    db,
+    'SELECT * FROM pages WHERE slug = ? AND site_id = ?',
+    [slug, siteId]
+  );
+  return result ? mapPageFromDB(result) : null;
 }
 
 /**
  * Get all pages for a site
  */
 export async function getAllPages(db: D1Database, siteId: string): Promise<DBPage[]> {
-  const result = await execute<DBPage>(
+  const result = await execute<DBPageRaw>(
     db,
     'SELECT * FROM pages WHERE site_id = ? ORDER BY updated_at DESC',
     [siteId]
   );
-  return result.results || [];
+  return (result.results || []).map(mapPageFromDB);
 }
 
 /**
@@ -169,28 +201,45 @@ export async function getAllPagesWithRevisionInfo(
     ORDER BY p.updated_at DESC
   `;
 
-  const result = await execute<DBPage & { published_at?: number; draft_at?: number }>(db, query, [
-    siteId
-  ]);
+  const result = await execute<DBPageRaw & { published_at?: number; draft_at?: number }>(
+    db,
+    query,
+    [siteId]
+  );
 
   // Enrich pages with has_unpublished_changes flag
-  return (result.results || []).map((page) => ({
-    ...page,
-    has_unpublished_changes:
-      !!page.draft_at && !!page.published_at && page.draft_at > page.published_at
-  }));
+  // A page has unpublished changes if:
+  // 1. draft_revision_id differs from published_revision_id AND draft is newer or equal timestamp, OR
+  // 2. draft_revision_id differs from published_revision_id AND we don't have timestamp data
+  return (result.results || []).map((page) => {
+    const hasDifferentRevisions =
+      !!page.draft_revision_id &&
+      !!page.published_revision_id &&
+      page.draft_revision_id !== page.published_revision_id;
+
+    const draftIsNewerOrEqual =
+      !!page.draft_at && !!page.published_at && page.draft_at >= page.published_at;
+
+    const missingTimestamps = !page.draft_at || !page.published_at;
+
+    return {
+      ...page,
+      is_builtin: Boolean(page.is_builtin),
+      has_unpublished_changes: hasDifferentRevisions && (draftIsNewerOrEqual || missingTimestamps)
+    };
+  });
 }
 
 /**
  * Get published pages for a site
  */
 export async function getPublishedPages(db: D1Database, siteId: string): Promise<DBPage[]> {
-  const result = await execute<DBPage>(
+  const result = await execute<DBPageRaw>(
     db,
     "SELECT * FROM pages WHERE site_id = ? AND status = 'published' ORDER BY updated_at DESC",
     [siteId]
   );
-  return result.results || [];
+  return (result.results || []).map(mapPageFromDB);
 }
 
 /**

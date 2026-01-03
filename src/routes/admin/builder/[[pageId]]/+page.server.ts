@@ -1,10 +1,10 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { getPageById } from '$lib/server/db/pages';
+import { getPageById, getPageComponents } from '$lib/server/db/pages';
 import {
-  buildRevisionTree,
   getPublishedRevision,
-  getMostRecentDraftRevision
+  getMostRecentDraftRevision,
+  ensureInitialRevision
 } from '$lib/server/db/revisions';
 import {
   normalizeComponentPositions,
@@ -13,7 +13,7 @@ import {
 import { getAllColorThemes } from '$lib/server/db/color-themes';
 import { getLayouts, getDefaultLayout, getLayoutComponents } from '$lib/server/db/layouts';
 import { getComponentsWithChildrenCount } from '$lib/server/db/components';
-import type { LayoutWidget } from '$lib/types/pages';
+import type { LayoutWidget, PageComponent } from '$lib/types/pages';
 
 export const load: PageServerLoad = async ({ params, locals, platform }) => {
   const siteId = locals.siteId;
@@ -44,6 +44,7 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
     return {
       page: null,
       pageComponents: [],
+      pageProperties: undefined,
       layoutComponents,
       revisions: [],
       colorThemes,
@@ -76,7 +77,31 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
     layoutComponents = await getLayoutComponents(db, pageLayoutId);
   }
 
-  const revisions = await buildRevisionTree(db, siteId, params.pageId);
+  // Get page components from the database (current state)
+  const dbWidgets = await getPageComponents(db, params.pageId);
+  const currentComponents: PageComponent[] = dbWidgets.map((w) => ({
+    id: w.id,
+    page_id: w.page_id,
+    type: w.type,
+    config: typeof w.config === 'string' ? JSON.parse(w.config) : w.config,
+    position: w.position,
+    created_at: w.created_at,
+    updated_at: w.updated_at
+  }));
+
+  // Ensure the page has at least one revision (creates initial if none exist)
+  const revisions = await ensureInitialRevision(
+    db,
+    siteId,
+    params.pageId,
+    {
+      title: page.title,
+      slug: page.slug,
+      status: page.status as 'draft' | 'published',
+      colorTheme: page.colorTheme || undefined
+    },
+    currentComponents
+  );
 
   // Load both published and latest draft revisions
   const publishedRevision = await getPublishedRevision(db, siteId, params.pageId);
@@ -113,6 +138,7 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
   // Use components from the selected revision, or empty array if no revision exists
   let pageComponents = currentRevision?.components || [];
   const currentRevisionId = currentRevision?.id || null;
+  const pageProperties = currentRevision?.pageProperties || undefined;
 
   // Normalize component positions if needed (fixes duplicate positions bug)
   if (needsPositionNormalization(pageComponents)) {
@@ -122,6 +148,7 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
   return {
     page,
     pageComponents: pageComponents,
+    pageProperties,
     layoutComponents,
     revisions,
     currentRevisionId,

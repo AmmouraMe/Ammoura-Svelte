@@ -66,12 +66,6 @@
     }
   }
 
-  function handleRevisionPublish(revisionId: string) {
-    if (events.publishRevision) {
-      events.publishRevision(revisionId);
-    }
-  }
-
   function handleUndoMouseDown() {
     undoPressTimer = window.setTimeout(() => {
       if (onShowUndoHistory) {
@@ -248,7 +242,7 @@
     <div class="divider"></div>
 
     <!-- Revision History Button -->
-    {#if pageId && revisions.length > 0}
+    {#if pageId}
       <button type="button" class="revision-btn" on:click={toggleRevisionModal}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <path
@@ -258,7 +252,7 @@
             stroke-linejoin="round"
           />
         </svg>
-        History ({revisions.length})
+        History
       </button>
       <div class="divider"></div>
     {/if}
@@ -341,7 +335,6 @@
   {revisions}
   {currentRevisionId}
   onSelect={handleRevisionSelect}
-  onPublish={handleRevisionPublish}
   onClose={() => (showRevisionModal = false)}
 />
 

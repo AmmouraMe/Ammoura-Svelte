@@ -27,7 +27,7 @@
     components: PageComponent[];
   }
 
-  async function handleSave(saveData: SaveData): Promise<void> {
+  async function handleSave(saveData: SaveData, options?: { message?: string }): Promise<void> {
     try {
       if (data.isNewLayout) {
         // Create new layout
@@ -69,6 +69,29 @@
           throw new Error(errorData.error || 'Failed to save layout');
         }
 
+        // Create a new revision to track this change
+        const revisionResponse = await fetch(`/api/layouts/${data.layout!.id}/revisions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: saveData.title,
+            description: data.layout!.description || '',
+            slug: saveData.slug,
+            is_default: data.layout!.is_default || false,
+            widgets: saveData.components.map((c) => ({
+              id: c.id,
+              type: c.type,
+              position: c.position,
+              config: c.config
+            })),
+            message: options?.message || 'Draft save'
+          })
+        });
+
+        if (!revisionResponse.ok) {
+          console.error('Failed to create revision, but layout was saved');
+        }
+
         toastStore.success('Layout saved successfully!');
         await invalidateAll();
       }
@@ -79,11 +102,48 @@
     }
   }
 
-  async function handlePublish(_saveData: SaveData): Promise<void> {
-    // For layouts, publishing is handled by the save operation
-    // The AdvancedBuilder already calls onSave before onPublish for existing layouts
-    // So we just need to show a success message here
-    toastStore.info('Layout published!');
+  async function handlePublish(saveData: SaveData): Promise<void> {
+    if (data.isNewLayout) {
+      // For new layouts, onSave should have been called first
+      toastStore.info('Layout created!');
+      return;
+    }
+
+    try {
+      // First save the changes with 'Published revision' message
+      await handleSave(saveData, { message: 'Published revision' });
+
+      // Get the most recent revision for this layout
+      const revisionsResponse = await fetch(`/api/layouts/${data.layout!.id}/revisions`);
+      if (!revisionsResponse.ok) {
+        throw new Error('Failed to fetch revisions');
+      }
+
+      const revisions = (await revisionsResponse.json()) as Array<{
+        id: string;
+        is_current: boolean;
+      }>;
+      const latestRevision = revisions[0]; // Revisions are sorted by created_at DESC
+
+      if (latestRevision && !latestRevision.is_current) {
+        // Publish the latest revision
+        const publishResponse = await fetch(
+          `/api/layouts/${data.layout!.id}/revisions/${latestRevision.id}/publish`,
+          { method: 'POST' }
+        );
+
+        if (!publishResponse.ok) {
+          throw new Error('Failed to publish revision');
+        }
+      }
+
+      toastStore.success('Layout published!');
+      await invalidateAll();
+    } catch (error) {
+      console.error('Failed to publish layout:', error);
+      toastStore.error(error instanceof Error ? error.message : 'Failed to publish layout');
+      throw error;
+    }
   }
 
   function handleExit(): void {
@@ -98,6 +158,7 @@
         title: data.layout.name,
         slug: data.layout.slug,
         status: 'published' as const,
+        is_builtin: false,
         created_at: new Date(data.layout.created_at).getTime(),
         updated_at: new Date(data.layout.updated_at).getTime()
       }

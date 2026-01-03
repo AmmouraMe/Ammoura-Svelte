@@ -371,7 +371,8 @@ describe('+layout.server load function', () => {
 
       const navbarConfig = result.layoutData.navbar?.config;
       expect(navbarConfig?.visibilityRule).toBe('always');
-      expect(navbarConfig?.sticky).toBe(true);
+      // Default fallback has sticky disabled - sticky is controlled by position.type = 'sticky' in container architecture
+      expect(navbarConfig?.sticky).toBe(false);
     });
   });
 
@@ -491,7 +492,8 @@ describe('+layout.server load function', () => {
       expect(result.layoutData.navbar?.config?.containerMaxWidth).toBe('1400px');
       expect(result.layoutData.navbar?.config?.containerBackground).toBe('theme:secondary');
       expect(result.layoutData.navbar?.config?.containerJustifyContent).toBe('space-between');
-      expect(result.layoutData.navbar?.config?.sticky).toBe(true);
+      // Default has sticky disabled - sticky is controlled by position.type = 'sticky' in container architecture
+      expect(result.layoutData.navbar?.config?.sticky).toBe(false);
     });
   });
 

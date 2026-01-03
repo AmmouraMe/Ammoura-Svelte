@@ -11,7 +11,8 @@ export interface WidgetChange {
     action: 'add' | 'remove' | 'update' | 'reorder';
     widgets?: PageWidget[];
     widgetIds?: string[];
-    targetId?: string;
+    parentId?: string; // Parent container ID for nested widget additions
+    targetId?: string; // ID of the widget to insert after (within parent)
     position?: number;
   };
 }

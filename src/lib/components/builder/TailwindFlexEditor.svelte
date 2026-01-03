@@ -1,9 +1,22 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import type { WidgetConfig, Breakpoint, ResponsiveValue } from '$lib/types/pages';
+  import type {
+    WidgetConfig,
+    Breakpoint,
+    ResponsiveValue,
+    ColorThemeDefinition
+  } from '$lib/types/pages';
+  import ThemeColorInput from '../admin/ThemeColorInput.svelte';
+  import { getThemeColors } from '$lib/utils/editor/colorThemes';
 
   export let config: WidgetConfig;
   export let currentBreakpoint: Breakpoint = 'desktop';
+  export let colorTheme: string = 'default';
+  export let colorThemes: ColorThemeDefinition[] = [];
+
+  // Compute theme colors from colorThemes array (database-loaded themes) or fallback to static lookup
+  $: currentThemeData = colorThemes.find((t) => t.id === colorTheme);
+  $: themeColors = currentThemeData?.colors || getThemeColors(colorTheme);
 
   const dispatch = createEventDispatcher<{ update: WidgetConfig }>();
 
@@ -235,6 +248,25 @@
         [side]: value
       })
     });
+  }
+
+  // Border update functions
+  function updateFlexBorderColor(value: string): void {
+    updateConfig({ flexBorderColor: value });
+  }
+
+  function updateFlexBorderWidth(value: string): void {
+    const numValue = parseInt(value, 10);
+    updateConfig({ flexBorderWidth: isNaN(numValue) ? 0 : numValue });
+  }
+
+  function updateFlexBorderStyle(value: string): void {
+    updateConfig({ flexBorderStyle: value });
+  }
+
+  function updateFlexBorderRadius(value: string | number): void {
+    const numValue = typeof value === 'number' ? value : parseInt(value, 10);
+    updateConfig({ flexBorderRadius: isNaN(numValue) ? 0 : numValue });
   }
 </script>
 
@@ -560,6 +592,80 @@
     </div>
   </div>
 
+  <div class="editor-section">
+    <h4 class="section-title">Border</h4>
+    <div class="form-group">
+      <ThemeColorInput
+        value={typeof config.flexBorderColor === 'string' ? config.flexBorderColor : ''}
+        currentTheme={colorTheme}
+        {themeColors}
+        label="Border Color"
+        defaultValue=""
+        onChange={(newValue) => {
+          updateFlexBorderColor(typeof newValue === 'string' ? newValue : '');
+        }}
+      />
+    </div>
+    <div class="form-row">
+      <div class="form-group half">
+        <label class="control-label-text" for="flex-border-width">Border Width (px)</label>
+        <input
+          id="flex-border-width"
+          type="number"
+          value={config.flexBorderWidth ?? 0}
+          on:input={(e) => updateFlexBorderWidth(e.currentTarget.value)}
+          min="0"
+          placeholder="0"
+          class="control-input"
+        />
+      </div>
+      <div class="form-group half">
+        <label class="control-label-text" for="flex-border-style">Border Style</label>
+        <select
+          id="flex-border-style"
+          value={config.flexBorderStyle ?? 'solid'}
+          on:change={(e) => updateFlexBorderStyle(e.currentTarget.value)}
+          class="control-select"
+        >
+          <option value="solid">Solid</option>
+          <option value="dashed">Dashed</option>
+          <option value="dotted">Dotted</option>
+          <option value="double">Double</option>
+          <option value="none">None</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="control-label-text" for="flex-border-radius">Border Radius (px)</label>
+      <input
+        id="flex-border-radius"
+        type="number"
+        value={config.flexBorderRadius ?? 0}
+        on:input={(e) => updateFlexBorderRadius(Number(e.currentTarget.value))}
+        min="0"
+        placeholder="0"
+        class="control-input"
+      />
+      <div class="quick-radius">
+        <button type="button" class="quick-btn" on:click={() => updateFlexBorderRadius(0)}>
+          0
+        </button>
+        <button type="button" class="quick-btn" on:click={() => updateFlexBorderRadius(4)}>
+          4
+        </button>
+        <button type="button" class="quick-btn" on:click={() => updateFlexBorderRadius(8)}>
+          8
+        </button>
+        <button type="button" class="quick-btn" on:click={() => updateFlexBorderRadius(16)}>
+          16
+        </button>
+        <button type="button" class="quick-btn" on:click={() => updateFlexBorderRadius(9999)}>
+          Full
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div class="breakpoint-indicator">
     <span class="indicator-icon">
       {#if currentBreakpoint === 'mobile'}
@@ -774,6 +880,76 @@
     border-radius: 0.375rem;
     font-size: 0.875rem;
     color: var(--color-text-primary);
+  }
+
+  .control-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+  }
+
+  .control-select {
+    width: 100%;
+    padding: 0.5rem;
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    color: var(--color-text-primary);
+    cursor: pointer;
+  }
+
+  .control-select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+  }
+
+  .control-label-text {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.25rem;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .form-row {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .form-group.half {
+    flex: 1;
+  }
+
+  .quick-radius {
+    display: flex;
+    gap: 0.375rem;
+    margin-top: 0.5rem;
+  }
+
+  .quick-btn {
+    flex: 1;
+    padding: 0.375rem 0.5rem;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 0.25rem;
+    background: var(--color-bg-secondary);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .quick-btn:hover {
+    background: var(--color-primary-light);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
   }
 
   .control-range {

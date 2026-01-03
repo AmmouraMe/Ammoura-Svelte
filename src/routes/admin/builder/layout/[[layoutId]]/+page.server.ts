@@ -2,6 +2,9 @@ import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getAllColorThemes } from '$lib/server/db/color-themes';
 import { getComponentsWithChildrenCount } from '$lib/server/db/components';
+import { buildLayoutRevisionTree, ensureLayoutHasRevision } from '$lib/server/db/layout-revisions';
+import type { RevisionNode as GenericRevisionNode, LayoutRevisionData } from '$lib/types/revisions';
+import type { ComponentType, PageStatus, RevisionNode, PageComponent } from '$lib/types/pages';
 
 export const load: PageServerLoad = async ({ params, locals, platform }) => {
   const siteId = locals.siteId;
@@ -86,15 +89,71 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
       updated_at: w.updated_at as string
     })) || [];
 
-  // TODO: Implement revision system for layouts similar to pages
-  const revisions: never[] = [];
+  // Ensure layout has at least one revision (creates initial if none exist)
+  const currentUserId = locals.currentUser?.id?.toString();
+  await ensureLayoutHasRevision(
+    db,
+    siteId,
+    layout.id,
+    {
+      name: layout.name,
+      description: layout.description,
+      slug: layout.slug,
+      is_default: layout.is_default
+    },
+    widgets.map((w) => ({
+      id: w.id,
+      type: w.type,
+      position: w.position,
+      config: w.config as Record<string, unknown>
+    })),
+    currentUserId
+  );
+
+  // Get revision tree for this layout (with children/depth/branch populated)
+  const revisionTree = await buildLayoutRevisionTree(db, siteId, layout.id);
+
+  // Find the current (published) revision
+  const currentRevision = revisionTree.find((r) => r.is_current);
+
+  // Recursively map revisions to RevisionNode format for compatibility with AdvancedBuilder
+  // This preserves the tree structure (children, depth, branch) from buildLayoutRevisionTree
+  const mapRevision = (r: GenericRevisionNode<LayoutRevisionData>): RevisionNode => ({
+    id: r.id,
+    page_id: String(layout.id), // Use layout id for compatibility with RevisionNode
+    revision_hash: r.revision_hash,
+    parent_revision_id: r.parent_revision_id,
+    title: r.data.name,
+    slug: r.data.slug,
+    status: (r.is_current ? 'published' : 'draft') as PageStatus,
+    color_theme: undefined,
+    components: r.data.widgets.map((w) => ({
+      id: w.id,
+      page_id: String(layout.id),
+      type: w.type as ComponentType,
+      position: w.position,
+      config: w.config,
+      created_at: r.created_at,
+      updated_at: r.created_at
+    })) as PageComponent[],
+    is_published: r.is_current,
+    created_by: r.user_id,
+    created_at: r.created_at,
+    notes: r.message,
+    // Preserve tree structure from buildLayoutRevisionTree
+    children: r.children.map(mapRevision),
+    depth: r.depth,
+    branch: r.branch
+  });
+
+  const mappedRevisions: RevisionNode[] = revisionTree.map(mapRevision);
 
   return {
     layout,
     components: widgets,
-    revisions,
-    currentRevisionId: null,
-    currentRevisionIsPublished: false,
+    revisions: mappedRevisions,
+    currentRevisionId: currentRevision?.id || null,
+    currentRevisionIsPublished: currentRevision?.is_current || false,
     colorThemes,
     customComponents: components,
     userName: locals.currentUser?.name || locals.currentUser?.email,

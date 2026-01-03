@@ -508,6 +508,11 @@
   async function loadRevision(revisionId: string) {
     if (!pageId) return;
 
+    // If selecting the current revision, do nothing - this preserves any unsaved changes
+    if (revisionId === currentRevisionId) {
+      return;
+    }
+
     try {
       const response = await fetch(`/api/pages/${pageId}/revisions/${revisionId}`);
       if (response.ok) {
@@ -516,12 +521,18 @@
         // Update page state with revision data
         title = revision.title;
         slug = revision.slug;
-        components = revision.components;
+        colorTheme = revision.color_theme as ColorTheme | undefined;
+        components = revision.components || [];
         currentRevisionId = revisionId;
 
         // Find the revision in the list to get its published status
+        // Check both is_published (page revisions) and is_current (generic revisions)
         const revisionInfo = revisions.find((r) => r.id === revisionId);
-        currentRevisionIsPublished = revisionInfo?.is_current || false;
+        const isPublished =
+          (revisionInfo as { is_published?: boolean })?.is_published ||
+          (revisionInfo as { is_current?: boolean })?.is_current ||
+          false;
+        currentRevisionIsPublished = isPublished;
 
         // Update initial values to match loaded revision
         initialTitle = title;

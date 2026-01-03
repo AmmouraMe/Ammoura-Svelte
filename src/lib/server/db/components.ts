@@ -2,8 +2,14 @@
  * Database operations for components (reusable components)
  */
 
-import type { Component, ComponentWithWidgets } from '$lib/types/pages';
+import type { Component, ComponentWithWidgets, ComponentType } from '$lib/types/pages';
 import { getComponentChildren, saveComponentChildren } from './componentChildren';
+import { getDefaultConfig } from '$lib/utils/editor/componentDefaults';
+import {
+  createComponentRevision,
+  publishComponentRevision,
+  getCurrentComponentRevision
+} from './component-revisions';
 
 // Re-export deprecated aliases for backward compatibility
 export { getComponentWidgets, saveComponentWidgets } from './componentChildren';
@@ -483,6 +489,7 @@ export async function saveComponentWithChildren(
     name?: string;
     description?: string;
     type?: string;
+    config?: Record<string, unknown>;
     children: Array<{
       id: string;
       type: string;
@@ -556,12 +563,20 @@ export async function saveComponentWithChildren(
       await saveComponentChildren(db, componentId, data.children);
     }
 
+    // Merge the incoming config (backgroundColor, etc.) with the assembled configToSync
+    // The incoming config takes precedence for top-level properties, but children comes from configToSync
+    const finalConfig: Record<string, unknown> = {
+      ...configToSync,
+      ...(data.config || {}),
+      children: configToSync.children // Always preserve children from the sync
+    };
+
     // Update component metadata and config
     const component = await updateComponent(db, siteId, componentId, {
       name: data.name,
       description: data.description,
       type: data.type,
-      config: configToSync
+      config: finalConfig
     });
 
     // Get updated children
@@ -634,7 +649,9 @@ function _getDefaultNavbarChildren(): Array<{
 
 /**
  * Reset a built-in component to its original default configuration.
- * Uses the hardcoded defaults which represent the canonical state for built-in components.
+ * Uses getDefaultConfig from componentDefaults.ts as the single source of truth.
+ * This ensures the database state matches what the reset button produces.
+ * Creates a revision to track the reset in revision history.
  */
 export async function resetBuiltInComponent(
   db: D1Database,
@@ -643,15 +660,19 @@ export async function resetBuiltInComponent(
   componentType: string
 ): Promise<void> {
   try {
-    // Use hardcoded defaults - this is the canonical state for built-in components
-    const defaultConfig = getDefaultComponentConfig(componentType);
+    // Use the single source of truth from componentDefaults.ts
+    const defaultConfig = getDefaultConfig(componentType as ComponentType);
 
-    // Update the component config to defaults
+    // Get the current revision to use as parent for the reset revision
+    const currentRevision = await getCurrentComponentRevision(db, siteId, componentId);
+
+    // Update the component config AND type to defaults
+    // The type must also be updated because it may have been incorrectly saved as 'composite'
     await db
       .prepare(
-        `UPDATE components SET config = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND is_global = 1`
+        `UPDATE components SET config = ?, type = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND is_global = 1`
       )
-      .bind(JSON.stringify(defaultConfig), componentId)
+      .bind(JSON.stringify(defaultConfig), componentType, componentId)
       .run();
 
     // Delete any existing component children (reset to clean state)
@@ -662,6 +683,40 @@ export async function resetBuiltInComponent(
       .bind(componentId)
       .run();
 
+    // Get the component name for the revision data
+    const component = await db
+      .prepare('SELECT name, description FROM components WHERE id = ?')
+      .bind(componentId)
+      .first<{ name: string; description?: string }>();
+
+    // Create a new revision to track the reset
+    const revision = await createComponentRevision(
+      db,
+      siteId,
+      componentId,
+      {
+        name: component?.name || componentType,
+        description: component?.description,
+        type: componentType,
+        config: defaultConfig as unknown as Record<string, unknown>,
+        children: defaultConfig.children as
+          | Array<{
+              id: string;
+              type: string;
+              position: number;
+              config: Record<string, unknown>;
+            }>
+          | undefined
+      },
+      {
+        message: 'Reset to defaults',
+        parentRevisionId: currentRevision?.id
+      }
+    );
+
+    // Publish the reset revision
+    await publishComponentRevision(db, siteId, componentId, revision.id);
+
     // Note: Navbar children are now stored inline in config.children (matching migration 0049)
     // No need to create component_widgets entries for navbar anymore
   } catch (error) {
@@ -671,554 +726,49 @@ export async function resetBuiltInComponent(
 }
 
 /**
- * Get the default configuration for a component type
+ * Resolve component_ref types in an array of page components
+ * Replaces component_ref widgets with their actual component type and config
+ *
+ * @param db - Database connection
+ * @param siteId - Site ID for component lookup
+ * @param components - Array of page components that may contain component_ref types
+ * @returns Array of components with component_ref resolved to actual component types
  */
-function getDefaultComponentConfig(type: string): Record<string, unknown> {
-  const defaults: Record<string, Record<string, unknown>> = {
-    navbar: {
-      // Container-based architecture matching migration 0051
-      // Component wrapper has minimal styling - main styling is on main-container child
-      containerPadding: {
-        desktop: { top: 0, right: 0, bottom: 0, left: 0 },
-        tablet: { top: 0, right: 0, bottom: 0, left: 0 },
-        mobile: { top: 0, right: 0, bottom: 0, left: 0 }
-      },
-      containerMargin: {
-        desktop: { top: 0, right: 0, bottom: 0, left: 0 },
-        tablet: { top: 0, right: 0, bottom: 0, left: 0 },
-        mobile: { top: 0, right: 0, bottom: 0, left: 0 }
-      },
-      containerBackground: 'transparent',
-      containerBorderRadius: 0,
-      containerMaxWidth: '100%',
-      containerDisplay: { desktop: 'block', tablet: 'block', mobile: 'block' },
-      containerWidth: { desktop: '100%', tablet: '100%', mobile: '100%' },
-      visibilityRule: 'always',
-      position: 'sticky',
-      positionType: 'sticky',
-      children: [
-        {
-          id: 'main-container',
-          type: 'container',
-          config: {
-            containerPadding: {
-              desktop: { top: 16, right: 24, bottom: 16, left: 24 },
-              tablet: { top: 12, right: 20, bottom: 12, left: 20 },
-              mobile: { top: 12, right: 16, bottom: 12, left: 16 }
-            },
-            containerMargin: {
-              desktop: { top: 0, right: 'auto', bottom: 0, left: 'auto' },
-              tablet: { top: 0, right: 'auto', bottom: 0, left: 'auto' },
-              mobile: { top: 0, right: 0, bottom: 0, left: 0 }
-            },
-            containerBackground: 'theme:secondary',
-            containerBorderRadius: 0,
-            containerMaxWidth: '1400px',
-            containerJustifyContent: 'space-between',
-            containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
-            containerFlexDirection: { desktop: 'row', tablet: 'row', mobile: 'column' },
-            containerAlignItems: 'stretch',
-            containerWrap: 'nowrap',
-            containerGap: { desktop: 16, tablet: 16, mobile: 16 },
-            containerWidth: { desktop: 'auto', tablet: 'auto', mobile: 'auto' },
-            containerGridCols: { desktop: 3, tablet: 2, mobile: 1 },
-            containerGridAutoFlow: { desktop: 'row', tablet: 'row', mobile: 'row' },
-            containerPlaceItems: null,
-            children: [
-              {
-                id: 'logo-container',
-                type: 'container',
-                config: {
-                  containerPadding: {
-                    desktop: { top: 40, right: 40, bottom: 40, left: 40 },
-                    tablet: { top: 30, right: 30, bottom: 30, left: 30 },
-                    mobile: { top: 20, right: 20, bottom: 20, left: 20 }
-                  },
-                  containerMargin: {
-                    desktop: { top: 0, right: 0, bottom: 0, left: 0 },
-                    tablet: { top: 0, right: 0, bottom: 0, left: 0 },
-                    mobile: { top: 0, right: 0, bottom: 0, left: 0 }
-                  },
-                  containerBackground: 'transparent',
-                  containerBorderRadius: 0,
-                  containerMaxWidth: '1200px',
-                  containerGap: { desktop: 16, tablet: 12, mobile: 8 },
-                  containerJustifyContent: 'flex-start',
-                  containerAlignItems: 'center',
-                  containerWrap: 'wrap',
-                  children: [
-                    {
-                      id: 'site-name-heading',
-                      type: 'heading',
-                      config: {
-                        heading: '${site.name}',
-                        level: 2,
-                        textColor: 'theme:text',
-                        link: '/'
-                      },
-                      position: 0
-                    }
-                  ]
-                },
-                position: 0
-              },
-              {
-                id: 'nav-links-container',
-                type: 'container',
-                config: {
-                  containerPadding: {
-                    desktop: { top: 0, right: 40, bottom: 0, left: 40 },
-                    tablet: { top: 30, right: 30, bottom: 30, left: 30 },
-                    mobile: { top: 20, right: 20, bottom: 20, left: 20 }
-                  },
-                  containerMargin: {
-                    desktop: { top: 0, right: 0, bottom: 0, left: 0 },
-                    tablet: { top: 0, right: 0, bottom: 0, left: 0 },
-                    mobile: { top: 0, right: 0, bottom: 0, left: 0 }
-                  },
-                  containerBackground: 'transparent',
-                  containerBorderRadius: 0,
-                  containerMaxWidth: '1200px',
-                  containerGap: { desktop: 16, tablet: 12, mobile: 8 },
-                  containerJustifyContent: 'flex-end',
-                  containerAlignItems: 'center',
-                  containerWrap: 'wrap',
-                  containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
-                  containerFlexDirection: { desktop: 'row', tablet: 'row', mobile: 'column' },
-                  containerWidth: { desktop: 'auto', tablet: 'auto', mobile: 'auto' },
-                  containerGridCols: { desktop: 3, tablet: 2, mobile: 1 },
-                  containerGridAutoFlow: { desktop: 'row', tablet: 'row', mobile: 'row' },
-                  children: [
-                    {
-                      id: 'products-link',
-                      type: 'button',
-                      config: {
-                        label: 'Products',
-                        url: '/#products',
-                        variant: 'text',
-                        size: 'medium',
-                        fullWidth: { desktop: false, tablet: false, mobile: true }
-                      },
-                      position: 0
-                    },
-                    {
-                      id: 'pricing-link',
-                      type: 'button',
-                      config: {
-                        label: 'Pricing',
-                        url: '/#pricing',
-                        variant: 'text',
-                        size: 'medium',
-                        fullWidth: { desktop: false, tablet: false, mobile: true }
-                      },
-                      position: 1
-                    },
-                    {
-                      id: 'login-button',
-                      type: 'button',
-                      config: {
-                        label: 'Login',
-                        url: '/auth/login',
-                        variant: 'outline',
-                        size: 'medium',
-                        fullWidth: { desktop: false, tablet: false, mobile: true },
-                        icon: 'LogIn',
-                        visibilityRule: 'unauthenticated'
-                      },
-                      position: 2
-                    },
-                    {
-                      id: 'user-dropdown',
-                      type: 'dropdown',
-                      config: {
-                        label: 'Select Option',
-                        placeholder: 'Choose...',
-                        options: [
-                          { value: 'option1', label: 'Option 1' },
-                          { value: 'option2', label: 'Option 2' },
-                          { value: 'option3', label: 'Option 3' }
-                        ],
-                        required: false,
-                        searchable: false,
-                        size: 'medium',
-                        defaultValue: '',
-                        triggerIcon: '',
-                        triggerVariant: 'text',
-                        menuAlign: 'left',
-                        triggerLabel: '${user.display_name}',
-                        visibilityRule: 'authenticated',
-                        children: [
-                          {
-                            id: 'admin-dashboard-link',
-                            type: 'button',
-                            config: {
-                              label: 'Admin Dashboard',
-                              url: '/admin/dashboard',
-                              variant: 'text',
-                              size: 'medium',
-                              fullWidth: { desktop: false, tablet: false, mobile: true },
-                              visibilityRule: 'role',
-                              requiredRoles: ['admin']
-                            },
-                            position: 0
-                          },
-                          {
-                            id: 'dropdown-divider',
-                            type: 'divider',
-                            config: {
-                              thickness: 1,
-                              dividerColor: 'theme:border',
-                              dividerStyle: 'solid',
-                              spacing: { desktop: 20, tablet: 15, mobile: 10 }
-                            },
-                            position: 1
-                          },
-                          {
-                            id: 'logout-button',
-                            type: 'button',
-                            config: {
-                              label: 'Logout',
-                              url: '/auth/logout',
-                              variant: 'text',
-                              size: 'medium',
-                              fullWidth: { desktop: false, tablet: false, mobile: true }
-                            },
-                            position: 2
-                          },
-                          {
-                            id: 'profile-button',
-                            type: 'button',
-                            config: {
-                              label: 'Profile',
-                              url: '#',
-                              variant: 'text',
-                              size: 'medium',
-                              fullWidth: { desktop: false, tablet: false, mobile: true }
-                            },
-                            position: 3
-                          }
-                        ]
-                      },
-                      position: 3
-                    },
-                    {
-                      id: 'cart-button',
-                      type: 'button',
-                      config: {
-                        label: 'Cart',
-                        url: '/cart',
-                        variant: 'text',
-                        size: 'medium',
-                        fullWidth: { desktop: false, tablet: false, mobile: true },
-                        icon: 'ShoppingCart'
-                      },
-                      position: 4
-                    }
-                  ]
-                },
-                position: 1
-              }
-            ]
-          },
-          position: 0
-        }
-      ]
-    },
-    footer: {
-      // Container-based architecture matching Navigation Bar pattern
-      // Component wrapper provides the outer footer styling
-      containerPadding: {
-        desktop: { top: 0, right: 0, bottom: 0, left: 0 },
-        tablet: { top: 0, right: 0, bottom: 0, left: 0 },
-        mobile: { top: 0, right: 0, bottom: 0, left: 0 }
-      },
-      containerMargin: {
-        desktop: { top: 0, right: 0, bottom: 0, left: 0 },
-        tablet: { top: 0, right: 0, bottom: 0, left: 0 },
-        mobile: { top: 0, right: 0, bottom: 0, left: 0 }
-      },
-      containerBackground: 'transparent',
-      containerBorderRadius: 0,
-      containerMaxWidth: '100%',
-      containerDisplay: { desktop: 'block', tablet: 'block', mobile: 'block' },
-      containerWidth: { desktop: '100%', tablet: '100%', mobile: '100%' },
-      visibilityRule: 'always',
-      // Footer-specific styling
-      footerBackground: 'theme:surface',
-      footerTextColor: 'theme:textSecondary',
-      footerHoverColor: 'theme:primary',
-      footerBorderColor: 'theme:border',
-      footerShadow: false,
-      copyright: '© 2025 ${site.name}. All rights reserved.',
-      columnsPerRow: { desktop: 4, tablet: 2, mobile: 1 },
-      // Logo and tagline
-      logo: {
-        text: '${site.name}',
-        url: '/',
-        image: '',
-        imageHeight: 32
-      },
-      tagline: '${site.tagline}',
-      // Link sections for multi-column footer
-      linkSections: [
-        {
-          title: 'Company',
-          links: [
-            { text: 'About', url: '/about' },
-            { text: 'Careers', url: '/careers' },
-            { text: 'Blog', url: '/blog' }
-          ]
-        },
-        {
-          title: 'Support',
-          links: [
-            { text: 'Help Center', url: '/help' },
-            { text: 'Contact Us', url: '/contact' },
-            { text: 'FAQ', url: '/faq' }
-          ]
-        },
-        {
-          title: 'Legal',
-          links: [
-            { text: 'Privacy Policy', url: '/privacy' },
-            { text: 'Terms of Service', url: '/terms' },
-            { text: 'Cookie Policy', url: '/cookies' }
-          ]
-        }
-      ],
-      // Social links
-      socialLinks: [
-        { platform: 'facebook', url: '#' },
-        { platform: 'twitter', url: '#' },
-        { platform: 'instagram', url: '#' },
-        { platform: 'linkedin', url: '#' }
-      ],
-      // Legacy footer links for backward compatibility
-      footerLinks: [],
-      // Children structure for Container-based composition
-      children: [
-        {
-          id: 'main-container',
-          type: 'container',
-          config: {
-            containerPadding: {
-              desktop: { top: 48, right: 24, bottom: 48, left: 24 },
-              tablet: { top: 40, right: 20, bottom: 40, left: 20 },
-              mobile: { top: 32, right: 16, bottom: 32, left: 16 }
-            },
-            containerMargin: {
-              desktop: { top: 0, right: 'auto', bottom: 0, left: 'auto' },
-              tablet: { top: 0, right: 'auto', bottom: 0, left: 'auto' },
-              mobile: { top: 0, right: 0, bottom: 0, left: 0 }
-            },
-            containerBackground: 'transparent',
-            containerBorderRadius: 0,
-            containerMaxWidth: '1200px',
-            containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
-            containerFlexDirection: { desktop: 'column', tablet: 'column', mobile: 'column' },
-            containerAlignItems: 'stretch',
-            containerWrap: 'nowrap',
-            containerGap: { desktop: 32, tablet: 24, mobile: 16 },
-            children: [
-              {
-                id: 'footer-content-row',
-                type: 'container',
-                config: {
-                  containerPadding: {
-                    desktop: { top: 0, right: 0, bottom: 0, left: 0 }
-                  },
-                  containerDisplay: { desktop: 'flex', tablet: 'grid', mobile: 'grid' },
-                  containerGridCols: { desktop: 4, tablet: 2, mobile: 1 },
-                  containerGap: { desktop: 32, tablet: 24, mobile: 24 },
-                  containerFlexDirection: { desktop: 'row', tablet: 'row', mobile: 'column' },
-                  containerJustifyContent: 'space-around',
-                  containerAlignItems: 'stretch',
-                  containerWrap: 'nowrap',
-                  containerMaxWidth: '1200px',
-                  containerWidth: { desktop: 'auto', tablet: 'auto', mobile: 'auto' },
-                  containerGridAutoFlow: { desktop: 'row', tablet: 'row', mobile: 'row' },
-                  containerPlaceItems: '',
-                  children: [
-                    {
-                      id: 'footer-about-btn',
-                      type: 'button',
-                      position: 0,
-                      config: {
-                        label: 'About',
-                        url: '/about',
-                        variant: 'text',
-                        size: 'medium',
-                        fullWidth: { desktop: false, tablet: false, mobile: true }
-                      }
-                    },
-                    {
-                      id: 'footer-products-btn',
-                      type: 'button',
-                      position: 1,
-                      config: {
-                        label: 'Products',
-                        url: '/#products',
-                        variant: 'text',
-                        size: 'medium',
-                        fullWidth: { desktop: false, tablet: false, mobile: true }
-                      }
-                    },
-                    {
-                      id: 'footer-admin-btn',
-                      type: 'button',
-                      position: 2,
-                      config: {
-                        label: 'Admin Dashboard',
-                        url: '/admin/dashboard',
-                        variant: 'text',
-                        size: 'medium',
-                        fullWidth: { desktop: false, tablet: false, mobile: true },
-                        icon: 'Settings',
-                        visibilityRule: 'role',
-                        requiredRoles: ['admin']
-                      }
-                    },
-                    {
-                      id: 'footer-login-btn',
-                      type: 'button',
-                      position: 3,
-                      config: {
-                        label: 'Login',
-                        url: '/auth/login',
-                        variant: 'text',
-                        size: 'medium',
-                        fullWidth: { desktop: false, tablet: false, mobile: true },
-                        icon: 'LogIn',
-                        visibilityRule: 'unauthenticated'
-                      }
-                    }
-                  ]
-                },
-                position: 0
-              },
-              {
-                id: 'footer-copyright',
-                type: 'text',
-                config: {
-                  text: '© 2025 ${site.name}. All rights reserved.',
-                  alignment: 'center',
-                  fontSize: { desktop: 14, tablet: 14, mobile: 12 },
-                  color: 'theme:textSecondary'
-                },
-                position: 1
-              }
-            ]
-          },
-          position: 0
-        }
-      ]
-    },
-    container: {
-      containerPadding: {
-        desktop: { top: 40, right: 40, bottom: 40, left: 40 },
-        tablet: { top: 30, right: 30, bottom: 30, left: 30 },
-        mobile: { top: 20, right: 20, bottom: 20, left: 20 }
-      },
-      containerMargin: {
-        desktop: { top: 0, right: 'auto', bottom: 0, left: 'auto' },
-        tablet: { top: 0, right: 'auto', bottom: 0, left: 'auto' },
-        mobile: { top: 0, right: 0, bottom: 0, left: 0 }
-      },
-      containerBackground: 'transparent',
-      containerBorderRadius: 0,
-      containerMaxWidth: '1200px',
-      children: []
-    },
-    hero: {
-      title: 'Welcome to Our Site',
-      subtitle: 'Discover amazing products and services',
-      ctaText: 'Get Started',
-      ctaLink: '#',
-      backgroundColor: 'theme:primary',
-      contentAlign: 'center',
-      heroHeight: { desktop: '500px', tablet: '400px', mobile: '300px' },
-      titleColor: 'theme:text',
-      subtitleColor: 'theme:textSecondary'
-    },
-    columns: {
-      columnCount: { desktop: 3, tablet: 2, mobile: 1 },
-      columnGap: { desktop: 20, tablet: 16, mobile: 12 },
-      columns: []
-    },
-    spacer: {
-      space: { desktop: 40, tablet: 30, mobile: 20 }
-    },
-    divider: {
-      thickness: 1,
-      color: 'theme:border',
-      dividerWidth: '100%',
-      dividerSpacing: { desktop: 32, tablet: 24, mobile: 16 }
-    },
-    heading: {
-      heading: 'Heading',
-      level: 2,
-      alignment: 'left',
-      color: 'var(--color-text-primary)'
-    },
-    text: {
-      text: 'Enter your text here',
-      alignment: 'left',
-      fontSize: { desktop: 16, tablet: 16, mobile: 14 },
-      color: 'var(--color-text-primary)'
-    },
-    button: {
-      label: 'Click Me',
-      url: '#',
-      variant: 'primary',
-      openInNewTab: false,
-      fullWidth: { desktop: false, tablet: false, mobile: false },
-      buttonAlign: 'left'
-    },
-    image: {
-      src: '',
-      alt: 'Image',
-      imageWidth: '100%',
-      borderRadius: 0,
-      objectFit: 'cover'
-    },
-    single_product: {
-      productId: '',
-      layout: 'card',
-      showPrice: true,
-      showDescription: true
-    },
-    product_list: {
-      category: '',
-      limit: 12,
-      sortBy: 'created_at',
-      productListColumns: { desktop: 3, tablet: 2, mobile: 1 },
-      productGap: { desktop: 24, tablet: 20, mobile: 16 }
-    },
-    features: {
-      title: 'Features',
-      subtitle: '',
-      features: [
-        { icon: '🎯', title: 'Feature One', description: 'Describe what makes this feature great' },
-        { icon: '✨', title: 'Feature Two', description: 'Explain the benefits of this feature' },
-        { icon: '🚀', title: 'Feature Three', description: 'Tell users why they need this' }
-      ],
-      featuresColumns: { desktop: 3, tablet: 2, mobile: 1 },
-      featuresGap: { desktop: 32, tablet: 24, mobile: 16 }
-    },
-    cta: {
-      heading: 'Ready to Get Started?',
-      subheading: 'Join thousands of satisfied customers',
-      buttonText: 'Get Started',
-      buttonUrl: '#',
-      backgroundColor: 'var(--color-bg-secondary)',
-      textColor: 'var(--color-text-primary)'
-    },
-    pricing: {
-      title: 'Pricing',
-      subtitle: 'Choose the plan that fits your needs',
-      plans: []
-    }
-  };
+export async function resolveComponentRefs<T extends { type: string; config: unknown }>(
+  db: D1Database,
+  siteId: string,
+  components: T[]
+): Promise<T[]> {
+  const resolved: T[] = [];
 
-  return defaults[type] || {};
+  for (const comp of components) {
+    const config = comp.config as Record<string, unknown> | undefined;
+    if (comp.type === 'component_ref' && config?.componentId) {
+      // Fetch the referenced component
+      const componentId = config.componentId as number;
+      const referencedComponent = await getComponent(db, siteId, componentId);
+
+      if (referencedComponent) {
+        // Replace component_ref with the actual component type and config
+        resolved.push({
+          ...comp,
+          type: referencedComponent.type,
+          config: {
+            ...referencedComponent.config,
+            // Preserve any overrides from the reference
+            ...Object.fromEntries(Object.entries(config).filter(([key]) => key !== 'componentId'))
+          }
+        } as T);
+      } else {
+        // Component not found - keep the original (will show error in frontend)
+        console.warn(`Component ${componentId} not found for component_ref`);
+        resolved.push(comp);
+      }
+    } else {
+      // Not a component_ref, keep as-is
+      resolved.push(comp);
+    }
+  }
+
+  return resolved;
 }

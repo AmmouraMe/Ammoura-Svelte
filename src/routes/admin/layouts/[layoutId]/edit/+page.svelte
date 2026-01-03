@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { confirmStore } from '$lib/stores/confirm';
   import type { PageData } from './$types';
   import type { LayoutWidget } from '$lib/types/pages';
 
@@ -50,12 +51,20 @@
     hasUnsavedChanges = true;
   }
 
-  function handleBack(): void {
-    if (
-      hasUnsavedChanges &&
-      !confirm('You have unsaved changes. Are you sure you want to leave?')
-    ) {
-      return;
+  async function handleBack(): Promise<void> {
+    if (hasUnsavedChanges) {
+      const confirmed = await confirmStore.show(
+        'You have unsaved changes. Are you sure you want to leave?',
+        {
+          title: 'Unsaved Changes',
+          confirmText: 'Leave',
+          cancelText: 'Stay',
+          variant: 'warning'
+        }
+      );
+      if (!confirmed) {
+        return;
+      }
     }
     goto('/admin/layouts');
   }

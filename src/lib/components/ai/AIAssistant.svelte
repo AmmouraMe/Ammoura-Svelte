@@ -137,7 +137,17 @@
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get AI response');
+        // Parse error message from response body
+        let errorMessage = 'Failed to get AI response';
+        try {
+          const errorData = (await response.json()) as { message?: string };
+          if (errorData.message) {
+            errorMessage = errorData.message;
+          }
+        } catch {
+          // If we can't parse the error, use the generic message
+        }
+        throw new Error(errorMessage);
       }
 
       const reader = response.body?.getReader();
@@ -200,11 +210,13 @@
       }
     } catch (error) {
       console.error('AI chat error:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Sorry, I encountered an error. Please try again.';
       messages = [
         ...messages,
         {
           role: 'assistant',
-          content: 'Sorry, I encountered an error. Please try again.',
+          content: errorMessage,
           timestamp: Date.now()
         }
       ];

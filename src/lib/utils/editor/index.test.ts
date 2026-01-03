@@ -64,14 +64,14 @@ describe('Editor Utils Index', () => {
   describe('getComponentLabel', () => {
     it('should be exported and return label', () => {
       const label = getComponentLabel('hero');
-      expect(label).toBe('Hero Section');
+      expect(label).toBe('Hero');
     });
   });
 
   describe('getWidgetLabel (deprecated)', () => {
     it('should be exported and work same as getComponentLabel', () => {
       const label = getWidgetLabel('hero');
-      expect(label).toBe('Hero Section');
+      expect(label).toBe('Hero');
     });
   });
 });

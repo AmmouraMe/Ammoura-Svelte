@@ -9,6 +9,7 @@ export type ComponentType =
   | 'product_list'
   | 'text'
   | 'image'
+  | 'icon' // Icon display using Lucide icons
   | 'hero'
   | 'button'
   | 'dropdown'
@@ -77,6 +78,7 @@ export interface Page {
   content?: string;
   colorTheme?: ColorTheme; // Selected theme for this page
   layout_id?: number | null; // Layout to use for this page (required)
+  is_builtin: boolean; // If true, this is a system page that cannot be deleted
   created_at: number;
   updated_at: number;
 }
@@ -193,9 +195,11 @@ export interface TypographyConfig {
     | '700'
     | '800'
     | '900';
+  fontStyle?: 'normal' | 'italic' | 'oblique';
   lineHeight?: number;
   letterSpacing?: number;
   textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize';
+  textDecoration?: 'none' | 'underline' | 'line-through' | 'overline';
 }
 
 // Border configuration
@@ -323,6 +327,14 @@ export interface ComponentConfig {
   styles?: ResponsiveStyles;
   themeOverrides?: Partial<ThemeColors>; // Component-specific theme color overrides
 
+  // Universal styling properties (available for all components)
+  borderWidth?: number; // Border width in pixels
+  borderStyle?: 'none' | 'solid' | 'dashed' | 'dotted' | 'double'; // Border style
+  minWidth?: string; // Min width constraint (e.g., '0', '200px')
+  maxWidth?: string; // Max width constraint (e.g., 'none', '100%', '1200px')
+  minHeight?: string; // Min height constraint
+  maxHeight?: string; // Max height constraint
+
   // Visibility controls - show/hide based on auth state and user roles
   visibilityRule?: 'always' | 'authenticated' | 'unauthenticated' | 'role'; // When to show this component
   requiredRoles?: string[]; // Role names required to see this component (when visibilityRule is 'role')
@@ -426,6 +438,12 @@ export interface ComponentConfig {
   objectFit?: 'cover' | 'contain' | 'fill' | 'none';
   link?: string;
 
+  // Icon component
+  iconName?: string; // Lucide icon name
+  iconSize?: number; // Icon size in pixels
+  iconColor?: string | ThemeSpecificColor; // Icon color (supports theme colors)
+  strokeWidth?: number; // Icon stroke width
+
   // Hero component
   title?: string;
   subtitle?: string;
@@ -452,6 +470,11 @@ export interface ComponentConfig {
   fullWidth?: ResponsiveValue<boolean>;
   icon?: string;
   openInNewTab?: boolean;
+  borderColor?: string | ThemeSpecificColor; // Custom border color for buttons
+  borderRadius?: number; // Custom border radius in pixels
+  padding?: ResponsiveValue<SpacingConfig>; // Custom padding for buttons
+  iconAfter?: string; // Icon or text to show after the label (e.g., '→')
+  buttonAlign?: 'left' | 'center' | 'right'; // Button alignment within container
 
   // Dropdown menu component (container-type with children)
   triggerLabel?: string;
@@ -507,6 +530,7 @@ export interface ComponentConfig {
   }>;
   cardBackground?: string | ThemeSpecificColor;
   cardBorderColor?: string | ThemeSpecificColor;
+  cardBorderWidth?: number;
   cardBorderRadius?: number;
   featuresColumns?: ResponsiveValue<number>;
   featuresGap?: ResponsiveValue<number>;
@@ -522,6 +546,17 @@ export interface ComponentConfig {
     highlight?: boolean;
   }>;
   ctaNote?: string;
+  // Pricing component - extended properties
+  headerIcon?: string; // Emoji icon for the section header
+  modelTitle?: string; // Title for the features panel (e.g., "Pay-as-You-Grow")
+  modelSubtitle?: string; // Subtitle for the features panel
+  modelIcon?: string; // Emoji icon for the features panel
+  revenueTitle?: string; // Title for the revenue share panel
+  revenueIcon?: string; // Emoji icon for the revenue share panel
+  showTiersArrow?: boolean; // Whether to show the arrow below tiers
+  showCta?: boolean; // Whether to show the CTA button
+  highlightBackground?: string | ThemeSpecificColor; // Background color for highlighted tier
+  highlightBorderColor?: string | ThemeSpecificColor; // Border color for highlighted tier
 
   // CTA component (and Hero component's secondary CTA)
   primaryCtaText?: string;
@@ -624,6 +659,9 @@ export interface ComponentConfig {
   containerMargin?: ResponsiveValue<SpacingConfig>;
   containerBackground?: string | ThemeSpecificColor;
   containerBorderRadius?: number;
+  containerBorderColor?: string | ThemeSpecificColor;
+  containerBorderWidth?: number;
+  containerBorderStyle?: string;
   containerBorder?: BorderConfig;
   containerMaxWidth?: string; // e.g., '1200px', '100%'
   containerMinHeight?: ResponsiveValue<string>; // Min height
@@ -680,11 +718,6 @@ export interface ComponentConfig {
   containerBackgroundRepeat?: ResponsiveValue<'no-repeat' | 'repeat' | 'repeat-x' | 'repeat-y'>;
   containerBackgroundAttachment?: ResponsiveValue<'scroll' | 'fixed' | 'local'>;
 
-  // Container border advanced
-  containerBorderWidth?: ResponsiveValue<BorderWidthConfig>;
-  containerBorderStyle?: ResponsiveValue<BorderStyleConfig>;
-  containerBorderColor?: ResponsiveValue<string | ThemeSpecificColor>;
-
   // Container filters
   containerFilter?: ResponsiveValue<FilterConfig>;
   containerBackdropFilter?: ResponsiveValue<FilterConfig>;
@@ -729,6 +762,9 @@ export interface ComponentConfig {
   flexMargin?: ResponsiveValue<SpacingConfig>;
   flexBackground?: string | ThemeSpecificColor;
   flexBorderRadius?: number;
+  flexBorderColor?: string | ThemeSpecificColor;
+  flexBorderWidth?: number;
+  flexBorderStyle?: string;
   flexBorder?: BorderConfig;
   flexWidth?: ResponsiveValue<string>; // Width: 'full', 'auto', '1/2', '1/3', etc.
   flexHeight?: ResponsiveValue<string>; // Height: 'auto', 'full', 'screen', etc.
@@ -828,6 +864,39 @@ export interface ComponentFormData {
  */
 export type WidgetFormData = ComponentFormData;
 
+// Page properties for page-level styling (background, borders, positioning, etc.)
+export interface PageProperties {
+  backgroundColor?: string;
+  backgroundImage?: string;
+  minHeight?: string;
+  padding?: string;
+  // Granular padding (takes precedence over padding if set)
+  paddingTop?: number;
+  paddingRight?: number;
+  paddingBottom?: number;
+  paddingLeft?: number;
+  // Size properties
+  width?: string;
+  maxWidth?: string;
+  // Border properties
+  borderColor?: string;
+  borderWidth?: string;
+  borderStyle?: string;
+  borderRadius?: string;
+  // Effects
+  boxShadow?: string;
+  opacity?: number;
+  // Overflow
+  overflow?: 'visible' | 'hidden' | 'scroll' | 'auto';
+  // Positioning properties
+  positionType?: 'static' | 'relative' | 'absolute' | 'fixed' | 'sticky';
+  positionTop?: string;
+  positionRight?: string;
+  positionBottom?: string;
+  positionLeft?: string;
+  zIndex?: number;
+}
+
 // Page revision for history tracking (Git-like system)
 export interface PageRevision {
   id: string;
@@ -839,6 +908,7 @@ export interface PageRevision {
   status: PageStatus;
   color_theme?: string;
   widgets_snapshot: string; // JSON string of PageComponent[] - DB column name preserved
+  page_properties?: string; // JSON string of PageProperties - page-level styling
   created_by?: string;
   created_at: number;
   is_published: boolean;
@@ -853,8 +923,10 @@ export interface RevisionNode extends ParsedPageRevision {
 }
 
 // Parsed revision with components as objects (widgets_snapshot parsed to components)
-export interface ParsedPageRevision extends Omit<PageRevision, 'widgets_snapshot'> {
+export interface ParsedPageRevision
+  extends Omit<PageRevision, 'widgets_snapshot' | 'page_properties'> {
   components: PageComponent[];
+  pageProperties?: PageProperties;
 }
 
 // Form data for creating revisions
@@ -864,5 +936,7 @@ export interface CreateRevisionData {
   status: PageStatus;
   colorTheme?: string;
   components: PageComponent[];
+  pageProperties?: PageProperties;
   notes?: string;
+  parent_revision_id?: string | null;
 }

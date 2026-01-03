@@ -33,6 +33,7 @@
   // Component imports
   import TextComponent from '$lib/components/builtin/Text.svelte';
   import ImageComponent from '$lib/components/builtin/Image.svelte';
+  import IconComponent from '$lib/components/builtin/Icon.svelte';
   import SingleProductComponent from '$lib/components/builtin/SingleProduct.svelte';
   import ProductListComponent from '$lib/components/builtin/ProductList.svelte';
   import HeroComponent from '$lib/components/builtin/Hero.svelte';
@@ -48,6 +49,17 @@
   import Footer from '$lib/components/builtin/Footer.svelte';
   import DropdownComponent from '$lib/components/builtin/Dropdown.svelte';
   import ThemeToggleComponent from '$lib/components/builtin/ThemeToggle.svelte';
+  import {
+    resolveThemeColor,
+    getThemeColors,
+    generateThemeStyles
+  } from '$lib/utils/editor/colorThemes';
+  import type {
+    ShadowConfig,
+    TransformConfig,
+    FilterConfig,
+    ComponentConfig
+  } from '$lib/types/pages';
 
   // Props
   export let type: string;
@@ -121,6 +133,25 @@
     return value as T;
   }
 
+  // Helper to format grid template columns/rows
+  function formatGridTemplate(
+    value: string | number | undefined | null,
+    defaultValue: string
+  ): string {
+    if (!value) return defaultValue;
+
+    // Convert to string if it's a number
+    const stringValue = String(value);
+
+    // If it's a simple number (like "3"), convert to repeat syntax
+    if (/^\d+$/.test(stringValue)) {
+      return `repeat(${stringValue}, 1fr)`;
+    }
+
+    // If it already contains CSS units or keywords, use as-is
+    return stringValue;
+  }
+
   // Container styling
   $: containerPadding = config.containerPadding || {
     desktop: { top: 0, right: 0, bottom: 0, left: 0 }
@@ -128,15 +159,59 @@
   $: containerMargin = config.containerMargin || {
     desktop: { top: 0, right: 0, bottom: 0, left: 0 }
   };
-  $: containerBackground = config.containerBackground || 'transparent';
+  $: rawContainerBackground = config.containerBackground || 'transparent';
+  $: containerBackground = resolveThemeColor(
+    rawContainerBackground,
+    colorTheme,
+    'transparent',
+    true
+  );
   $: containerBorderRadius = config.containerBorderRadius || 0;
+  $: containerBorderWidth = getResponsiveValue(config.containerBorderWidth, 0);
+  $: containerBorderStyle = config.containerBorderStyle || 'solid';
+  $: containerBorderColor = config.containerBorderColor
+    ? resolveThemeColor(config.containerBorderColor, colorTheme, 'var(--color-border)', true)
+    : 'transparent';
+  // Simple border style - always render, 0 width means no visible border
+  $: borderStyles = `border: ${containerBorderWidth}px ${containerBorderStyle} ${containerBorderColor};`;
   $: containerMaxWidth = config.containerMaxWidth || '100%';
+  $: containerMinHeight = getResponsiveValue(config.containerMinHeight, 'auto');
+  $: containerWidth = getResponsiveValue(config.containerWidth, '100%');
   $: containerGap = getResponsiveValue(config.containerGap, 16);
   $: containerDisplay = getResponsiveValue(config.containerDisplay, 'flex');
   $: containerFlexDirection = getResponsiveValue(config.containerFlexDirection, 'row');
   $: containerJustifyContent = config.containerJustifyContent || 'flex-start';
   $: containerAlignItems = config.containerAlignItems || 'stretch';
   $: containerWrap = config.containerWrap || 'nowrap';
+  // Grid-specific properties
+  $: containerGridCols = getResponsiveValue(config.containerGridCols, 3);
+  $: containerGridRows = getResponsiveValue(config.containerGridRows, undefined);
+  $: containerGridAutoFlow = getResponsiveValue(config.containerGridAutoFlow, undefined);
+  $: containerPlaceItems = config.containerPlaceItems;
+  $: containerPlaceContent = config.containerPlaceContent;
+
+  // Build grid-specific styles
+  $: gridStyles =
+    containerDisplay === 'grid'
+      ? `
+    grid-template-columns: ${formatGridTemplate(containerGridCols, 'repeat(3, 1fr)')};
+    ${containerGridRows ? `grid-template-rows: ${formatGridTemplate(containerGridRows, 'auto')};` : ''}
+    ${containerGridAutoFlow ? `grid-auto-flow: ${containerGridAutoFlow};` : ''}
+    ${containerPlaceItems ? `place-items: ${containerPlaceItems};` : ''}
+    ${containerPlaceContent ? `place-content: ${containerPlaceContent};` : ''}
+  `
+      : '';
+
+  // Build flex-specific styles
+  $: flexStyles =
+    containerDisplay === 'flex'
+      ? `
+    flex-direction: ${containerFlexDirection};
+    justify-content: ${containerJustifyContent};
+    align-items: ${containerAlignItems};
+    flex-wrap: ${containerWrap};
+  `
+      : '';
 
   $: paddingDesktop = containerPadding.desktop || { top: 0, right: 0, bottom: 0, left: 0 };
   $: marginDesktop = containerMargin.desktop || { top: 0, right: 0, bottom: 0, left: 0 };
@@ -170,68 +245,214 @@
   // Check if we need a position wrapper
   $: needsPositionWrapper = positionType && positionType !== 'static';
 
-  // Check if this is a container-type component
-  $: isContainer = type === 'container' || type === 'row' || type === 'flex';
+  // Advanced styling properties
+  // Box Shadow
+  function buildBoxShadow(shadow: ShadowConfig | ShadowConfig[] | undefined): string {
+    if (!shadow) return '';
+    const shadows = Array.isArray(shadow) ? shadow : [shadow];
+    const shadowStrings = shadows
+      .map((s) => {
+        const inset = s.inset ? 'inset ' : '';
+        const x = s.x ?? 0;
+        const y = s.y ?? 0;
+        const blur = s.blur ?? 0;
+        const spread = s.spread ?? 0;
+        const color = s.color
+          ? resolveThemeColor(s.color, colorTheme, 'rgba(0,0,0,0.1)', true)
+          : 'rgba(0,0,0,0.1)';
+        return `${inset}${x}px ${y}px ${blur}px ${spread}px ${color}`;
+      })
+      .filter(Boolean);
+    return shadowStrings.length > 0 ? `box-shadow: ${shadowStrings.join(', ')};` : '';
+  }
+
+  // Transform
+  function buildTransform(transform: TransformConfig | undefined): string {
+    if (!transform) return '';
+    const transforms: string[] = [];
+    if (transform.translateX) transforms.push(`translateX(${transform.translateX})`);
+    if (transform.translateY) transforms.push(`translateY(${transform.translateY})`);
+    if (transform.translateZ) transforms.push(`translateZ(${transform.translateZ})`);
+    if (transform.rotate !== undefined) transforms.push(`rotate(${transform.rotate}deg)`);
+    if (transform.rotateX !== undefined) transforms.push(`rotateX(${transform.rotateX}deg)`);
+    if (transform.rotateY !== undefined) transforms.push(`rotateY(${transform.rotateY}deg)`);
+    if (transform.rotateZ !== undefined) transforms.push(`rotateZ(${transform.rotateZ}deg)`);
+    if (transform.scale !== undefined) transforms.push(`scale(${transform.scale})`);
+    if (transform.scaleX !== undefined) transforms.push(`scaleX(${transform.scaleX})`);
+    if (transform.scaleY !== undefined) transforms.push(`scaleY(${transform.scaleY})`);
+    if (transform.skewX !== undefined) transforms.push(`skewX(${transform.skewX}deg)`);
+    if (transform.skewY !== undefined) transforms.push(`skewY(${transform.skewY}deg)`);
+    return transforms.length > 0 ? `transform: ${transforms.join(' ')};` : '';
+  }
+
+  // Filter
+  function buildFilter(filter: FilterConfig | undefined): string {
+    if (!filter) return '';
+    const filters: string[] = [];
+    if (filter.blur !== undefined) filters.push(`blur(${filter.blur}px)`);
+    if (filter.brightness !== undefined) filters.push(`brightness(${filter.brightness}%)`);
+    if (filter.contrast !== undefined) filters.push(`contrast(${filter.contrast}%)`);
+    if (filter.grayscale !== undefined) filters.push(`grayscale(${filter.grayscale}%)`);
+    if (filter.hueRotate !== undefined) filters.push(`hue-rotate(${filter.hueRotate}deg)`);
+    if (filter.invert !== undefined) filters.push(`invert(${filter.invert}%)`);
+    if (filter.opacity !== undefined) filters.push(`opacity(${filter.opacity}%)`);
+    if (filter.saturate !== undefined) filters.push(`saturate(${filter.saturate}%)`);
+    if (filter.sepia !== undefined) filters.push(`sepia(${filter.sepia}%)`);
+    return filters.length > 0 ? `filter: ${filters.join(' ')};` : '';
+  }
+
+  // Child layout styles - for components inside containers
+  function getChildLayoutStyles(
+    childConfig: ComponentConfig,
+    parentDisplay: string = 'flex',
+    parentFlexDirection: string = 'row',
+    _parentAlignItems: string = 'stretch'
+  ): string {
+    let styles = '';
+
+    // For flex-row containers, let children size to their content
+    // For grid or flex-column containers, children should take full width
+    const isFlexRow = parentDisplay === 'flex' && parentFlexDirection === 'row';
+    if (!isFlexRow) {
+      styles += 'width: 100%;';
+    }
+
+    // Flex properties
+    const flexGrow = getResponsiveValue(childConfig.layoutFlexGrow, undefined);
+    const flexShrink = getResponsiveValue(childConfig.layoutFlexShrink, undefined);
+    const flexBasis = getResponsiveValue(childConfig.layoutFlexBasis, undefined);
+    const alignSelf = getResponsiveValue(childConfig.layoutAlignSelf, undefined);
+
+    if (flexGrow !== undefined) styles += `flex-grow: ${flexGrow};`;
+    if (flexShrink !== undefined) styles += `flex-shrink: ${flexShrink};`;
+    if (flexBasis !== undefined && flexBasis !== 'auto') styles += `flex-basis: ${flexBasis};`;
+    if (alignSelf !== undefined && alignSelf !== 'auto') styles += `align-self: ${alignSelf};`;
+
+    // Grid properties
+    const gridColumn = getResponsiveValue(childConfig.layoutGridColumn, undefined);
+    const gridRow = getResponsiveValue(childConfig.layoutGridRow, undefined);
+    const placeSelf = getResponsiveValue(childConfig.layoutPlaceSelf, undefined);
+    const justifySelf = getResponsiveValue(childConfig.layoutJustifySelf, undefined);
+
+    if (gridColumn !== undefined && gridColumn !== 'auto') styles += `grid-column: ${gridColumn};`;
+    if (gridRow !== undefined && gridRow !== 'auto') styles += `grid-row: ${gridRow};`;
+    if (placeSelf !== undefined && placeSelf !== 'auto') styles += `place-self: ${placeSelf};`;
+    if (justifySelf !== undefined && justifySelf !== 'stretch')
+      styles += `justify-self: ${justifySelf};`;
+
+    // Order (works in both flex and grid)
+    const order = getResponsiveValue(childConfig.layoutOrder, undefined);
+    if (order !== undefined && order !== 0) styles += `order: ${order};`;
+
+    // Size constraints
+    const width = getResponsiveValue(childConfig.layoutWidth, undefined);
+    const height = getResponsiveValue(childConfig.layoutHeight, undefined);
+    const minWidth = getResponsiveValue(childConfig.layoutMinWidth, undefined);
+    const maxWidth = getResponsiveValue(childConfig.layoutMaxWidth, undefined);
+    const minHeight = getResponsiveValue(childConfig.layoutMinHeight, undefined);
+    const maxHeight = getResponsiveValue(childConfig.layoutMaxHeight, undefined);
+
+    if (width !== undefined && width !== 'auto') styles += `width: ${width};`;
+    if (height !== undefined && height !== 'auto') styles += `height: ${height};`;
+    if (minWidth !== undefined && minWidth !== 'auto') styles += `min-width: ${minWidth};`;
+    if (maxWidth !== undefined && maxWidth !== 'none') styles += `max-width: ${maxWidth};`;
+    if (minHeight !== undefined && minHeight !== 'auto') styles += `min-height: ${minHeight};`;
+    if (maxHeight !== undefined && maxHeight !== 'none') styles += `max-height: ${maxHeight};`;
+
+    return styles;
+  }
+
+  // Build advanced styles string
+  $: boxShadowStyle = buildBoxShadow(getResponsiveValue(config.boxShadow, undefined));
+  $: transformStyle = buildTransform(getResponsiveValue(config.transform, undefined));
+  $: filterStyle = buildFilter(getResponsiveValue(config.filter, undefined));
+  $: backdropFilterStyle = (() => {
+    const backdrop = getResponsiveValue(config.backdropFilter, undefined);
+    if (!backdrop) return '';
+    const filter = buildFilter(backdrop);
+    return filter ? filter.replace('filter:', 'backdrop-filter:') : '';
+  })();
+  $: opacityStyle =
+    config.opacity !== undefined ? `opacity: ${getResponsiveValue(config.opacity, 1)};` : '';
+  $: aspectRatioStyle = config.aspectRatio
+    ? `aspect-ratio: ${getResponsiveValue(config.aspectRatio, 'auto')};`
+    : '';
+  $: mixBlendModeStyle = config.mixBlendMode
+    ? `mix-blend-mode: ${getResponsiveValue(config.mixBlendMode, 'normal')};`
+    : '';
+
+  // Component-level background color (main property in builder's Style tab)
+  // Falls back to containerBackground for containers, or transparent for other components
+  $: rawBackgroundColor = config.backgroundColor || config.containerBackground || '';
+  $: componentBackgroundColor = rawBackgroundColor
+    ? resolveThemeColor(rawBackgroundColor, colorTheme, 'transparent', true)
+    : '';
+  $: backgroundColorStyle = componentBackgroundColor
+    ? `background-color: ${componentBackgroundColor};`
+    : '';
+
+  // Background image support
+  $: backgroundImageStyle = config.backgroundImage
+    ? `background-image: url('${config.backgroundImage}'); background-size: cover; background-position: center;`
+    : '';
+
+  // Combine all advanced styles (now includes background)
+  $: advancedStyles =
+    `${boxShadowStyle} ${transformStyle} ${filterStyle} ${backdropFilterStyle} ${opacityStyle} ${aspectRatioStyle} ${mixBlendModeStyle} ${backgroundColorStyle} ${backgroundImageStyle}`.trim();
+
+  // Check if this is a container-type component (composite components also render children)
+  $: isContainer =
+    type === 'container' || type === 'row' || type === 'flex' || type === 'composite';
 
   // Check if this component type uses container-based rendering with children
-  $: usesContainerChildren = (type === 'navbar' || type === 'footer') && children.length > 0;
+  $: usesContainerChildren =
+    (type === 'navbar' ||
+      type === 'footer' ||
+      type === 'hero' ||
+      type === 'features' ||
+      type === 'pricing') &&
+    children.length > 0;
+
+  // Generate inline theme styles for CSS variables (same as admin builder)
+  $: themeColors = getThemeColors(colorTheme);
+  $: themeStyles = generateThemeStyles(themeColors);
 </script>
 
 {#if isVisible}
   {#if usesContainerChildren}
-    <!-- Container-based navbar/footer with custom children -->
+    <!-- Container-based navbar/footer/hero/features with custom children -->
     <div
       class="frontend-container {type}-container"
+      id={config.anchorName || undefined}
       style="
+        {themeStyles}
         {positionStyle}
+        background: {containerBackground};
+        {advancedStyles}
         display: {containerDisplay};
-        flex-direction: {containerFlexDirection};
-        justify-content: {containerJustifyContent};
-        align-items: {containerAlignItems};
-        flex-wrap: {containerWrap};
+        {flexStyles}
+        {gridStyles}
         gap: {containerGap}px;
         max-width: {containerMaxWidth};
-        background: {containerBackground};
+        min-height: {containerMinHeight};
+        width: {containerWidth};
         border-radius: {containerBorderRadius}px;
+        {borderStyles}
         padding: {paddingDesktop.top}px {paddingDesktop.right}px {paddingDesktop.bottom}px {paddingDesktop.left}px;
         margin: {marginDesktop.top}px auto {marginDesktop.bottom}px;
-        width: 100%;
         box-sizing: border-box;
       "
     >
       {#each children as child, i (child.id || i)}
-        <svelte:self
-          type={child.type}
-          config={child.config || child}
-          {colorTheme}
-          {siteContext}
-          {user}
-        />
-      {/each}
-    </div>
-  {:else if isContainer}
-    <!-- Generic container with children -->
-    <div
-      class="frontend-container"
-      style="
-        {positionStyle}
-        display: {containerDisplay};
-        flex-direction: {containerFlexDirection};
-        justify-content: {containerJustifyContent};
-        align-items: {containerAlignItems};
-        flex-wrap: {containerWrap};
-        gap: {containerGap}px;
-        max-width: {containerMaxWidth};
-        background: {containerBackground};
-        border-radius: {containerBorderRadius}px;
-        padding: {paddingDesktop.top}px {paddingDesktop.right}px {paddingDesktop.bottom}px {paddingDesktop.left}px;
-        margin: {marginDesktop.top}px auto {marginDesktop.bottom}px;
-        width: 100%;
-        box-sizing: border-box;
-      "
-    >
-      {#if children.length > 0}
-        {#each children as child, i (child.id || i)}
+        <div
+          class="child-wrapper"
+          style={getChildLayoutStyles(
+            child.config || {},
+            containerDisplay,
+            containerFlexDirection,
+            containerAlignItems
+          )}
+        >
           <svelte:self
             type={child.type}
             config={child.config || child}
@@ -239,13 +460,63 @@
             {siteContext}
             {user}
           />
+        </div>
+      {/each}
+    </div>
+  {:else if isContainer}
+    <!-- Generic container with children -->
+    <div
+      class="frontend-container"
+      id={config.anchorName || undefined}
+      style="
+        {themeStyles}
+        {positionStyle}
+        background: {containerBackground};
+        {advancedStyles}
+        display: {containerDisplay};
+        {flexStyles}
+        {gridStyles}
+        gap: {containerGap}px;
+        max-width: {containerMaxWidth};
+        min-height: {containerMinHeight};
+        width: {containerWidth};
+        border-radius: {containerBorderRadius}px;
+        {borderStyles}
+        padding: {paddingDesktop.top}px {paddingDesktop.right}px {paddingDesktop.bottom}px {paddingDesktop.left}px;
+        margin: {marginDesktop.top}px auto {marginDesktop.bottom}px;
+        box-sizing: border-box;
+      "
+    >
+      {#if children.length > 0}
+        {#each children as child, i (child.id || i)}
+          <div
+            class="child-wrapper"
+            style={getChildLayoutStyles(
+              child.config || {},
+              containerDisplay,
+              containerFlexDirection,
+              containerAlignItems
+            )}
+          >
+            <svelte:self
+              type={child.type}
+              config={child.config || child}
+              {colorTheme}
+              {siteContext}
+              {user}
+            />
+          </div>
         {/each}
       {/if}
     </div>
   {:else if type === 'navbar' && !usesContainerChildren}
     <!-- Built-in navbar (no custom children) -->
     {#if needsPositionWrapper}
-      <div class="position-wrapper" style={positionStyle}>
+      <div class="position-wrapper" style="{positionStyle} {advancedStyles}">
+        <NavBar {config} {onLogout} {siteContext} user={user ?? undefined} />
+      </div>
+    {:else if advancedStyles}
+      <div class="advanced-wrapper" style={advancedStyles}>
         <NavBar {config} {onLogout} {siteContext} user={user ?? undefined} />
       </div>
     {:else}
@@ -254,7 +525,11 @@
   {:else if type === 'footer' && !usesContainerChildren}
     <!-- Built-in footer (no custom children) -->
     {#if needsPositionWrapper}
-      <div class="position-wrapper" style={positionStyle}>
+      <div class="position-wrapper" style="{positionStyle} {advancedStyles}">
+        <Footer {config} {siteContext} user={user ?? undefined} />
+      </div>
+    {:else if advancedStyles}
+      <div class="advanced-wrapper" style={advancedStyles}>
         <Footer {config} {siteContext} user={user ?? undefined} />
       </div>
     {:else}
@@ -262,23 +537,47 @@
     {/if}
   {:else if type === 'text'}
     {#if needsPositionWrapper}
-      <div class="position-wrapper" style={positionStyle}>
-        <TextComponent {config} {siteContext} {user} />
+      <div class="position-wrapper" style="{positionStyle} {advancedStyles}">
+        <TextComponent {config} {siteContext} {user} {colorTheme} />
+      </div>
+    {:else if advancedStyles}
+      <div class="advanced-wrapper" style={advancedStyles}>
+        <TextComponent {config} {siteContext} {user} {colorTheme} />
       </div>
     {:else}
-      <TextComponent {config} {siteContext} {user} />
+      <TextComponent {config} {siteContext} {user} {colorTheme} />
     {/if}
   {:else if type === 'image'}
     {#if needsPositionWrapper}
-      <div class="position-wrapper" style={positionStyle}>
+      <div class="position-wrapper" style="{positionStyle} {advancedStyles}">
+        <ImageComponent {config} />
+      </div>
+    {:else if advancedStyles}
+      <div class="advanced-wrapper" style={advancedStyles}>
         <ImageComponent {config} />
       </div>
     {:else}
       <ImageComponent {config} />
     {/if}
+  {:else if type === 'icon'}
+    {#if needsPositionWrapper}
+      <div class="position-wrapper" style="{positionStyle} {advancedStyles}">
+        <IconComponent {config} {colorTheme} />
+      </div>
+    {:else if advancedStyles}
+      <div class="advanced-wrapper" style={advancedStyles}>
+        <IconComponent {config} {colorTheme} />
+      </div>
+    {:else}
+      <IconComponent {config} {colorTheme} />
+    {/if}
   {:else if type === 'single_product'}
     {#if needsPositionWrapper}
-      <div class="position-wrapper" style={positionStyle}>
+      <div class="position-wrapper" style="{positionStyle} {advancedStyles}">
+        <SingleProductComponent {config} />
+      </div>
+    {:else if advancedStyles}
+      <div class="advanced-wrapper" style={advancedStyles}>
         <SingleProductComponent {config} />
       </div>
     {:else}
@@ -286,31 +585,49 @@
     {/if}
   {:else if type === 'product_list'}
     {#if needsPositionWrapper}
-      <div class="position-wrapper" style={positionStyle}>
+      <div class="position-wrapper" style="{positionStyle} {advancedStyles}">
+        <ProductListComponent {config} />
+      </div>
+    {:else if advancedStyles}
+      <div class="advanced-wrapper" style={advancedStyles}>
         <ProductListComponent {config} />
       </div>
     {:else}
       <ProductListComponent {config} />
     {/if}
-  {:else if type === 'hero'}
-    {#if needsPositionWrapper}
-      <div class="position-wrapper" style={positionStyle}>
-        <HeroComponent {config} {colorTheme} {siteContext} {user} />
-      </div>
-    {:else}
+  {:else if type === 'hero' && !usesContainerChildren}
+    <!-- Legacy hero format (no container children) - wrap with container styles for border support -->
+    <div
+      class="frontend-container hero-container"
+      style="
+        {positionStyle}
+        {advancedStyles}
+        {borderStyles}
+        border-radius: {containerBorderRadius}px;
+        box-sizing: border-box;
+      "
+    >
       <HeroComponent {config} {colorTheme} {siteContext} {user} />
-    {/if}
+    </div>
   {:else if type === 'button'}
     {#if needsPositionWrapper}
-      <div class="position-wrapper" style={positionStyle}>
-        <ButtonComponent {config} {siteContext} {user} />
+      <div class="position-wrapper" style="{positionStyle} {advancedStyles}">
+        <ButtonComponent {config} {siteContext} {user} {colorTheme} />
+      </div>
+    {:else if advancedStyles}
+      <div class="advanced-wrapper" style={advancedStyles}>
+        <ButtonComponent {config} {siteContext} {user} {colorTheme} />
       </div>
     {:else}
-      <ButtonComponent {config} {siteContext} {user} />
+      <ButtonComponent {config} {siteContext} {user} {colorTheme} />
     {/if}
   {:else if type === 'spacer'}
     {#if needsPositionWrapper}
-      <div class="position-wrapper" style={positionStyle}>
+      <div class="position-wrapper" style="{positionStyle} {advancedStyles}">
+        <SpacerComponent {config} />
+      </div>
+    {:else if advancedStyles}
+      <div class="advanced-wrapper" style={advancedStyles}>
         <SpacerComponent {config} />
       </div>
     {:else}
@@ -318,7 +635,11 @@
     {/if}
   {:else if type === 'divider'}
     {#if needsPositionWrapper}
-      <div class="position-wrapper" style={positionStyle}>
+      <div class="position-wrapper" style="{positionStyle} {advancedStyles}">
+        <DividerComponent {config} {colorTheme} />
+      </div>
+    {:else if advancedStyles}
+      <div class="advanced-wrapper" style={advancedStyles}>
         <DividerComponent {config} {colorTheme} />
       </div>
     {:else}
@@ -326,7 +647,11 @@
     {/if}
   {:else if type === 'columns'}
     {#if needsPositionWrapper}
-      <div class="position-wrapper" style={positionStyle}>
+      <div class="position-wrapper" style="{positionStyle} {advancedStyles}">
+        <ColumnsComponent {config} />
+      </div>
+    {:else if advancedStyles}
+      <div class="advanced-wrapper" style={advancedStyles}>
         <ColumnsComponent {config} />
       </div>
     {:else}
@@ -334,31 +659,50 @@
     {/if}
   {:else if type === 'heading'}
     {#if needsPositionWrapper}
-      <div class="position-wrapper" style={positionStyle}>
+      <div class="position-wrapper" style="{positionStyle} {advancedStyles}">
+        <HeadingComponent {config} {colorTheme} {siteContext} {user} />
+      </div>
+    {:else if advancedStyles}
+      <div class="advanced-wrapper" style={advancedStyles}>
         <HeadingComponent {config} {colorTheme} {siteContext} {user} />
       </div>
     {:else}
       <HeadingComponent {config} {colorTheme} {siteContext} {user} />
     {/if}
-  {:else if type === 'features'}
-    {#if needsPositionWrapper}
-      <div class="position-wrapper" style={positionStyle}>
-        <FeaturesComponent {config} {colorTheme} {siteContext} {user} />
-      </div>
-    {:else}
+  {:else if type === 'features' && !usesContainerChildren}
+    <!-- Legacy features format (config.features array) - wrap with container styles for border support -->
+    <div
+      class="frontend-container features-container"
+      style="
+        {positionStyle}
+        {advancedStyles}
+        {borderStyles}
+        border-radius: {containerBorderRadius}px;
+        box-sizing: border-box;
+      "
+    >
       <FeaturesComponent {config} {colorTheme} {siteContext} {user} />
-    {/if}
-  {:else if type === 'pricing'}
+    </div>
+  {:else if type === 'pricing' && !usesContainerChildren}
+    <!-- Legacy pricing without container children -->
     {#if needsPositionWrapper}
-      <div class="position-wrapper" style={positionStyle}>
-        <PricingComponent {config} />
+      <div class="position-wrapper" style="{positionStyle} {advancedStyles}">
+        <PricingComponent {config} {colorTheme} {siteContext} {user} />
+      </div>
+    {:else if advancedStyles}
+      <div class="advanced-wrapper" style={advancedStyles}>
+        <PricingComponent {config} {colorTheme} {siteContext} {user} />
       </div>
     {:else}
-      <PricingComponent {config} />
+      <PricingComponent {config} {colorTheme} {siteContext} {user} />
     {/if}
   {:else if type === 'cta'}
     {#if needsPositionWrapper}
-      <div class="position-wrapper" style={positionStyle}>
+      <div class="position-wrapper" style="{positionStyle} {advancedStyles}">
+        <CTAComponent {config} {colorTheme} {siteContext} {user} />
+      </div>
+    {:else if advancedStyles}
+      <div class="advanced-wrapper" style={advancedStyles}>
         <CTAComponent {config} {colorTheme} {siteContext} {user} />
       </div>
     {:else}
@@ -366,7 +710,11 @@
     {/if}
   {:else if type === 'dropdown'}
     {#if needsPositionWrapper}
-      <div class="position-wrapper" style={positionStyle}>
+      <div class="position-wrapper" style="{positionStyle} {advancedStyles}">
+        <DropdownComponent {config} {siteContext} {user} />
+      </div>
+    {:else if advancedStyles}
+      <div class="advanced-wrapper" style={advancedStyles}>
         <DropdownComponent {config} {siteContext} {user} />
       </div>
     {:else}
@@ -374,7 +722,11 @@
     {/if}
   {:else if type === 'theme_toggle'}
     {#if needsPositionWrapper}
-      <div class="position-wrapper" style={positionStyle}>
+      <div class="position-wrapper" style="{positionStyle} {advancedStyles}">
+        <ThemeToggleComponent {config} />
+      </div>
+    {:else if advancedStyles}
+      <div class="advanced-wrapper" style={advancedStyles}>
         <ThemeToggleComponent {config} />
       </div>
     {:else}
@@ -396,6 +748,15 @@
 
   .position-wrapper {
     width: 100%;
+    box-sizing: border-box;
+  }
+
+  .advanced-wrapper {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .child-wrapper {
     box-sizing: border-box;
   }
 

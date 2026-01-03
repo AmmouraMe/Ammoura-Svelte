@@ -2,7 +2,9 @@
   import { onMount, onDestroy } from 'svelte';
 
   import BuildInfo from '../lib/components/BuildInfo.svelte';
+  import ConfirmModal from '../lib/components/ConfirmModal.svelte';
   import FrontendComponentRenderer from '../lib/components/FrontendComponentRenderer.svelte';
+  import PromptModal from '../lib/components/PromptModal.svelte';
   import ThemePreviewIndicator from '../lib/components/ThemePreviewIndicator.svelte';
   import ToastContainer from '../lib/components/ToastContainer.svelte';
   import { authStore, authState } from '../lib/stores/auth';
@@ -17,6 +19,25 @@
   export let data: LayoutData;
 
   $: isAdminPage = browser && $page.url.pathname.startsWith('/admin');
+
+  // Determine the active color theme based on the current theme mode (light/dark)
+  // This is used to pass to navbar/footer renderers for proper theme color resolution
+  // Uses themeStore to be reactive to theme changes
+  function getSystemTheme(): 'light' | 'dark' {
+    if (!browser) return 'light';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  // Derive the applied theme mode from the theme preference
+  // When preference is 'system', use the OS preference
+  $: appliedThemeMode =
+    $themeStore === 'system' ? getSystemTheme() : ($themeStore as 'light' | 'dark');
+
+  // The active color theme ID that matches the current light/dark mode
+  $: activeColorTheme =
+    appliedThemeMode === 'dark'
+      ? data.systemDarkThemeId || 'midnight'
+      : data.systemLightThemeId || 'vibrant';
   $: canAccessAdmin =
     $authState.isAuthenticated &&
     ($authState.user?.role === 'admin' || $authState.user?.role === 'platform_engineer');
@@ -39,6 +60,7 @@
   $: footerConfig = data.layoutData?.footer?.config || null;
 
   // Generate CSS custom properties from theme colors
+  // Note: We generate both --color-* (for app compatibility) and --theme-* (for component theme:* references)
   $: lightThemeStyles = data.themeColorsLight
     ? `
     --color-primary: ${data.themeColorsLight.primary};
@@ -53,6 +75,14 @@
     --color-text-secondary: ${data.themeColorsLight.textSecondary};
     --color-border-primary: ${data.themeColorsLight.borderPrimary};
     --color-border-secondary: ${data.themeColorsLight.borderSecondary};
+    --theme-primary: ${data.themeColorsLight.primary};
+    --theme-secondary: ${data.themeColorsLight.secondary};
+    --theme-accent: ${data.themeColorsLight.primaryLight};
+    --theme-background: ${data.themeColorsLight.bgPrimary};
+    --theme-surface: ${data.themeColorsLight.bgSecondary};
+    --theme-text: ${data.themeColorsLight.textPrimary};
+    --theme-text-secondary: ${data.themeColorsLight.textSecondary};
+    --theme-border: ${data.themeColorsLight.borderPrimary};
     `
     : '';
 
@@ -70,6 +100,14 @@
     --color-text-secondary: ${data.themeColorsDark.textSecondary};
     --color-border-primary: ${data.themeColorsDark.borderPrimary};
     --color-border-secondary: ${data.themeColorsDark.borderSecondary};
+    --theme-primary: ${data.themeColorsDark.primary};
+    --theme-secondary: ${data.themeColorsDark.secondary};
+    --theme-accent: ${data.themeColorsDark.primaryLight};
+    --theme-background: ${data.themeColorsDark.bgPrimary};
+    --theme-surface: ${data.themeColorsDark.bgSecondary};
+    --theme-text: ${data.themeColorsDark.textPrimary};
+    --theme-text-secondary: ${data.themeColorsDark.textSecondary};
+    --theme-border: ${data.themeColorsDark.borderPrimary};
     `
     : '';
 
@@ -131,6 +169,7 @@
       <FrontendComponentRenderer
         type="navbar"
         config={navbarConfig}
+        colorTheme={activeColorTheme}
         position={data.layoutData?.navbar?.position}
         onLogout={handleLogout}
         siteContext={data.siteContext}
@@ -146,6 +185,7 @@
       <FrontendComponentRenderer
         type="footer"
         config={footerConfig}
+        colorTheme={activeColorTheme}
         position={data.layoutData?.footer?.position}
         siteContext={data.siteContext}
         user={data.currentUser}
@@ -155,6 +195,8 @@
 </main>
 
 <ToastContainer />
+<PromptModal />
+<ConfirmModal />
 <ThemePreviewIndicator />
 <BuildInfo userRole={$authState.user?.role} />
 

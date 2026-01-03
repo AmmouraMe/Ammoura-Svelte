@@ -3,7 +3,7 @@
   import { resolveThemeColor } from '$lib/utils/editor/colorThemes';
 
   export let config: WidgetConfig;
-  export let colorTheme: ColorTheme = 'default-light';
+  export let colorTheme: ColorTheme = 'vibrant';
 
   $: thickness = config.thickness || 1;
   $: dividerStyle = config.dividerStyle || 'solid';

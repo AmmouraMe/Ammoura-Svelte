@@ -15,7 +15,17 @@
   } from '$lib/utils/editor/colorThemes';
   import { getDefaultConfig } from '$lib/utils/editor/componentDefaults';
   import ContainerDropZone from '$lib/components/builder/ContainerDropZone.svelte';
-  import IconDisplay from './IconDisplay.svelte';
+  // Built-in components - using actual components for WYSIWYG fidelity
+  import HeroComponent from '$lib/components/builtin/Hero.svelte';
+  import NavBarComponent from '$lib/components/builtin/NavBar.svelte';
+  import FooterComponent from '$lib/components/builtin/Footer.svelte';
+  import TextComponent from '$lib/components/builtin/Text.svelte';
+  import HeadingComponent from '$lib/components/builtin/Heading.svelte';
+  import ButtonComponent from '$lib/components/builtin/Button.svelte';
+  import IconComponent from '$lib/components/builtin/Icon.svelte';
+  import SpacerComponent from '$lib/components/builtin/Spacer.svelte';
+  import DividerComponent from '$lib/components/builtin/Divider.svelte';
+  import PricingComponent from '$lib/components/builtin/Pricing.svelte';
 
   export let component: PageComponent;
   export let currentBreakpoint: Breakpoint;
@@ -34,68 +44,57 @@
 
   $: themeColors = applyThemeColors(colorTheme, component.config.themeOverrides);
 
-  // Local state for contenteditable fields
-  let titleElement: HTMLElement | undefined;
-  let subtitleElement: HTMLElement | undefined;
-
-  // Track if we're currently editing to prevent external updates during typing
-  let isEditingTitle = false;
-  let isEditingSubtitle = false;
-
   // Track if a drag is happening over the dropdown
   let isDropdownDragOver = false;
   let dropdownDragCounter = 0; // Counter to handle nested drag events
 
-  // Sync component config to contenteditable when NOT editing
-  // When not editing, show substituted (rendered) values
-  // When editing, show raw code (the original template)
-  $: if (titleElement && !isEditingTitle) {
-    const rawTitle = component.config.title || 'Hero Title';
-    titleElement.textContent = sub(rawTitle);
-  }
-  $: if (subtitleElement && !isEditingSubtitle) {
-    const rawSubtitle = component.config.subtitle || 'Click to add subtitle';
-    subtitleElement.textContent = sub(rawSubtitle);
-  }
+  // Track if dropdown is expanded (clicked open) in edit mode
+  // Defaults to closed for accurate frontend preview
+  let isDropdownExpanded = false;
 
-  // Handle focus - show raw code
-  function handleTitleFocus() {
-    isEditingTitle = true;
-    if (titleElement) {
-      // Show the raw template code when focused
-      titleElement.textContent = component.config.title || 'Hero Title';
+  // Toggle dropdown expanded state when clicking the trigger in edit mode
+  function toggleDropdownExpanded(): void {
+    if (isEditable) {
+      isDropdownExpanded = !isDropdownExpanded;
     }
   }
 
-  function handleSubtitleFocus() {
-    isEditingSubtitle = true;
-    if (subtitleElement) {
-      // Show the raw template code when focused
-      subtitleElement.textContent = component.config.subtitle || 'Click to add subtitle';
+  // Handle drag enter on dropdown container
+  function handleDropdownDragEnter(e: DragEvent): void {
+    e.preventDefault();
+    e.stopPropagation();
+    dropdownDragCounter++;
+    isDropdownDragOver = true;
+  }
+
+  // Handle drag over on dropdown container - keeps it open
+  function handleDropdownDragOver(e: DragEvent): void {
+    e.preventDefault();
+    if (!isDropdownDragOver) {
+      isDropdownDragOver = true;
     }
   }
 
-  // Handle blur - show rendered value
-  function handleTitleBlur() {
-    isEditingTitle = false;
-    // The reactive statement will update the content to show the substituted value
+  // Handle drag leave on dropdown container
+  function handleDropdownDragLeave(e: DragEvent): void {
+    // Only close if we're actually leaving the container, not moving between children
+    const relatedTarget = e.relatedTarget as Node | null;
+    const container = e.currentTarget as HTMLElement;
+    if (relatedTarget && container.contains(relatedTarget)) {
+      // Moving within the container, don't decrement
+      return;
+    }
+    dropdownDragCounter--;
+    if (dropdownDragCounter <= 0) {
+      dropdownDragCounter = 0;
+      isDropdownDragOver = false;
+    }
   }
 
-  function handleSubtitleBlur() {
-    isEditingSubtitle = false;
-    // The reactive statement will update the content to show the substituted value
-  }
-
-  function handleTitleInput() {
-    if (!onUpdate || !titleElement) return;
-    const newValue = titleElement.textContent || '';
-    onUpdate({ ...component.config, title: newValue });
-  }
-
-  function handleSubtitleInput() {
-    if (!onUpdate || !subtitleElement) return;
-    const newValue = subtitleElement.textContent || '';
-    onUpdate({ ...component.config, subtitle: newValue });
+  // Handle drag end/drop on dropdown container
+  function handleDropdownDragEnd(): void {
+    dropdownDragCounter = 0;
+    isDropdownDragOver = false;
   }
 
   function getResponsiveValue<T>(value: T | { mobile?: T; tablet?: T; desktop: T }): T {
@@ -305,6 +304,25 @@
     }
   }
 
+  // Handle deleting a child component from a container
+  function handleContainerDelete(event: CustomEvent<{ childId: string; index: number }>) {
+    const { index } = event.detail;
+
+    // Get the current children and remove the one at the specified index
+    const currentChildren = [...(component.config.children || [])];
+    currentChildren.splice(index, 1);
+
+    // Update positions for all remaining children
+    const childrenWithUpdatedPositions = currentChildren.map((child, idx) => ({
+      ...child,
+      position: idx
+    }));
+
+    if (onUpdate) {
+      onUpdate({ ...component.config, children: childrenWithUpdatedPositions });
+    }
+  }
+
   // Handle reordering components within a container
   function handleContainerReorder(
     event: CustomEvent<{ containerId: string; fromIndex: number; toIndex: number }>
@@ -497,10 +515,6 @@
   // Declare reactive variables
   let styleString: string;
   let positionStyleString: string;
-  let heroHeight: string;
-  let buttonFullWidth: boolean;
-  let spacerHeight: number;
-  let dividerSpacing: number;
   let _columnsLayout: number;
   let columnsGap: number;
   let columnsCount: number;
@@ -517,10 +531,6 @@
 
     styleString = getStyleString(component);
     positionStyleString = getPositionStyleString(component);
-    heroHeight = getResponsiveValue(component.config.heroHeight || { desktop: '500px' });
-    buttonFullWidth = getResponsiveValue(component.config.fullWidth || { desktop: false });
-    spacerHeight = getResponsiveValue(component.config.space || { desktop: 40 });
-    dividerSpacing = getResponsiveValue(component.config.spacing || { desktop: 20 });
     const _columnsLayout = getResponsiveValue(component.config.columns || { desktop: 2 });
     columnsGap = getResponsiveValue(component.config.gap || { desktop: 20 });
     columnsCount = getResponsiveValue(component.config.columnCount || { desktop: 2 });
@@ -542,41 +552,9 @@
   style="{positionStyleString} {styleString} {generateThemeStyles(themeColors)}"
 >
   {#if component.type === 'text'}
-    <div
-      class="text-widget"
-      style="text-align: {component.config.alignment || 'left'}; 
-             color: {component.config.textColor || 'inherit'};
-             font-size: {component.config.fontSize ? component.config.fontSize + 'px' : 'inherit'};
-             line-height: {component.config.lineHeight || 'inherit'};"
-    >
-      {#if component.config.html}
-        <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-        {@html sub(component.config.html)}
-      {:else}
-        <p>{sub(component.config.text || 'Enter your text here')}</p>
-      {/if}
-    </div>
+    <TextComponent config={component.config} {colorTheme} {siteContext} {user} />
   {:else if component.type === 'heading'}
-    {@const textColor = resolveThemeColor(
-      component.config.textColor,
-      colorTheme,
-      themeColors.text,
-      true
-    )}
-    {@const headingStyle = `color: ${textColor}; text-align: ${component.config.alignment || 'left'};`}
-    {#if component.config.level === 1}
-      <h1 style={headingStyle}>{sub(component.config.heading || 'Heading')}</h1>
-    {:else if component.config.level === 2}
-      <h2 style={headingStyle}>{sub(component.config.heading || 'Heading')}</h2>
-    {:else if component.config.level === 3}
-      <h3 style={headingStyle}>{sub(component.config.heading || 'Heading')}</h3>
-    {:else if component.config.level === 4}
-      <h4 style={headingStyle}>{sub(component.config.heading || 'Heading')}</h4>
-    {:else if component.config.level === 5}
-      <h5 style={headingStyle}>{sub(component.config.heading || 'Heading')}</h5>
-    {:else}
-      <h6 style={headingStyle}>{sub(component.config.heading || 'Heading')}</h6>
-    {/if}
+    <HeadingComponent config={component.config} {colorTheme} {siteContext} {user} {isEditable} />
   {:else if component.type === 'image'}
     <div class="image-widget">
       {#if component.config.src}
@@ -597,167 +575,41 @@
         </div>
       {/if}
     </div>
+  {:else if component.type === 'icon'}
+    <IconComponent config={component.config} {colorTheme} />
   {:else if component.type === 'hero'}
-    {@const bgColor = resolveThemeColor(
-      component.config.backgroundColor,
-      colorTheme,
-      themeColors.primary,
-      true
-    )}
-    {@const ctaBgColor = resolveThemeColor(
-      component.config.ctaBackgroundColor,
-      colorTheme,
-      '#ffffff',
-      true
-    )}
-    {@const ctaTxtColor = resolveThemeColor(
-      component.config.ctaTextColor,
-      colorTheme,
-      themeColors.primary,
-      true
-    )}
-    {@const secondaryCtaBgColor = resolveThemeColor(
-      component.config.secondaryCtaBackgroundColor,
-      colorTheme,
-      'transparent',
-      true
-    )}
-    {@const secondaryCtaTxtColor = resolveThemeColor(
-      component.config.secondaryCtaTextColor,
-      colorTheme,
-      '#ffffff',
-      true
-    )}
-    {@const secondaryCtaBorderColor = resolveThemeColor(
-      component.config.secondaryCtaBorderColor,
-      colorTheme,
-      '#ffffff',
-      true
-    )}
-    {@const heroTextColor =
-      resolveThemeColor(component.config.textColor, colorTheme, '', true) ||
-      (component.config.overlay || component.config.backgroundImage
-        ? '#ffffff'
-        : `var(--theme-text)`)}
-    {@const heroTitleColor =
-      resolveThemeColor(component.config.titleColor, colorTheme, '', true) || heroTextColor}
-    {@const heroSubtitleColor =
-      resolveThemeColor(component.config.subtitleColor, colorTheme, '', true) || heroTextColor}
-    <div
-      class="hero-widget"
-      style="
-        height: {heroHeight};
-        background-image: {component.config.backgroundImage
-        ? `url(${component.config.backgroundImage})`
-        : 'none'};
-        background-color: {bgColor};
-        background-size: cover;
-        background-position: center;
-        text-align: {component.config.contentAlign || 'center'};
-      "
+    <!-- 
+      Hero Component - Uses actual built-in component for WYSIWYG fidelity
+      The Hero component handles both container-based (new) and legacy formats
+      In edit mode (isEditable=true), it enables inline editing and drag-drop
+    -->
+    <HeroComponent
+      config={component.config}
+      {colorTheme}
+      {siteContext}
+      {user}
+      {isEditable}
+      {onUpdate}
+      {onSelectComponent}
+      {currentBreakpoint}
+      componentId={component.id}
+      pageId={component.page_id}
     >
-      {#if component.config.overlay}
-        <div
-          class="hero-overlay"
-          style="opacity: {component.config.overlayOpacity !== undefined
-            ? component.config.overlayOpacity / 100
-            : 0.5}"
+      <svelte:fragment slot="child" let:child>
+        <svelte:self
+          component={child}
+          {currentBreakpoint}
+          {colorTheme}
+          onUpdate={createChildUpdateHandler(child.id)}
+          {isEditable}
+          {siteContext}
+          {user}
+          {onSelectComponent}
         />
-      {/if}
-      <div class="hero-content" style="color: {heroTextColor};">
-        <h1
-          bind:this={titleElement}
-          contenteditable="true"
-          on:input={handleTitleInput}
-          on:focus={handleTitleFocus}
-          on:blur={handleTitleBlur}
-          on:keydown={(e) => {
-            // Prevent default behaviors that might interfere with editing
-            if (e.key === 'Enter') {
-              e.preventDefault();
-            }
-            // Stop propagation to prevent window-level handlers from interfering
-            e.stopPropagation();
-          }}
-          on:keypress={(e) => {
-            // Explicitly allow space and stop propagation
-            e.stopPropagation();
-          }}
-          style="color: {heroTitleColor};"
-          data-field="title"
-        >
-          {component.config.title || ''}
-        </h1>
-        <p
-          bind:this={subtitleElement}
-          contenteditable="true"
-          on:input={handleSubtitleInput}
-          on:focus={handleSubtitleFocus}
-          on:blur={handleSubtitleBlur}
-          on:keydown={(e) => {
-            // Stop propagation to prevent window-level handlers from interfering
-            e.stopPropagation();
-          }}
-          on:keypress={(e) => {
-            // Explicitly allow space and stop propagation
-            e.stopPropagation();
-          }}
-          style="display: block; color: {heroSubtitleColor};"
-          data-field="subtitle"
-        ></p>
-        {#if component.config.ctaText || component.config.secondaryCtaText}
-          <div class="hero-cta-group">
-            {#if component.config.ctaText}
-              <a
-                href={component.config.ctaLink || '#'}
-                class="hero-cta hero-cta-primary"
-                style="
-                  background-color: {ctaBgColor};
-                  color: {ctaTxtColor};
-                  font-size: {component.config.ctaFontSize || '16px'};
-                  font-weight: {component.config.ctaFontWeight || '600'};
-                "
-                on:click|preventDefault={() => {}}
-              >
-                {sub(component.config.ctaText)}
-              </a>
-            {/if}
-            {#if component.config.secondaryCtaText}
-              <a
-                href={component.config.secondaryCtaLink || '#'}
-                class="hero-cta hero-cta-secondary"
-                style="
-                  background-color: {secondaryCtaBgColor};
-                  color: {secondaryCtaTxtColor};
-                  border-color: {secondaryCtaBorderColor};
-                  font-size: {component.config.secondaryCtaFontSize || '16px'};
-                  font-weight: {component.config.secondaryCtaFontWeight || '600'};
-                "
-                on:click|preventDefault={() => {}}
-              >
-                {sub(component.config.secondaryCtaText)}
-              </a>
-            {/if}
-          </div>
-        {/if}
-      </div>
-    </div>
+      </svelte:fragment>
+    </HeroComponent>
   {:else if component.type === 'button'}
-    <div class="button-widget">
-      <button
-        class="btn btn-{component.config.variant || 'primary'} btn-{component.config.size ||
-          'medium'}"
-        class:has-icon={component.config.icon}
-        style="width: {buttonFullWidth ? '100%' : 'auto'}"
-      >
-        {#if component.config.icon}
-          <span class="btn-icon">
-            <IconDisplay iconName={component.config.icon} size={18} />
-          </span>
-        {/if}
-        <span class="btn-label">{sub(component.config.label || 'Button')}</span>
-      </button>
-    </div>
+    <ButtonComponent config={component.config} {colorTheme} {siteContext} {user} {isEditable} />
   {:else if component.type === 'dropdown'}
     {@const triggerLabel = component.config.triggerLabel || component.config.label || 'Menu'}
     {@const triggerIcon = component.config.triggerIcon || ''}
@@ -775,28 +627,21 @@
       class:edit-mode={isEditable}
       role="region"
       aria-label="Dropdown component drop zone"
-      on:dragenter={(e) => {
-        e.preventDefault();
-        dropdownDragCounter++;
-        isDropdownDragOver = true;
-      }}
-      on:dragleave={() => {
-        dropdownDragCounter--;
-        if (dropdownDragCounter === 0) {
-          isDropdownDragOver = false;
-        }
-      }}
-      on:dragend={() => {
-        dropdownDragCounter = 0;
-        isDropdownDragOver = false;
-      }}
-      on:drop={() => {
-        dropdownDragCounter = 0;
-        isDropdownDragOver = false;
-      }}
+      on:dragenter={handleDropdownDragEnter}
+      on:dragover={handleDropdownDragOver}
+      on:dragleave={handleDropdownDragLeave}
+      on:dragend={handleDropdownDragEnd}
+      on:drop={handleDropdownDragEnd}
     >
-      <!-- Trigger preview -->
-      <div class="dropdown-trigger-preview variant-{triggerVariant}">
+      <!-- Trigger preview - clickable in edit mode to toggle dropdown -->
+      <button
+        type="button"
+        class="dropdown-trigger-preview variant-{triggerVariant}"
+        class:expanded={isDropdownExpanded}
+        on:click={toggleDropdownExpanded}
+        aria-expanded={isDropdownExpanded}
+        aria-haspopup="true"
+      >
         {#if triggerIcon}
           <span class="trigger-icon">
             {#if triggerIcon === 'user'}
@@ -825,7 +670,7 @@
           <span class="trigger-label">{sub(triggerLabel)}</span>
         {/if}
         {#if showChevron}
-          <span class="trigger-chevron">
+          <span class="trigger-chevron" class:rotated={isDropdownExpanded}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="16"
@@ -839,13 +684,12 @@
             >
           </span>
         {/if}
-      </div>
-      <!-- Menu container: always visible in edit mode, otherwise only when dragging -->
-      {#if isEditable || isDropdownDragOver}
+      </button>
+      <!-- Menu container: visible when expanded in edit mode or when dragging over -->
+      {#if (isEditable && isDropdownExpanded) || isDropdownDragOver}
         <div
           class="dropdown-menu-preview align-{menuAlign}"
           class:drag-target={isDropdownDragOver}
-          class:always-visible={isEditable}
           style="
             min-width: {typeof menuWidth === 'number' ? `${menuWidth}px` : menuWidth};
             background: {menuBackground};
@@ -866,6 +710,7 @@
               on:drop={handleContainerDrop}
               on:reorder={handleContainerReorder}
               on:childClick={handleChildClick}
+              on:delete={handleContainerDelete}
             >
               <svelte:fragment slot="child" let:child>
                 <div class="dropdown-item-wrapper">
@@ -907,7 +752,7 @@
       {/if}
     </div>
   {:else if component.type === 'spacer'}
-    <div class="spacer-widget" style="height: {spacerHeight}px" />
+    <SpacerComponent config={component.config} />
   {:else if component.type === 'theme_toggle'}
     {@const toggleSize = component.config.size || 'medium'}
     {@const toggleVariant = component.config.toggleVariant || 'icon'}
@@ -954,20 +799,7 @@
       </button>
     </div>
   {:else if component.type === 'divider'}
-    {@const divColor = resolveThemeColor(
-      component.config.dividerColor,
-      colorTheme,
-      themeColors.border,
-      true
-    )}
-    <div
-      class="divider-widget"
-      style="
-        border-top: {component.config.thickness || 1}px {component.config.dividerStyle ||
-        'solid'} {divColor};
-        margin: {dividerSpacing}px 0;
-      "
-    />
+    <DividerComponent config={component.config} {colorTheme} />
   {:else if component.type === 'columns'}
     <div
       class="columns-widget"
@@ -1054,63 +886,199 @@
       {/each}
     </div>
   {:else if component.type === 'features'}
-    {@const cardBg = resolveThemeColor(
-      component.config.cardBackground,
-      colorTheme,
-      themeColors.surface,
-      true
+    <!-- Features with container-based architecture (new) or legacy format -->
+    {@const featuresChildrenRaw = component.config.children}
+    {@const hasFeaturesChildren =
+      featuresChildrenRaw && Array.isArray(featuresChildrenRaw) && featuresChildrenRaw.length > 0}
+    {@const featuresDisplay =
+      getBreakpointValue(component.config.containerDisplay, currentBreakpoint) || 'block'}
+    {@const featuresPadding = getBreakpointValue(
+      component.config.containerPadding,
+      currentBreakpoint
+    ) || { top: 0, right: 0, bottom: 0, left: 0 }}
+    {@const featuresBackground = component.config.containerBackground || 'transparent'}
+    {@const featuresFlexDirection =
+      getBreakpointValue(component.config.containerFlexDirection, currentBreakpoint) || 'row'}
+    {@const featuresGapValue =
+      getBreakpointValue(component.config.containerGap, currentBreakpoint) || 16}
+    {@const featuresGridCols = getBreakpointValue(
+      component.config.containerGridCols,
+      currentBreakpoint
     )}
-    {@const cardBorder = resolveThemeColor(
-      component.config.cardBorderColor,
-      colorTheme,
-      themeColors.border,
-      true
-    )}
-    <div class="features-preview">
-      <h3>{sub(component.config.title || 'Features')}</h3>
-      {#if component.config.subtitle}
-        <p class="features-subtitle">{sub(component.config.subtitle)}</p>
-      {/if}
-      {#if component.config.features && component.config.features.length > 0}
-        <div
-          class="features-grid"
-          style="grid-template-columns: repeat({featuresColumns}, 1fr); gap: {featuresGap}px;"
-        >
-          {#each featuresLimit && featuresLimit > 0 ? component.config.features.slice(0, featuresLimit) : component.config.features as feature}
-            <div
-              class="feature-card"
-              style="background: {cardBg}; border-color: {cardBorder}; border-radius: {component
-                .config.cardBorderRadius !== undefined
-                ? component.config.cardBorderRadius
-                : 12}px;"
-            >
-              <div class="feature-icon">{feature.icon}</div>
-              <h4>{sub(feature.title)}</h4>
-              <p>{sub(feature.description)}</p>
-            </div>
-          {/each}
-        </div>
-      {:else}
-        <p class="empty-message">
-          No features added yet. Use the properties panel to add features.
-        </p>
-      {/if}
-    </div>
-  {:else if component.type === 'pricing'}
-    <div class="pricing-preview">
-      <h3>{sub(component.config.title || 'Pricing')}</h3>
-      {#if component.config.tagline}
-        <p class="tagline">{sub(component.config.tagline)}</p>
-      {/if}
-      <div class="pricing-grid">
-        {#each (component.config.tiers || []).slice(0, 2) as tier}
-          <div class="tier-card">
-            <span class="tier-range">{sub(tier.range)}</span>
-            <span class="tier-fee">{sub(tier.fee)}</span>
+    {@const featuresAlignItems = component.config.containerAlignItems || 'stretch'}
+    {@const featuresJustifyContent = component.config.containerJustifyContent || 'flex-start'}
+    {@const featuresWrap = component.config.containerWrap || 'nowrap'}
+    {#if hasFeaturesChildren || isEditable}
+      <!-- New container-based features with children -->
+      <section
+        class="features-container-based"
+        style="
+          background: {resolveThemeColor(featuresBackground, colorTheme, 'transparent', true)};
+          max-width: {component.config.containerMaxWidth || '100%'};
+          width: 100%;
+          box-sizing: border-box;
+          padding: {featuresPadding.top || 0}px {featuresPadding.right ||
+          0}px {featuresPadding.bottom || 0}px {featuresPadding.left || 0}px;
+        "
+      >
+        {#if isEditable}
+          <!-- Use ContainerDropZone for editable features -->
+          <ContainerDropZone
+            containerId={component.id}
+            children={featuresChildrenRaw || []}
+            isActive={false}
+            allowedTypes={[]}
+            displayMode={featuresDisplay === 'grid' ? 'grid' : 'flex'}
+            showLayoutHints={true}
+            label="Features Section"
+            containerStyles={featuresDisplay === 'flex'
+              ? `
+                display: flex;
+                flex-direction: ${featuresFlexDirection};
+                justify-content: ${featuresJustifyContent};
+                align-items: ${featuresAlignItems};
+                flex-wrap: ${featuresWrap};
+                gap: ${featuresGapValue}px;
+              `
+              : featuresDisplay === 'grid'
+                ? `
+                display: grid;
+                grid-template-columns: ${formatGridTemplate(featuresGridCols, 'repeat(3, 1fr)')};
+                gap: ${featuresGapValue}px;
+              `
+                : `
+                display: ${featuresDisplay};
+              `}
+            on:drop={handleContainerDrop}
+            on:reorder={handleContainerReorder}
+            on:childClick={handleChildClick}
+            on:delete={handleContainerDelete}
+          >
+            <svelte:fragment slot="child" let:child>
+              <svelte:self
+                component={child}
+                {currentBreakpoint}
+                {colorTheme}
+                onUpdate={createChildUpdateHandler(child.id)}
+                {isEditable}
+                {siteContext}
+                {user}
+                {onSelectComponent}
+              />
+            </svelte:fragment>
+          </ContainerDropZone>
+        {:else}
+          <!-- Non-editable: render children directly -->
+          <div
+            class="features-content-wrapper"
+            style="
+              display: {featuresDisplay};
+              {featuresDisplay === 'flex'
+              ? `
+                flex-direction: ${featuresFlexDirection};
+                justify-content: ${featuresJustifyContent};
+                align-items: ${featuresAlignItems};
+                flex-wrap: ${featuresWrap};
+              `
+              : featuresDisplay === 'grid'
+                ? `grid-template-columns: ${formatGridTemplate(featuresGridCols, 'repeat(3, 1fr)')};`
+                : ''}
+              gap: {featuresGapValue}px;
+              padding: {featuresPadding.top || 0}px {featuresPadding.right ||
+              0}px {featuresPadding.bottom || 0}px {featuresPadding.left || 0}px;
+            "
+          >
+            {#each featuresChildrenRaw || [] as child (child.id)}
+              <svelte:self
+                component={child}
+                {currentBreakpoint}
+                {colorTheme}
+                onUpdate={createChildUpdateHandler(child.id)}
+                {isEditable}
+                {siteContext}
+                {user}
+                {onSelectComponent}
+              />
+            {/each}
           </div>
-        {/each}
+        {/if}
+      </section>
+    {:else}
+      <!-- Legacy features format with config.features array -->
+      {@const cardBg = resolveThemeColor(
+        component.config.cardBackground,
+        colorTheme,
+        themeColors.surface,
+        true
+      )}
+      {@const cardBorder = resolveThemeColor(
+        component.config.cardBorderColor,
+        colorTheme,
+        themeColors.border,
+        true
+      )}
+      <div class="features-preview">
+        <h3>{sub(component.config.title || 'Features')}</h3>
+        {#if component.config.subtitle}
+          <p class="features-subtitle">{sub(component.config.subtitle)}</p>
+        {/if}
+        {#if component.config.features && component.config.features.length > 0}
+          <div
+            class="features-grid"
+            style="grid-template-columns: repeat({featuresColumns}, 1fr); gap: {featuresGap}px;"
+          >
+            {#each featuresLimit && featuresLimit > 0 ? component.config.features.slice(0, featuresLimit) : component.config.features as feature}
+              <div
+                class="feature-card"
+                style="background: {cardBg}; border: {component.config.cardBorderWidth ??
+                  1}px solid {cardBorder}; border-radius: {component.config.cardBorderRadius !==
+                undefined
+                  ? component.config.cardBorderRadius
+                  : 12}px;"
+              >
+                <div class="feature-icon">{feature.icon}</div>
+                <h4>{sub(feature.title)}</h4>
+                <p>{sub(feature.description)}</p>
+              </div>
+            {/each}
+          </div>
+        {:else}
+          <p class="empty-message">
+            No features added yet. Use the properties panel to add features.
+          </p>
+        {/if}
       </div>
-    </div>
+    {/if}
+  {:else if component.type === 'pricing'}
+    <!-- 
+      Pricing Component - Uses Container-based architecture with children
+      Similar to Hero, NavBar, and Footer - renders children via slots
+    -->
+    <PricingComponent
+      config={component.config}
+      {colorTheme}
+      {siteContext}
+      {user}
+      {isEditable}
+      {onUpdate}
+      {onSelectComponent}
+      {currentBreakpoint}
+      componentId={component.id}
+      pageId={component.page_id}
+    >
+      <svelte:fragment slot="child" let:child>
+        <svelte:self
+          component={child}
+          {currentBreakpoint}
+          {colorTheme}
+          onUpdate={createChildUpdateHandler(child.id)}
+          {isEditable}
+          {siteContext}
+          {user}
+          {onSelectComponent}
+        />
+      </svelte:fragment>
+    </PricingComponent>
   {:else if component.type === 'cta'}
     {@const ctaBgColor = resolveThemeColor(
       component.config.backgroundColor,
@@ -1184,6 +1152,7 @@
             on:drop={handleContainerDrop}
             on:reorder={handleContainerReorder}
             on:childClick={handleChildClick}
+            on:delete={handleContainerDelete}
           >
             <svelte:fragment slot="child" let:child>
               <svelte:self
@@ -1200,18 +1169,14 @@
           </ContainerDropZone>
         {:else}
           <!-- Non-editable: render children directly -->
+          <!-- Note: Children have their own container configurations (display, flex, etc.) -->
+          <!-- The wrapper just provides basic styling; children control their own layout -->
           <div
             class="navbar-content-wrapper"
             style="
-              display: {navDisplay};
-              flex-direction: {navFlexDirection};
-              justify-content: {component.config.containerJustifyContent || 'space-between'};
-              align-items: {component.config.containerAlignItems || 'center'};
-              flex-wrap: {component.config.containerWrap || 'nowrap'};
-              gap: {navGap}px;
               padding: {navPadding
-              ? `${navPadding.top || 16}px ${navPadding.right || 24}px ${navPadding.bottom || 16}px ${navPadding.left || 24}px`
-              : '16px 24px'};
+              ? `${navPadding.top || 0}px ${navPadding.right || 0}px ${navPadding.bottom || 0}px ${navPadding.left || 0}px`
+              : '0'};
             "
           >
             {#each navChildrenRaw || [] as child (child.id)}
@@ -1230,27 +1195,13 @@
         {/if}
       </nav>
     {:else}
-      <!-- Legacy navbar format -->
-      <div class="navbar-preview">
-        <div class="navbar-container">
-          <div class="navbar-brand">
-            {#if component.config.logo?.image}
-              <img
-                src={component.config.logo.image}
-                alt={sub(component.config.logo.text || 'Logo')}
-                class="logo"
-              />
-            {:else}
-              <span class="logo-text">{sub(component.config.logo?.text || 'Store')}</span>
-            {/if}
-          </div>
-          <div class="navbar-links">
-            {#each component.config.links || [] as link}
-              <a href={link.url} class="nav-link">{sub(link.text)}</a>
-            {/each}
-          </div>
-        </div>
-      </div>
+      <!-- Legacy navbar format - using actual NavBar component for WYSIWYG fidelity -->
+      <NavBarComponent
+        config={component.config}
+        {siteContext}
+        user={user ?? undefined}
+        {isEditable}
+      />
     {/if}
   {:else if component.type === 'footer'}
     <!-- Footer with container-based architecture (new) or legacy format -->
@@ -1308,6 +1259,7 @@
             on:drop={handleContainerDrop}
             on:reorder={handleContainerReorder}
             on:childClick={handleChildClick}
+            on:delete={handleContainerDelete}
           >
             <svelte:fragment slot="child" let:child>
               <svelte:self
@@ -1354,21 +1306,13 @@
         {/if}
       </footer>
     {:else}
-      <!-- Legacy footer format -->
-      <div class="footer-preview">
-        <div class="footer-container">
-          {#if component.config.footerLinks && component.config.footerLinks.length > 0}
-            <div class="footer-links">
-              {#each component.config.footerLinks as link}
-                <a href={link.url} class="footer-link">{sub(link.text)}</a>
-              {/each}
-            </div>
-          {/if}
-          <div class="footer-copyright">
-            {sub(component.config.copyright || '© 2025 Store Name. All rights reserved.')}
-          </div>
-        </div>
-      </div>
+      <!-- Legacy footer format - using actual Footer component for WYSIWYG fidelity -->
+      <FooterComponent
+        config={component.config}
+        {siteContext}
+        user={user ?? undefined}
+        {isEditable}
+      />
     {/if}
   {:else if component.type === 'yield'}
     <div class="yield-preview">
@@ -1432,80 +1376,90 @@
     {@const containerPadding = getBreakpointValue(
       component.config.containerPadding,
       currentBreakpoint
-    )}
+    ) || { top: 0, right: 0, bottom: 0, left: 0 }}
     {@const containerMargin = getBreakpointValue(
       component.config.containerMargin,
       currentBreakpoint
-    )}
+    ) || { top: 0, right: 0, bottom: 0, left: 0 }}
+    {@const borderWidth =
+      getBreakpointValue(component.config.containerBorderWidth, currentBreakpoint) ?? 0}
+    {@const borderStyle = component.config.containerBorderStyle || 'solid'}
+    {@const borderColor =
+      component.config.containerBorderColor && borderWidth > 0
+        ? resolveThemeColor(
+            component.config.containerBorderColor,
+            colorTheme,
+            themeColors.border,
+            true
+          )
+        : 'transparent'}
     <div
       class="container-component"
       style="
-        display: {containerDisplay};
-        {containerDisplay === 'flex'
-        ? `
-          flex-direction: ${flexDirection};
-          justify-content: ${component.config.containerJustifyContent || 'flex-start'};
-          align-items: ${component.config.containerAlignItems || 'stretch'};
-          align-content: ${component.config.containerAlignContent || 'normal'};
-          flex-wrap: ${component.config.containerWrap || 'nowrap'};
-        `
-        : containerDisplay === 'grid'
-          ? `
-          grid-template-columns: ${formatGridTemplate(containerGridCols, 'repeat(3, 1fr)')};
-          ${containerGridRows && containerGridRows !== 'auto' ? `grid-template-rows: ${formatGridTemplate(containerGridRows, 'auto')};` : ''}
-          ${containerGridAutoFlow ? `grid-auto-flow: ${containerGridAutoFlow};` : ''}
-          ${containerPlaceItems ? `place-items: ${containerPlaceItems};` : ''}
-          ${containerPlaceContent ? `place-content: ${containerPlaceContent};` : ''}
-        `
-          : ''}
-        gap: ${containerGap}px;
-        width: ${containerWidth};
-        max-width: ${component.config.containerMaxWidth || '1200px'};
-        min-height: ${containerMinHeight};
-        max-height: ${containerMaxHeight};
-        padding: ${containerPadding
-        ? `${containerPadding.top || 40}px ${containerPadding.right || 40}px ${containerPadding.bottom || 40}px ${containerPadding.left || 40}px`
-        : '40px'};
-        margin: ${containerMargin
-        ? `${containerMargin.top || 0}px auto ${containerMargin.bottom || 0}px`
-        : '0px auto'};
-        background: ${component.config.containerBackground || 'transparent'};
-        ${component.config.containerBackgroundImage
+        {isEditable
+        ? 'display: block;'
+        : `display: ${containerDisplay};
+        ${
+          containerDisplay === 'flex'
+            ? `
+            flex-direction: ${flexDirection};
+            justify-content: ${component.config.containerJustifyContent || 'flex-start'};
+            align-items: ${component.config.containerAlignItems || 'stretch'};
+            align-content: ${component.config.containerAlignContent || 'normal'};
+            flex-wrap: ${component.config.containerWrap || 'nowrap'};
+          `
+            : containerDisplay === 'grid'
+              ? `
+            grid-template-columns: ${formatGridTemplate(containerGridCols, 'repeat(3, 1fr)')};
+            ${containerGridRows && containerGridRows !== 'auto' ? `grid-template-rows: ${formatGridTemplate(containerGridRows, 'auto')};` : ''}
+            ${containerGridAutoFlow ? `grid-auto-flow: ${containerGridAutoFlow};` : ''}
+            ${containerPlaceItems ? `place-items: ${containerPlaceItems};` : ''}
+            ${containerPlaceContent ? `place-content: ${containerPlaceContent};` : ''}
+          `
+              : ''
+        }
+        gap: ${containerGap}px;`}
+        width: {containerWidth};
+        max-width: {component.config.containerMaxWidth || '1200px'};
+        min-height: {containerMinHeight};
+        max-height: {containerMaxHeight};
+        padding: {containerPadding.top || 0}px {containerPadding.right ||
+        0}px {containerPadding.bottom || 0}px {containerPadding.left || 0}px;
+        margin: {containerMargin.top || 0}px auto {containerMargin.bottom || 0}px;
+        background: {resolveThemeColor(
+        component.config.containerBackground,
+        colorTheme,
+        'transparent',
+        true
+      )};
+        {component.config.containerBackgroundImage
         ? `background-image: url(${component.config.containerBackgroundImage});`
         : ''}
-        ${component.config.containerBackgroundSize
+        {component.config.containerBackgroundSize
         ? `background-size: ${getBreakpointValue(component.config.containerBackgroundSize, currentBreakpoint)};`
         : ''}
-        ${component.config.containerBackgroundPosition
+        {component.config.containerBackgroundPosition
         ? `background-position: ${getBreakpointValue(component.config.containerBackgroundPosition, currentBreakpoint)};`
         : ''}
-        ${component.config.containerBackgroundRepeat
+        {component.config.containerBackgroundRepeat
         ? `background-repeat: ${getBreakpointValue(component.config.containerBackgroundRepeat, currentBreakpoint)};`
         : ''}
-        border-radius: ${component.config.containerBorderRadius || 0}px;
-        ${(() => {
-        const borderWidth = getBreakpointValue(
-          component.config.containerBorderWidth,
-          currentBreakpoint
-        );
-        return borderWidth
-          ? `border-width: ${borderWidth.top || 0}px ${borderWidth.right || 0}px ${borderWidth.bottom || 0}px ${borderWidth.left || 0}px;`
-          : '';
-      })()}
-        ${component.config.containerBorderColor
-        ? `border-color: ${component.config.containerBorderColor}; border-style: solid;`
-        : ''}
-        opacity: ${containerOpacity};
-        ${containerOverflow
+        border-radius: {component.config.containerBorderRadius ??
+        component.config.cardBorderRadius ??
+        0}px;
+        border: {borderWidth}px {borderStyle} {borderColor};
+        opacity: {containerOpacity};
+        {containerOverflow
         ? `overflow: ${typeof containerOverflow === 'object' ? `${containerOverflow.x || 'visible'} ${containerOverflow.y || 'visible'}` : containerOverflow};`
         : ''}
-        ${containerZIndex !== undefined ? `z-index: ${containerZIndex};` : ''}
-        ${component.config.containerCursor
+        {containerZIndex !== undefined ? `z-index: ${containerZIndex};` : ''}
+        {component.config.containerCursor
         ? `cursor: ${getBreakpointValue(component.config.containerCursor, currentBreakpoint)};`
         : ''}
-        ${component.config.containerPointerEvents
+        {component.config.containerPointerEvents
         ? `pointer-events: ${getBreakpointValue(component.config.containerPointerEvents, currentBreakpoint)};`
         : ''}
+        box-sizing: border-box;
       "
     >
       {#if isEditable}
@@ -1537,6 +1491,7 @@
           on:drop={handleContainerDrop}
           on:reorder={handleContainerReorder}
           on:childClick={handleChildClick}
+          on:delete={handleContainerDelete}
         >
           <svelte:fragment slot="child" let:child>
             <div class="container-child-wrapper" style={getChildLayoutStyles(child.config)}>
@@ -1592,6 +1547,38 @@
         Failed to load component: {error.message}
       </div>
     {/await}
+  {:else if component.type === 'composite'}
+    <!-- Composite components render their children as a simple flex container -->
+    <div
+      class="composite-component"
+      style="
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+      "
+    >
+      {#if component.config.children && component.config.children.length > 0}
+        {#each component.config.children as child}
+          <div class="composite-child">
+            <svelte:self
+              component={child}
+              {currentBreakpoint}
+              {colorTheme}
+              onUpdate={createChildUpdateHandler(child.id)}
+              {isEditable}
+              {siteContext}
+              {user}
+              {onSelectComponent}
+            />
+          </div>
+        {/each}
+      {:else}
+        <div class="composite-placeholder">
+          <p>📦 Composite Component</p>
+          <span>This component has no children configured</span>
+        </div>
+      {/if}
+    </div>
   {:else}
     <div class="unknown-widget">
       <span>Unknown widget type: {component.type}</span>
@@ -1602,19 +1589,31 @@
 <style>
   .widget-renderer {
     min-height: 20px;
+    /* Use display: contents so this wrapper doesn't interfere with parent flex/grid layouts */
+    /* The widget-renderer acts as a transparent wrapper - its children participate directly in the parent's layout */
+    display: contents;
+  }
+
+  /* Navbar container-based - ensures proper responsive sizing */
+  .navbar-container-based {
+    overflow: hidden; /* Prevent navbar content from overflowing */
   }
 
   /* Container child wrapper - ensures children act as independent flex/grid items */
   .container-child {
-    /* No display property - inherits block/inline behavior naturally */
-    /* This allows the wrapper to be a proper flex/grid item */
-    position: relative; /* Ensures element is rendered */
+    /* Use display: contents so this wrapper doesn't interfere with parent flex/grid layouts */
+    /* The container-child acts as a transparent wrapper - its children participate directly in the parent's layout */
+    display: contents;
   }
 
   /* Container child wrapper in edit mode - same behavior as container-child */
   .container-child-wrapper {
     position: relative;
     /* flex/grid properties are applied inline via getChildLayoutStyles() */
+    /* Ensure wrapper fills its cell */
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
   }
 
   /* Text Widget */
@@ -1625,17 +1624,7 @@
 
   .text-widget p {
     margin: 0;
-  }
-
-  /* Heading Widget */
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    margin: 0;
-    padding: 1rem;
+    color: inherit;
   }
 
   /* Image Widget */
@@ -1659,94 +1648,7 @@
     margin-bottom: 0.5rem;
   }
 
-  /* Hero Widget */
-  .hero-widget {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    border-radius: 8px;
-  }
-
-  .hero-overlay {
-    position: absolute;
-    inset: 0;
-    background: black;
-  }
-
-  .hero-content {
-    position: relative;
-    z-index: 1;
-    padding: 2rem;
-    max-width: 800px;
-  }
-
-  .hero-content h1 {
-    font-size: 2.5rem;
-    margin: 0 0 1rem 0;
-    padding: 0;
-    outline: none;
-    cursor: text;
-  }
-
-  .hero-content h1:focus {
-    outline: 2px solid rgba(59, 130, 246, 0.5);
-    outline-offset: 4px;
-    border-radius: 4px;
-  }
-
-  .hero-content p {
-    font-size: 1.25rem;
-    margin: 0 0 1.5rem 0;
-    opacity: 0.9;
-    outline: none;
-    cursor: text;
-    min-height: 1.5em;
-  }
-
-  .hero-content p:focus {
-    outline: 2px solid rgba(59, 130, 246, 0.5);
-    outline-offset: 4px;
-    border-radius: 4px;
-  }
-
-  .hero-content p:empty:before {
-    content: 'Click to add subtitle';
-    opacity: 0.5;
-  }
-
-  .hero-cta-group {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    flex-wrap: wrap;
-    margin-top: 1rem;
-  }
-
-  .hero-cta {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.75rem 1.5rem;
-    border-radius: 6px;
-    text-decoration: none;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .hero-cta-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  }
-
-  .hero-cta-secondary {
-    border: 2px solid;
-  }
-
-  .hero-cta-secondary:hover {
-    opacity: 0.9;
-    transform: translateY(-2px);
-  }
+  /* Hero styling is now in the Hero.svelte component for WYSIWYG fidelity */
 
   /* Button Widget */
   .button-widget {
@@ -1908,6 +1810,7 @@
     min-height: 60px;
     width: 100%;
     box-sizing: border-box;
+    position: relative;
   }
 
   .container-component > .layout-placeholder {
@@ -2035,7 +1938,6 @@
   }
 
   .feature-card {
-    border: 1px solid;
     padding: 1.5rem;
     text-align: center;
   }
@@ -2065,51 +1967,6 @@
     border: 2px dashed var(--color-border-secondary);
     border-radius: 8px;
     margin-top: 1rem;
-  }
-
-  /* Pricing Preview */
-  .pricing-preview {
-    padding: 2rem;
-    background: var(--color-bg-secondary);
-    text-align: center;
-  }
-
-  .pricing-preview h3 {
-    margin: 0 0 0.5rem 0;
-    font-size: 1.5rem;
-  }
-
-  .pricing-preview .tagline {
-    color: var(--color-primary);
-    font-weight: 600;
-    margin: 0 0 1.5rem 0;
-  }
-
-  .pricing-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1rem;
-    margin-top: 1rem;
-  }
-
-  .tier-card {
-    background: var(--color-bg-primary);
-    border: 1px solid var(--color-border-secondary);
-    border-radius: 8px;
-    padding: 1.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .tier-range {
-    font-weight: 600;
-  }
-
-  .tier-fee {
-    font-size: 1.5rem;
-    color: var(--color-primary);
-    font-weight: 700;
   }
 
   /* CTA Preview */
@@ -2154,81 +2011,6 @@
     background: transparent;
     color: white;
     border: 2px solid white !important;
-  }
-
-  /* Navbar Preview */
-  .navbar-preview {
-    background: #ffffff;
-    border-bottom: 1px solid var(--color-border-secondary);
-    padding: 1rem;
-  }
-
-  .navbar-container {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 2rem;
-  }
-
-  .navbar-brand {
-    font-weight: 600;
-    font-size: 1.25rem;
-  }
-
-  .logo {
-    height: 32px;
-    width: auto;
-  }
-
-  .logo-text {
-    color: var(--color-text-primary);
-  }
-
-  .navbar-links {
-    display: flex;
-    gap: 1.5rem;
-    flex: 1;
-  }
-
-  .nav-link {
-    color: var(--color-text-primary);
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 0.875rem;
-  }
-
-  /* Footer Preview */
-  .footer-preview {
-    background: var(--color-bg-secondary);
-    border-top: 1px solid var(--color-border-secondary);
-    padding: 2rem 1rem;
-  }
-
-  .footer-container {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    text-align: center;
-  }
-
-  .footer-links {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .footer-link {
-    color: var(--color-text-secondary);
-    text-decoration: none;
-    font-size: 0.875rem;
-  }
-
-  .footer-copyright {
-    color: var(--color-text-secondary);
-    font-size: 0.875rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--color-border-secondary);
   }
 
   /* Footer Container-based Architecture */
@@ -2327,6 +2109,40 @@
     border-color: var(--color-error);
   }
 
+  /* Composite Component */
+  .composite-component {
+    width: 100%;
+    min-height: 50px;
+  }
+
+  .composite-child {
+    width: 100%;
+  }
+
+  .composite-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    text-align: center;
+    color: var(--color-text-secondary);
+    background: var(--color-bg-tertiary);
+    border: 2px dashed var(--color-border-secondary);
+    border-radius: 8px;
+  }
+
+  .composite-placeholder p {
+    margin: 0 0 0.5rem 0;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  .composite-placeholder span {
+    font-size: 0.875rem;
+    font-style: italic;
+  }
+
   /* Dropdown Menu Widget */
   .dropdown-widget-container {
     display: flex;
@@ -2354,6 +2170,8 @@
     font-size: 0.875rem;
     color: var(--color-text-primary);
     width: fit-content;
+    cursor: pointer;
+    transition: all 0.15s ease;
   }
 
   .dropdown-trigger-preview.variant-button {
@@ -2381,6 +2199,26 @@
     display: flex;
     align-items: center;
     opacity: 0.7;
+    transition: transform 0.2s ease;
+  }
+
+  .dropdown-trigger-preview .trigger-chevron.rotated {
+    transform: rotate(180deg);
+  }
+
+  .dropdown-trigger-preview:hover {
+    background: var(--color-bg-tertiary);
+    border-color: var(--color-border-primary);
+  }
+
+  .dropdown-trigger-preview.expanded {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+  }
+
+  .dropdown-trigger-preview.variant-button:hover {
+    filter: brightness(1.05);
+    background: var(--color-primary);
   }
 
   .dropdown-menu-preview {

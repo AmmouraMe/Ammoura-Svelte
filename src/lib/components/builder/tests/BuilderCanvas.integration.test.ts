@@ -43,8 +43,8 @@ describe('BuilderCanvas - Integration Tests for Sort Buttons', () => {
         selectedComponent: mockWidgets[1], // Select second component
         hoveredComponent: null,
         currentBreakpoint: 'desktop',
-        colorTheme: 'default-light',
-        userCurrentThemeId: 'default-light'
+        colorTheme: 'vibrant',
+        userCurrentThemeId: 'vibrant'
       }
     });
 
@@ -77,8 +77,8 @@ describe('BuilderCanvas - Integration Tests for Sort Buttons', () => {
         selectedComponent: mockWidgets[1], // Select second component
         hoveredComponent: null,
         currentBreakpoint: 'desktop',
-        colorTheme: 'default-light',
-        userCurrentThemeId: 'default-light'
+        colorTheme: 'vibrant',
+        userCurrentThemeId: 'vibrant'
       }
     });
 
@@ -110,8 +110,8 @@ describe('BuilderCanvas - Integration Tests for Sort Buttons', () => {
         selectedComponent: mockWidgets[0], // Select first component
         hoveredComponent: null,
         currentBreakpoint: 'desktop',
-        colorTheme: 'default-light',
-        userCurrentThemeId: 'default-light'
+        colorTheme: 'vibrant',
+        userCurrentThemeId: 'vibrant'
       }
     });
 
@@ -126,8 +126,8 @@ describe('BuilderCanvas - Integration Tests for Sort Buttons', () => {
         selectedComponent: mockWidgets[2], // Select last component
         hoveredComponent: null,
         currentBreakpoint: 'desktop',
-        colorTheme: 'default-light',
-        userCurrentThemeId: 'default-light'
+        colorTheme: 'vibrant',
+        userCurrentThemeId: 'vibrant'
       }
     });
 
@@ -147,8 +147,8 @@ describe('BuilderCanvas - Integration Tests for Sort Buttons', () => {
         selectedComponent: currentWidgets[1],
         hoveredComponent: null,
         currentBreakpoint: 'desktop',
-        colorTheme: 'default-light',
-        userCurrentThemeId: 'default-light'
+        colorTheme: 'vibrant',
+        userCurrentThemeId: 'vibrant'
       }
     });
 
@@ -237,8 +237,8 @@ describe('BuilderCanvas - Integration Tests for Sort Buttons', () => {
         selectedComponent: widgetsWithDuplicatePositions[1],
         hoveredComponent: null,
         currentBreakpoint: 'desktop',
-        colorTheme: 'default-light',
-        userCurrentThemeId: 'default-light'
+        colorTheme: 'vibrant',
+        userCurrentThemeId: 'vibrant'
       }
     });
 
@@ -270,8 +270,8 @@ describe('BuilderCanvas - Integration Tests for Sort Buttons', () => {
         selectedComponent: currentWidgets[0], // First component
         hoveredComponent: null,
         currentBreakpoint: 'desktop',
-        colorTheme: 'default-light',
-        userCurrentThemeId: 'default-light'
+        colorTheme: 'vibrant',
+        userCurrentThemeId: 'vibrant'
       }
     });
 
@@ -341,8 +341,8 @@ describe('BuilderCanvas - Integration Tests for Sort Buttons', () => {
         selectedComponent: currentWidgets[1], // Select second component (position 0)
         hoveredComponent: null,
         currentBreakpoint: 'desktop',
-        colorTheme: 'default-light',
-        userCurrentThemeId: 'default-light'
+        colorTheme: 'vibrant',
+        userCurrentThemeId: 'vibrant'
       }
     });
 
@@ -460,8 +460,8 @@ describe('BuilderCanvas - Integration Tests for Sort Buttons', () => {
         selectedComponent: extremeMalformedWidgets[1], // Select middle component
         hoveredComponent: null,
         currentBreakpoint: 'desktop',
-        colorTheme: 'default-light',
-        userCurrentThemeId: 'default-light'
+        colorTheme: 'vibrant',
+        userCurrentThemeId: 'vibrant'
       }
     });
 
@@ -537,8 +537,8 @@ describe('BuilderCanvas - Integration Tests for Sort Buttons', () => {
         selectedComponent: currentWidgets[1],
         hoveredComponent: null,
         currentBreakpoint: 'desktop',
-        colorTheme: 'default-light',
-        userCurrentThemeId: 'default-light'
+        colorTheme: 'vibrant',
+        userCurrentThemeId: 'vibrant'
       }
     });
 

@@ -1,12 +1,16 @@
 <script lang="ts">
-  import type { WidgetConfig } from '$lib/types/pages';
+  import type { WidgetConfig, SpacingConfig } from '$lib/types/pages';
   import type { SiteContext, UserInfo } from '$lib/utils/templateSubstitution';
   import { substituteTemplate, createUserContext } from '$lib/utils/templateSubstitution';
+  import { resolveThemeColor } from '$lib/utils/editor/colorThemes';
   import IconDisplay from '$lib/components/admin/IconDisplay.svelte';
 
   export let config: WidgetConfig;
   export let siteContext: SiteContext | undefined = undefined;
   export let user: UserInfo | null | undefined = undefined;
+  export let colorTheme: string = 'vibrant';
+  // When true, prevents navigation for links (used in builder preview)
+  export let isEditable = false;
 
   $: rawLabel = config.label || 'Button';
   $: userContext = createUserContext(user);
@@ -17,9 +21,61 @@
   $: variant = config.variant || 'primary';
   $: size = config.size || 'medium';
   $: fullWidth = config.fullWidth || false;
-  $: alignment = config.alignment || 'left';
+  $: alignment = config.buttonAlign || config.alignment || 'left';
   $: icon = config.icon || '';
+  $: iconAfter = config.iconAfter || '';
   $: iconSize = size === 'small' ? 14 : size === 'large' ? 20 : 16;
+
+  // Custom styling props
+  $: customBgColor = config.backgroundColor
+    ? resolveThemeColor(config.backgroundColor, colorTheme, '', true)
+    : '';
+  $: customTextColor = config.textColor
+    ? resolveThemeColor(config.textColor, colorTheme, '', true)
+    : '';
+  $: customBorderColor = config.borderColor
+    ? resolveThemeColor(config.borderColor, colorTheme, '', true)
+    : '';
+  $: customBorderRadius = config.borderRadius;
+  $: customFontSize = getResponsiveValue(config.fontSize);
+  $: customPadding = getResponsiveValue(config.padding) as SpacingConfig | undefined;
+
+  // Helper to get responsive value (desktop by default for SSR)
+  function getResponsiveValue<T>(
+    value: T | { mobile?: T; tablet?: T; desktop: T } | undefined
+  ): T | undefined {
+    if (value === undefined || value === null) return undefined;
+    if (typeof value === 'object' && value !== null && 'desktop' in value) {
+      return (value as { desktop: T }).desktop;
+    }
+    return value as T;
+  }
+
+  // Prevents link navigation when in edit mode (builder preview)
+  function handleLinkClick(event: MouseEvent): void {
+    if (isEditable) {
+      event.preventDefault();
+    }
+  }
+
+  // Build inline style string for custom styles
+  $: customStyle = (() => {
+    const styles: string[] = [];
+    if (customBgColor) styles.push(`background-color: ${customBgColor}`);
+    if (customTextColor) styles.push(`color: ${customTextColor}`);
+    if (customBorderColor) styles.push(`border: 1px solid ${customBorderColor}`);
+    if (customBorderRadius !== undefined) styles.push(`border-radius: ${customBorderRadius}px`);
+    if (customFontSize) styles.push(`font-size: ${customFontSize}px`);
+    if (customPadding) {
+      styles.push(
+        `padding: ${customPadding.top || 0}px ${customPadding.right || 0}px ${customPadding.bottom || 0}px ${customPadding.left || 0}px`
+      );
+    }
+    return styles.join('; ');
+  })();
+
+  // Check if we have custom styles (to override variant styling)
+  $: hasCustomStyles = customBgColor || customTextColor || customBorderColor;
 </script>
 
 <div class="button-widget" id={config.anchorName || undefined} style="text-align: {alignment}">
@@ -28,19 +84,30 @@
     class="btn btn-{variant} btn-{size}"
     class:btn-full={fullWidth}
     class:has-icon={icon}
+    class:custom-styled={hasCustomStyles}
+    style={customStyle}
+    on:click={handleLinkClick}
   >
     {#if icon}
       <span class="btn-icon">
         <IconDisplay iconName={icon} size={iconSize} />
       </span>
     {/if}
-    <span class="btn-label">{label}</span>
+    <span class="btn-label"
+      >{label}{#if iconAfter}&nbsp;{iconAfter}{/if}</span
+    >
   </a>
 </div>
 
 <style>
   .button-widget {
-    padding: 1rem 0;
+    padding: 0.5rem 0;
+    /* Don't stretch button widget when parent is centered */
+    width: fit-content;
+    max-width: 100%;
+    /* Center the button when in a block container */
+    margin-left: auto;
+    margin-right: auto;
   }
 
   .btn {
@@ -68,43 +135,50 @@
     line-height: 1;
   }
 
-  .btn-primary {
+  /* Only apply variant colors when not custom styled */
+  .btn-primary:not(.custom-styled) {
     background: var(--color-primary, #3b82f6);
     color: white;
   }
 
-  .btn-primary:hover {
+  .btn-primary:not(.custom-styled):hover {
     background: var(--color-primary-dark, #2563eb);
   }
 
-  .btn-secondary {
+  .btn-secondary:not(.custom-styled) {
     background: var(--color-secondary, #64748b);
     color: white;
   }
 
-  .btn-secondary:hover {
+  .btn-secondary:not(.custom-styled):hover {
     background: var(--color-secondary-dark, #475569);
   }
 
-  .btn-outline {
+  .btn-outline:not(.custom-styled) {
     background: transparent;
     border: 2px solid var(--color-primary, #3b82f6);
     color: var(--color-primary, #3b82f6);
   }
 
-  .btn-outline:hover {
+  .btn-outline:not(.custom-styled):hover {
     background: var(--color-primary, #3b82f6);
     color: white;
   }
 
-  .btn-text {
+  .btn-text:not(.custom-styled) {
     background: transparent;
     color: var(--color-primary, #3b82f6);
     padding: 0.5rem 0.75rem;
   }
 
-  .btn-text:hover {
+  .btn-text:not(.custom-styled):hover {
     background: rgba(59, 130, 246, 0.1);
+  }
+
+  /* Custom styled buttons - subtle hover effect */
+  .btn.custom-styled:hover {
+    opacity: 0.9;
+    filter: brightness(1.1);
   }
 
   .btn-small {

@@ -2,8 +2,9 @@ import type { PageServerLoad } from './$types';
 import { getDB, getAllProducts, getProductFulfillmentOptions } from '$lib/server/db';
 import * as pagesDb from '$lib/server/db/pages';
 import { getPublishedRevision } from '$lib/server/db/revisions';
+import { resolveComponentRefs } from '$lib/server/db/components';
 import * as colorThemes from '$lib/server/db/color-themes';
-import type { PageComponent } from '$lib/types/pages';
+import type { PageComponent, PageProperties } from '$lib/types/pages';
 
 export const load: PageServerLoad = async ({ platform, locals }) => {
   // If platform is not available (development without D1), fall back to empty array
@@ -13,8 +14,8 @@ export const load: PageServerLoad = async ({ platform, locals }) => {
       page: null,
       components: [],
       isAdmin: false,
-      systemLightTheme: 'default-light',
-      systemDarkTheme: 'default-dark'
+      systemLightTheme: 'vibrant',
+      systemDarkTheme: 'midnight'
     };
   }
 
@@ -32,10 +33,15 @@ export const load: PageServerLoad = async ({ platform, locals }) => {
     const page = await pagesDb.getPageBySlug(db, siteId, '/');
 
     let components: PageComponent[] = [];
+    let pageProperties: PageProperties | undefined;
     if (page && page.status === 'published') {
       // Fetch components from published revision (Builder content)
       const publishedRevision = await getPublishedRevision(db, siteId, page.id);
-      components = publishedRevision?.components || [];
+      const rawComponents = publishedRevision?.components || [];
+      pageProperties = publishedRevision?.pageProperties;
+
+      // Resolve component_ref types to actual component types for frontend rendering
+      components = await resolveComponentRefs(db, siteId, rawComponents);
     }
 
     // Fetch products from D1 database
@@ -64,6 +70,7 @@ export const load: PageServerLoad = async ({ platform, locals }) => {
       products,
       page,
       components,
+      pageProperties,
       colorTheme: page?.colorTheme || null,
       isAdmin: locals.isAdmin || false,
       systemLightTheme: systemLightThemeId || 'vibrant',
@@ -77,8 +84,8 @@ export const load: PageServerLoad = async ({ platform, locals }) => {
       page: null,
       components: [],
       isAdmin: false,
-      systemLightTheme: 'default-light',
-      systemDarkTheme: 'default-dark'
+      systemLightTheme: 'vibrant',
+      systemDarkTheme: 'midnight'
     };
   }
 };

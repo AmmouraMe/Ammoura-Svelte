@@ -29,6 +29,8 @@
   export let onLogout: (() => void) | undefined = undefined;
   export let siteContext: SiteContext | undefined = undefined;
   export let user: UserInfo | undefined = undefined;
+  // When true, prevents navigation for links (used in builder preview)
+  export let isEditable = false;
 
   // Create user context for template substitution
   $: userContext = createUserContext(user);
@@ -55,6 +57,13 @@
   function sub(text: string, vars: typeof templateVars): string {
     if (!text) return text;
     return substituteTemplate(text, vars);
+  }
+
+  // Prevents link navigation when in edit mode (builder preview)
+  function handleLinkClick(event: MouseEvent): void {
+    if (isEditable) {
+      event.preventDefault();
+    }
   }
 
   // Container configuration - NavBar uses Container as its base
@@ -229,7 +238,7 @@
       <!-- Brand Section - flex child -->
       <div class="navbar-brand">
         {#if logo.image}
-          <a href={logo.url || '/'} class="logo-link">
+          <a href={logo.url || '/'} class="logo-link" on:click={handleLinkClick}>
             <img
               src={logo.image}
               alt={logo.text || 'Logo'}
@@ -238,7 +247,12 @@
             />
           </a>
         {:else}
-          <a href={logo.url || '/'} class="logo-link logo-text" style="color: {textColor};">
+          <a
+            href={logo.url || '/'}
+            class="logo-link logo-text"
+            style="color: {textColor};"
+            on:click={handleLinkClick}
+          >
             {logo.text || 'Store'}
           </a>
         {/if}
@@ -283,7 +297,10 @@
                       style="color: {dropdownTextColor}; --dropdown-hover-bg: {dropdownHoverBackground};"
                       target={child.openInNewTab ? '_blank' : '_self'}
                       rel={child.openInNewTab ? 'noopener noreferrer' : undefined}
-                      on:click={closeDropdowns}
+                      on:click={(e) => {
+                        handleLinkClick(e);
+                        closeDropdowns();
+                      }}
                     >
                       {sub(child.text, templateVars)}
                     </a>
@@ -298,6 +315,7 @@
               style="color: {textColor};"
               target={link.openInNewTab ? '_blank' : '_self'}
               rel={link.openInNewTab ? 'noopener noreferrer' : undefined}
+              on:click={handleLinkClick}
             >
               {sub(link.text, templateVars)}
             </a>
@@ -441,6 +459,7 @@
                       href={item.url}
                       class="dropdown-item"
                       style="color: {dropdownTextColor}; --dropdown-hover-bg: {dropdownHoverBackground};"
+                      on:click={handleLinkClick}
                     >
                       {#if item.icon}
                         <span class="item-icon">{item.icon}</span>
@@ -471,7 +490,12 @@
             {/if}
           </div>
         {:else if showAuth && !$authState.isAuthenticated}
-          <a href="/auth/login" class="login-link" style="color: {textColor};">
+          <a
+            href="/auth/login"
+            class="login-link"
+            style="color: {textColor};"
+            on:click={handleLinkClick}
+          >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path
                 d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"
@@ -485,7 +509,7 @@
         {/if}
 
         {#if showCart}
-          <a href="/cart" class="cart-link" style="color: {textColor};">
+          <a href="/cart" class="cart-link" style="color: {textColor};" on:click={handleLinkClick}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <circle cx="9" cy="21" r="1"></circle>
               <circle cx="20" cy="21" r="1"></circle>
@@ -553,7 +577,10 @@
                     href={child.url}
                     class="mobile-submenu-link"
                     style="color: {textColor};"
-                    on:click={closeMobileMenu}
+                    on:click={(e) => {
+                      handleLinkClick(e);
+                      closeMobileMenu();
+                    }}
                     target={child.openInNewTab ? '_blank' : '_self'}
                     rel={child.openInNewTab ? 'noopener noreferrer' : undefined}
                   >
@@ -568,7 +595,10 @@
             href={link.url}
             class="mobile-nav-link"
             style="color: {textColor};"
-            on:click={closeMobileMenu}
+            on:click={(e) => {
+              handleLinkClick(e);
+              closeMobileMenu();
+            }}
             target={link.openInNewTab ? '_blank' : '_self'}
             rel={link.openInNewTab ? 'noopener noreferrer' : undefined}
           >

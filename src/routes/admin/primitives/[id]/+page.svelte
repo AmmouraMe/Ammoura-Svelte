@@ -73,6 +73,7 @@
         title: data.primitive.name,
         slug: `/primitive-${data.primitive.id}`,
         status: 'published' as const,
+        is_builtin: false,
         created_at: new Date(data.primitive.created_at).getTime(),
         updated_at: new Date(data.primitive.updated_at).getTime()
       }
@@ -87,9 +88,9 @@
   mode="primitive"
   page={pageFormatted}
   initialComponents={parsedComponents}
-  revisions={[]}
-  currentRevisionId={null}
-  currentRevisionIsPublished={false}
+  revisions={data.revisions}
+  currentRevisionId={data.currentRevisionId}
+  currentRevisionIsPublished={data.currentRevisionIsPublished}
   colorThemes={data.colorThemes}
   components={[]}
   currentComponentId={data.primitive?.id || null}

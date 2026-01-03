@@ -62,7 +62,7 @@ SELECT
     'subtitle', 'Discover amazing products and services',
     'ctaText', 'Get Started',
     'ctaLink', '#',
-    'backgroundColor', 'theme:primary',
+    'backgroundColor', 'transparent',
     'contentAlign', 'center',
     'heroHeight', json_object('desktop', '500px', 'tablet', '400px', 'mobile', '300px'),
     'titleColor', 'theme:text',
@@ -233,6 +233,7 @@ SELECT
   json_object(
     'title', 'Features',
     'subtitle', '',
+    'containerBackground', 'transparent',
     'features', json_array(
       json_object('icon', '🎯', 'title', 'Feature One', 'description', 'Describe what makes this feature great'),
       json_object('icon', '✨', 'title', 'Feature Two', 'description', 'Explain the benefits of this feature'),
@@ -256,7 +257,7 @@ SELECT
     'subheading', 'Join thousands of satisfied customers',
     'buttonText', 'Get Started',
     'buttonUrl', '#',
-    'backgroundColor', 'var(--color-bg-secondary)',
+    'backgroundColor', 'transparent',
     'textColor', 'var(--color-text-primary)'
   ),
   1

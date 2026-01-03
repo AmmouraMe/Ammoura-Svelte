@@ -5,7 +5,7 @@
   import type { PageData } from './$types';
   import AdvancedBuilder from '$lib/components/builder/AdvancedBuilder.svelte';
   import { toastStore } from '$lib/stores/toast';
-  import type { PageComponent } from '$lib/types/pages';
+  import type { PageComponent, PageProperties } from '$lib/types/pages';
 
   export let data: PageData;
 
@@ -19,6 +19,8 @@
     slug: string;
     components: PageComponent[];
     layout_id?: number;
+    pageProperties?: PageProperties;
+    currentRevisionId?: string | null;
   }
 
   async function handleSave(pageData: SaveData) {
@@ -51,6 +53,7 @@
             slug: pageData.slug,
             status: 'draft',
             components: pageData.components,
+            pageProperties: pageData.pageProperties,
             notes: 'Initial revision'
           })
         });
@@ -64,14 +67,15 @@
         // Redirect to edit the new page
         goto(`/admin/builder/${newPage.id}`);
       } else {
-        // First, update the page's title and slug
+        // First, update the page's title, slug, and layout
+        // NOTE: We don't update status here - the page keeps its published status
+        // The revision will have status: 'draft' but the page remains published if it was
         const pageUpdateResponse = await fetch(`/api/pages/${pageData.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             title: pageData.title,
             slug: pageData.slug,
-            status: 'draft',
             layout_id: pageData.layout_id
           })
         });
@@ -89,6 +93,8 @@
             slug: pageData.slug,
             status: 'draft',
             components: pageData.components,
+            pageProperties: pageData.pageProperties,
+            parent_revision_id: pageData.currentRevisionId,
             notes: 'Draft save'
           })
         });
@@ -97,12 +103,15 @@
           throw new Error('Failed to save revision');
         }
 
-        await response.json();
+        const revisionResult = (await response.json()) as { id: string };
 
         toastStore.success('Page saved successfully');
 
         // Refetch the page data to get updated revisions
         await invalidateAll();
+
+        // Return the revision ID so the builder can track it
+        return { revisionId: revisionResult.id };
       }
     } catch (error) {
       console.error('Save error:', error);
@@ -116,6 +125,9 @@
     slug: string;
     components: PageComponent[];
     layout_id?: number;
+    pageProperties?: PageProperties;
+    currentRevisionId?: string | null;
+    hasUnsavedChanges?: boolean;
   }) {
     try {
       let targetPageId = pageData.id;
@@ -140,51 +152,76 @@
 
         const newPage = (await response.json()) as { id: string };
         targetPageId = newPage.id;
-      } else {
-        // First, update the page's title and slug
-        const pageUpdateResponse = await fetch(`/api/pages/${targetPageId}`, {
-          method: 'PUT',
+
+        // Create a published revision for the new page
+        const revisionResponse = await fetch(`/api/pages/${targetPageId}/revisions?publish=true`, {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             title: pageData.title,
             slug: pageData.slug,
             status: 'published',
-            layout_id: pageData.layout_id
+            components: pageData.components,
+            pageProperties: pageData.pageProperties,
+            notes: 'Initial published version'
           })
         });
 
-        if (!pageUpdateResponse.ok) {
-          throw new Error('Failed to update page');
+        if (!revisionResponse.ok) {
+          throw new Error('Failed to create revision');
         }
-      }
+      } else {
+        // Existing page - check if we can just publish the current revision
+        const hasChanges = pageData.hasUnsavedChanges !== false;
+        const currentRevisionId = pageData.currentRevisionId;
 
-      // Create a new published revision
-      const response = await fetch(`/api/pages/${targetPageId}/revisions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: pageData.title,
-          slug: pageData.slug,
-          status: 'published',
-          components: pageData.components,
-          notes: 'Published from Builder'
-        })
-      });
+        if (!hasChanges && currentRevisionId) {
+          // No unsaved changes - just publish the existing revision directly
+          const publishResponse = await fetch(
+            `/api/pages/${targetPageId}/revisions/${currentRevisionId}/publish`,
+            { method: 'POST' }
+          );
 
-      if (!response.ok) {
-        throw new Error('Failed to create revision');
-      }
+          if (!publishResponse.ok) {
+            throw new Error('Failed to publish revision');
+          }
+        } else {
+          // Has unsaved changes - need to create a new revision and publish it
+          // First, update the page's title and slug
+          const pageUpdateResponse = await fetch(`/api/pages/${targetPageId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: pageData.title,
+              slug: pageData.slug,
+              status: 'published',
+              layout_id: pageData.layout_id
+            })
+          });
 
-      const revision = (await response.json()) as { id: string };
+          if (!pageUpdateResponse.ok) {
+            throw new Error('Failed to update page');
+          }
 
-      // Publish the revision
-      const publishResponse = await fetch(
-        `/api/pages/${targetPageId}/revisions/${revision.id}/publish`,
-        { method: 'POST' }
-      );
+          // Create a published revision directly with ?publish=true
+          const response = await fetch(`/api/pages/${targetPageId}/revisions?publish=true`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: pageData.title,
+              slug: pageData.slug,
+              status: 'published',
+              components: pageData.components,
+              pageProperties: pageData.pageProperties,
+              parent_revision_id: currentRevisionId,
+              notes: 'Published revision'
+            })
+          });
 
-      if (!publishResponse.ok) {
-        throw new Error('Failed to publish revision');
+          if (!response.ok) {
+            throw new Error('Failed to publish revision');
+          }
+        }
       }
 
       toastStore.success('Page published successfully');
@@ -214,6 +251,7 @@
 <AdvancedBuilder
   page={data.page}
   initialComponents={parsedComponents}
+  initialPageProperties={data.pageProperties}
   layoutComponents={data.layoutComponents}
   revisions={data.revisions}
   currentRevisionId={data.currentRevisionId}

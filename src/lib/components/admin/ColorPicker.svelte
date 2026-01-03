@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ColorTheme } from '$lib/types/pages';
+  import type { ColorTheme, ThemeColors } from '$lib/types/pages';
   import { getThemeColors } from '$lib/utils/editor/colorThemes';
   import { createEventDispatcher } from 'svelte';
 
@@ -7,6 +7,8 @@
   export let selectedValue: string;
   export let defaultValue: string | undefined = undefined;
   export let anchorElement: HTMLElement | null = null;
+  // Optional: Allow passing theme colors directly (for builder with loaded themes from DB)
+  export let themeColors: ThemeColors | undefined = undefined;
 
   const dispatch = createEventDispatcher<{
     select: string;
@@ -20,14 +22,25 @@
   let popupStyle = '';
   let activeTab: 'theme' | 'custom' = 'theme';
 
-  // Get current theme colors for presets
-  $: currentThemeColors = getThemeColors(currentTheme);
+  // Get current theme colors for presets - use passed themeColors if available, otherwise lookup
+  $: currentThemeColors = themeColors || getThemeColors(currentTheme);
 
   // Automatically select the correct tab based on current value
   $: {
     const isThemeRef = typeof selectedValue === 'string' && selectedValue.startsWith('theme:');
-    activeTab = isThemeRef ? 'theme' : 'custom';
+    const isTransparent = selectedValue === 'transparent';
+    activeTab = isThemeRef || isTransparent ? 'theme' : 'custom';
   }
+
+  // Special colors (transparent, etc.)
+  const specialColors = [
+    {
+      name: 'Transparent',
+      value: 'transparent',
+      themeRef: 'transparent',
+      icon: '🚫'
+    }
+  ];
 
   // Organize colors into logical groups
   $: brandColors = [
@@ -398,6 +411,42 @@
           {/each}
         </div>
       </div>
+
+      <!-- Special Colors -->
+      <div class="color-group">
+        <div class="group-header">
+          <span class="group-icon">🔧</span>
+          <h5>Special</h5>
+        </div>
+        <p class="group-description">Special color values</p>
+        <div class="color-grid">
+          {#each specialColors as color}
+            <button
+              type="button"
+              class="color-swatch"
+              class:selected={selectedValue === color.themeRef}
+              on:click={() => selectPresetColor(color.themeRef)}
+              title={color.name}
+            >
+              <div class="swatch-color transparent-swatch" style="background-color: {color.value};">
+                {#if selectedValue === color.themeRef}
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="3"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                {/if}
+              </div>
+              <span class="swatch-label">{color.name}</span>
+            </button>
+          {/each}
+        </div>
+      </div>
     {:else}
       <!-- Custom Color Section -->
       <div class="custom-color-section">
@@ -669,6 +718,22 @@
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+
+  /* Transparent swatch with checkerboard pattern */
+  .swatch-color.transparent-swatch {
+    background-image:
+      linear-gradient(45deg, #ccc 25%, transparent 25%),
+      linear-gradient(-45deg, #ccc 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #ccc 75%),
+      linear-gradient(-45deg, transparent 75%, #ccc 75%) !important;
+    background-size: 12px 12px;
+    background-position:
+      0 0,
+      0 6px,
+      6px -6px,
+      -6px 0px;
+    background-color: #fff !important;
   }
 
   .swatch-label {

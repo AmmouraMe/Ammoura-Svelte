@@ -1,16 +1,22 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import type { WidgetConfig, Breakpoint } from '$lib/types/pages';
+  import type { WidgetConfig, Breakpoint, ColorThemeDefinition } from '$lib/types/pages';
   import ThemeColorInput from '../admin/ThemeColorInput.svelte';
+  import { getThemeColors } from '$lib/utils/editor/colorThemes';
 
   export let config: WidgetConfig;
   export let currentBreakpoint: Breakpoint;
   export let colorTheme: string = 'default';
+  export let colorThemes: ColorThemeDefinition[] = [];
   // When true, shows internal tab navigation (Layout/Style tabs)
   // When false, shows only the content for the activeTabOverride
   export let showTabNavigation: boolean = true;
   // Override which tab content to show (useful when hiding internal tab navigation)
   export let activeTabOverride: 'layout' | 'style' | null = null;
+
+  // Compute theme colors from colorThemes array (database-loaded themes) or fallback to static lookup
+  $: currentThemeData = colorThemes.find((t) => t.id === colorTheme);
+  $: themeColors = currentThemeData?.colors || getThemeColors(colorTheme);
 
   const dispatch = createEventDispatcher<{ update: WidgetConfig }>();
 
@@ -563,6 +569,7 @@
         <ThemeColorInput
           value={config.containerBackground || 'transparent'}
           currentTheme={colorTheme}
+          {themeColors}
           label="Background Color"
           defaultValue="transparent"
           onChange={(newValue) => {
@@ -586,6 +593,50 @@
 
     <div class="section">
       <h4>Border</h4>
+      <div class="form-group">
+        <ThemeColorInput
+          value={typeof config.containerBorderColor === 'string' ? config.containerBorderColor : ''}
+          currentTheme={colorTheme}
+          {themeColors}
+          label="Border Color"
+          defaultValue=""
+          onChange={(newValue) => {
+            config.containerBorderColor = typeof newValue === 'string' ? newValue : '';
+            handleUpdate();
+          }}
+        />
+      </div>
+      <div class="form-row">
+        <div class="form-group half">
+          <label for="container-border-width">Border Width (px)</label>
+          <input
+            id="container-border-width"
+            type="number"
+            value={config.containerBorderWidth ?? 0}
+            on:input={(e) => {
+              const value = parseInt(e.currentTarget.value, 10);
+              config.containerBorderWidth = isNaN(value) ? 0 : value;
+              handleUpdate();
+            }}
+            min="0"
+            placeholder="0"
+          />
+        </div>
+        <div class="form-group half">
+          <label for="container-border-style">Border Style</label>
+          <select
+            id="container-border-style"
+            bind:value={config.containerBorderStyle}
+            on:change={handleUpdate}
+          >
+            <option value="solid">Solid</option>
+            <option value="dashed">Dashed</option>
+            <option value="dotted">Dotted</option>
+            <option value="double">Double</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+      </div>
       <div class="form-group">
         <label for="container-border-radius">Border Radius (px)</label>
         <input
@@ -891,6 +942,15 @@
     font-size: 10px;
     font-family: 'Monaco', 'Courier New', monospace;
     color: var(--color-primary, #3b82f6);
+  }
+
+  .form-row {
+    display: flex;
+    gap: 12px;
+  }
+
+  .form-group.half {
+    flex: 1;
   }
 
   .spacing-grid {

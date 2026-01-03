@@ -1,0 +1,487 @@
+<script lang="ts">
+  import { createEventDispatcher } from 'svelte';
+  import { Settings, LayoutGrid, SlidersHorizontal, ChevronLeft } from 'lucide-svelte';
+  import type {
+    PageComponent,
+    Component,
+    ColorThemeDefinition,
+    ColorTheme
+  } from '$lib/types/pages';
+  import BuilderSidebar from './BuilderSidebar.svelte';
+  import BuilderPropertiesPanel from './BuilderPropertiesPanel.svelte';
+
+  type BuilderMode = 'page' | 'layout' | 'component' | 'primitive';
+  type LeftPanelTab = 'settings' | 'components' | 'properties';
+
+  export let mode: BuilderMode = 'page';
+  export let pageComponents: PageComponent[] = [];
+  export let title: string;
+  export let slug: string;
+  export let components: Component[] = [];
+  export let currentComponentId: number | null = null;
+  export let isBuiltIn = false;
+  export let collapsed = false;
+  // Whether adding components is allowed (false in primitive mode)
+  export let canAddComponents = true;
+
+  // Properties panel props
+  export let selectedComponent: PageComponent | null = null;
+  export let pageProperties:
+    | {
+        backgroundColor: string;
+        backgroundImage: string;
+        minHeight: string;
+        borderColor?: string;
+        borderWidth?: string;
+        borderStyle?: string;
+        borderRadius?: string;
+        padding?: string;
+        boxShadow?: string;
+      }
+    | undefined = undefined;
+  export let currentBreakpoint: 'mobile' | 'tablet' | 'desktop';
+  export let colorTheme: ColorTheme = 'default';
+  export let colorThemes: ColorThemeDefinition[] = [];
+  // Whether content editing is allowed (false in layout mode - only structure editing allowed)
+  export let isContentEditable = true;
+
+  // Entity label based on mode
+  $: entityLabel =
+    mode === 'page'
+      ? 'Page'
+      : mode === 'layout'
+        ? 'Layout'
+        : mode === 'primitive'
+          ? 'Primitive'
+          : 'Component';
+
+  const dispatch = createEventDispatcher();
+
+  // Default to properties tab if components can't be added (primitive mode)
+  let activeTab: LeftPanelTab = canAddComponents ? 'components' : 'properties';
+
+  // Auto-switch to properties tab when a component is selected
+  $: if (selectedComponent) {
+    activeTab = 'properties';
+  }
+
+  // Build tabs list - exclude components tab in primitive mode
+  $: tabs = [
+    { id: 'settings' as LeftPanelTab, label: 'Settings', icon: Settings },
+    ...(canAddComponents
+      ? [{ id: 'components' as LeftPanelTab, label: 'Components', icon: LayoutGrid }]
+      : []),
+    { id: 'properties' as LeftPanelTab, label: 'Properties', icon: SlidersHorizontal }
+  ];
+
+  function handleToggle(): void {
+    dispatch('toggle');
+  }
+</script>
+
+<aside class="builder-left-panel" class:collapsed>
+  {#if collapsed}
+    <button type="button" class="collapsed-toggle" on:click={handleToggle} title="Expand panel">
+      <LayoutGrid size={20} />
+      <span class="collapsed-label">Panel</span>
+    </button>
+  {:else}
+    <div class="panel-header">
+      <div class="tab-bar">
+        {#each tabs as tab}
+          <button
+            type="button"
+            class="tab-button"
+            class:active={activeTab === tab.id}
+            on:click={() => (activeTab = tab.id)}
+            title={tab.label}
+          >
+            <svelte:component this={tab.icon} size={16} />
+            <span class="tab-label">{tab.label}</span>
+          </button>
+        {/each}
+      </div>
+      <button type="button" class="btn-collapse" on:click={handleToggle} title="Collapse panel">
+        <ChevronLeft size={18} />
+      </button>
+    </div>
+
+    <div class="panel-content">
+      {#if activeTab === 'settings'}
+        <div class="settings-panel">
+          <div class="settings-content">
+            <div class="setting-group">
+              <label for="entity-title" class="setting-label">Title</label>
+              <input
+                id="entity-title"
+                type="text"
+                class="setting-input"
+                class:readonly={isBuiltIn}
+                value={title}
+                readonly={isBuiltIn}
+                on:input={(e) => !isBuiltIn && dispatch('updateTitle', e.currentTarget.value)}
+                placeholder="{entityLabel} title"
+                title={isBuiltIn ? 'Built-in component names cannot be changed' : ''}
+              />
+            </div>
+            {#if mode === 'page'}
+              <div class="setting-group">
+                <label for="entity-slug" class="setting-label">URL Slug</label>
+                <input
+                  id="entity-slug"
+                  type="text"
+                  class="setting-input"
+                  value={slug}
+                  on:input={(e) => dispatch('updateSlug', e.currentTarget.value)}
+                  placeholder="/page-url"
+                />
+              </div>
+            {/if}
+            <button
+              class="btn-properties"
+              on:click={() => {
+                dispatch('showPageProperties');
+                activeTab = 'properties';
+              }}
+            >
+              <Settings size={16} />
+              <span>{entityLabel} Properties</span>
+            </button>
+          </div>
+        </div>
+      {:else if activeTab === 'components'}
+        <div class="components-wrapper">
+          <BuilderSidebar
+            {mode}
+            {pageComponents}
+            {title}
+            {slug}
+            {components}
+            {currentComponentId}
+            {isBuiltIn}
+            showPageSettings={false}
+            on:addComponent
+            on:selectComponent
+            on:showPageProperties={() => {
+              dispatch('showPageProperties');
+              activeTab = 'properties';
+            }}
+            on:updateTitle
+            on:updateSlug
+            on:close={handleToggle}
+          />
+        </div>
+      {:else if activeTab === 'properties'}
+        <div class="properties-wrapper">
+          {#if selectedComponent || pageProperties}
+            <BuilderPropertiesPanel
+              {pageComponents}
+              {selectedComponent}
+              {pageProperties}
+              {currentBreakpoint}
+              {colorTheme}
+              {colorThemes}
+              {entityLabel}
+              {components}
+              {isContentEditable}
+              on:selectComponent
+              on:selectWidget
+              on:updateComponent
+              on:deleteComponent
+              on:updatePageProperties
+              on:close={() => {
+                dispatch('deselectComponent');
+              }}
+            />
+          {:else}
+            <div class="empty-properties">
+              <SlidersHorizontal size={32} />
+              <p>Select a component to edit its properties</p>
+              <button class="btn-show-page-props" on:click={() => dispatch('showPageProperties')}>
+                Edit {entityLabel} Properties
+              </button>
+            </div>
+          {/if}
+        </div>
+      {/if}
+    </div>
+  {/if}
+</aside>
+
+<style>
+  .builder-left-panel {
+    width: 320px;
+    height: 100%;
+    background: var(--color-bg-primary);
+    border-right: 1px solid var(--color-border-secondary);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: width 0.2s ease;
+  }
+
+  .builder-left-panel.collapsed {
+    width: 48px;
+  }
+
+  .collapsed-toggle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    height: 100%;
+    padding: 1rem 0.5rem;
+    background: var(--color-bg-primary);
+    border: none;
+    border-right: 1px solid var(--color-border-secondary);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .collapsed-toggle:hover {
+    background: var(--color-bg-secondary);
+    color: var(--color-primary);
+  }
+
+  .collapsed-label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--color-border-secondary);
+    background: var(--color-bg-secondary);
+    flex-shrink: 0;
+  }
+
+  .tab-bar {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .tab-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    flex: 1;
+    padding: 0.75rem 0.5rem;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--color-text-secondary);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .tab-button:hover:not(.active) {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+  }
+
+  .tab-button.active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+    background: var(--color-bg-primary);
+  }
+
+  .tab-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .btn-collapse {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 100%;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-left: 1px solid var(--color-border-secondary);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-collapse:hover {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+  }
+
+  .panel-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .settings-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  .settings-content {
+    padding: 1rem;
+  }
+
+  .setting-group {
+    margin-bottom: 1rem;
+  }
+
+  .setting-group:last-child {
+    margin-bottom: 0;
+  }
+
+  .setting-label {
+    display: block;
+    margin-bottom: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+  }
+
+  .setting-input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 4px;
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-size: 0.875rem;
+    transition: all 0.2s;
+    box-sizing: border-box;
+  }
+
+  .setting-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+  }
+
+  .setting-input.readonly {
+    opacity: 0.7;
+    cursor: not-allowed;
+    background: var(--color-bg-tertiary);
+  }
+
+  .btn-properties {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    margin-top: 1rem;
+    padding: 0.625rem 1rem;
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-properties:hover {
+    background: var(--color-primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  .components-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Override BuilderSidebar styles when embedded */
+  .components-wrapper :global(.builder-sidebar) {
+    width: 100%;
+    border-right: none;
+  }
+
+  .properties-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Override BuilderPropertiesPanel styles when embedded */
+  .properties-wrapper :global(.builder-properties-panel) {
+    width: 100%;
+    border-left: none;
+    position: static;
+  }
+
+  .empty-properties {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 2rem;
+    text-align: center;
+    color: var(--color-text-secondary);
+    height: 100%;
+  }
+
+  .empty-properties p {
+    margin: 0;
+    font-size: 0.875rem;
+  }
+
+  .btn-show-page-props {
+    padding: 0.5rem 1rem;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 6px;
+    color: var(--color-text-primary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-show-page-props:hover {
+    background: var(--color-bg-tertiary);
+    border-color: var(--color-primary);
+  }
+
+  @media (max-width: 768px) {
+    .builder-left-panel {
+      width: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 100;
+    }
+
+    .builder-left-panel.collapsed {
+      width: 48px;
+    }
+
+    .tab-label {
+      display: none;
+    }
+  }
+</style>

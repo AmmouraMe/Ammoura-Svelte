@@ -3,6 +3,7 @@ import { getDB } from '$lib/server/db/connection';
 import * as pagesDb from '$lib/server/db/pages';
 import { getPublishedRevision } from '$lib/server/db/revisions';
 import { getLayout, getLayoutComponents, getDefaultLayout } from '$lib/server/db/layouts';
+import { resolveComponentRefs } from '$lib/server/db/components';
 import type { PageServerLoad } from './$types';
 import { logPageAction } from '$lib/server/activity-logger';
 import type { LayoutWidget } from '$lib/types/pages';
@@ -42,7 +43,10 @@ export const load: PageServerLoad = async ({
 
     // Fetch components from published revision (Builder content)
     const publishedRevision = await getPublishedRevision(db, siteId, page.id);
-    const components = publishedRevision?.components || [];
+    const rawComponents = publishedRevision?.components || [];
+
+    // Resolve component_ref types to actual component types for frontend rendering
+    const components = await resolveComponentRefs(db, siteId, rawComponents);
 
     // Fetch the layout for this page (use page's layout_id or default layout)
     let layout = null;

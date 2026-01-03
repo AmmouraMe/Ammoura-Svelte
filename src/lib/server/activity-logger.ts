@@ -56,7 +56,7 @@ export interface PageActionParams extends BaseActivityLogParams {
 
 export interface RevisionActionParams extends BaseActivityLogParams {
   action: 'created' | 'published' | 'restored' | 'viewed';
-  entityType: 'product' | 'page';
+  entityType: 'product' | 'page' | 'component' | 'layout';
   entityId: string;
   entityName?: string;
   revisionId: string;

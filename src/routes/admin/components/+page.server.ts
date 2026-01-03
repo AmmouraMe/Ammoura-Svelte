@@ -145,8 +145,27 @@ export const actions: Actions = {
         return fail(400, { error: 'Only built-in components can be reset' });
       }
 
+      // Determine the correct type based on component name
+      // This is necessary because the type might have been incorrectly saved as 'composite'
+      const componentName = component.name.toLowerCase();
+      let resetType = component.type;
+
+      if (componentName === 'navbar' || componentName === 'navigation bar') {
+        resetType = 'navbar';
+      } else if (componentName === 'footer') {
+        resetType = 'footer';
+      } else if (componentName === 'hero') {
+        resetType = 'hero';
+      } else if (componentName === 'features') {
+        resetType = 'features';
+      } else if (componentName === 'call to action' || componentName === 'cta') {
+        resetType = 'cta';
+      } else if (componentName === 'pricing') {
+        resetType = 'pricing';
+      }
+
       // Reset the component to its original configuration
-      await resetBuiltInComponent(db, String(siteId), componentId, component.type);
+      await resetBuiltInComponent(db, String(siteId), componentId, resetType);
 
       return { success: true };
     } catch (err) {

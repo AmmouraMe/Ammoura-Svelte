@@ -29,8 +29,8 @@ describe('BuilderCanvas - Inline Editing', () => {
         selectedComponent: null,
         hoveredComponent: null,
         currentBreakpoint: 'desktop' as const,
-        colorTheme: 'default-light',
-        userCurrentThemeId: 'default-light'
+        colorTheme: 'vibrant',
+        userCurrentThemeId: 'vibrant'
       }
     });
 
@@ -83,8 +83,8 @@ describe('BuilderCanvas - Inline Editing', () => {
         selectedComponent: null,
         hoveredComponent: null,
         currentBreakpoint: 'desktop' as const,
-        colorTheme: 'default-light',
-        userCurrentThemeId: 'default-light'
+        colorTheme: 'vibrant',
+        userCurrentThemeId: 'vibrant'
       }
     });
 
@@ -137,8 +137,8 @@ describe('BuilderCanvas - Inline Editing', () => {
         selectedComponent: null,
         hoveredComponent: null,
         currentBreakpoint: 'desktop' as const,
-        colorTheme: 'default-light',
-        userCurrentThemeId: 'default-light'
+        colorTheme: 'vibrant',
+        userCurrentThemeId: 'vibrant'
       }
     });
 

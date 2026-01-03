@@ -2,6 +2,16 @@ import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getAllColorThemes } from '$lib/server/db/color-themes';
 import { getComponentsWithChildrenCount, getComponentWithWidgets } from '$lib/server/db/components';
+import {
+  buildComponentRevisionTree,
+  ensureComponentHasRevision
+} from '$lib/server/db/component-revisions';
+import type {
+  RevisionNode as GenericRevisionNode,
+  ComponentRevisionData
+} from '$lib/types/revisions';
+import type { ComponentType, PageStatus, RevisionNode, PageComponent } from '$lib/types/pages';
+import type { ComponentChildData } from '$lib/types/revisions';
 
 export const load: PageServerLoad = async ({ params, locals, platform }) => {
   const siteId = locals.siteId;
@@ -149,15 +159,81 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
     });
   }
 
-  // TODO: Implement revision system for components similar to pages
-  const revisions: never[] = [];
+  // Ensure component has at least one revision (creates initial if none exist)
+  const currentUserId = locals.currentUser?.id?.toString();
+  await ensureComponentHasRevision(
+    db,
+    siteId,
+    component.id,
+    {
+      name: component.name,
+      description: component.description,
+      type: component.type,
+      config: component.config as Record<string, unknown>
+    },
+    currentUserId
+  );
+
+  // Get revision tree for this component (with children/depth/branch populated)
+  const revisionTree = await buildComponentRevisionTree(db, siteId, component.id);
+
+  // Find the current (published) revision
+  const currentRevision = revisionTree.find((r) => r.is_current);
+
+  // Convert component children to PageComponent format for RevisionNode compatibility
+  const childrenToComponents = (children: ComponentChildData[] | undefined): PageComponent[] => {
+    if (!children) return [];
+    return children.map((c) => ({
+      id: c.id,
+      page_id: String(component.id),
+      type: c.type as ComponentType,
+      position: c.position,
+      config: c.config,
+      created_at: 0,
+      updated_at: 0
+    }));
+  };
+
+  // Recursively map revisions to RevisionNode format for compatibility with AdvancedBuilder
+  // This preserves the tree structure (children, depth, branch) from buildComponentRevisionTree
+  const mapRevision = (r: GenericRevisionNode<ComponentRevisionData>): RevisionNode => {
+    // Get children from revision data - check both r.data.children (new format)
+    // and r.data.config.children (seeded format from migration 0054)
+    const revisionChildren =
+      r.data.children ||
+      ((r.data.config as Record<string, unknown> | undefined)?.children as
+        | ComponentChildData[]
+        | undefined);
+
+    return {
+      id: r.id,
+      page_id: String(component.id), // Use component id for compatibility with RevisionNode
+      revision_hash: r.revision_hash,
+      parent_revision_id: r.parent_revision_id,
+      title: r.data.name,
+      slug: r.data.type, // components don't have slugs, use type
+      status: (r.is_current ? 'published' : 'draft') as PageStatus,
+      color_theme: undefined,
+      components: childrenToComponents(revisionChildren),
+      is_published: r.is_current,
+      created_by: r.user_id,
+      created_at: r.created_at,
+      notes: r.message,
+      // Preserve tree structure from buildComponentRevisionTree
+      children: r.children.map(mapRevision),
+      depth: r.depth,
+      branch: r.branch
+    };
+  };
+
+  const mappedRevisions: RevisionNode[] = revisionTree.map(mapRevision);
 
   return {
     component,
     widgets,
-    revisions,
-    currentRevisionId: null,
-    currentRevisionIsPublished: false,
+    revisions: mappedRevisions,
+    currentRevisionId: currentRevision?.id || null,
+    currentRevisionIsPublished: currentRevision?.is_current || false,
     colorThemes,
     customComponents: components,
     userName: locals.currentUser?.name || locals.currentUser?.email,

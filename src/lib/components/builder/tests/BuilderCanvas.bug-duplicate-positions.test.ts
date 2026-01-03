@@ -81,8 +81,8 @@ describe('BuilderCanvas - Duplicate Positions Regression Tests', () => {
         selectedComponent: currentWidgets[1], // Select bug-component-2
         hoveredComponent: null,
         currentBreakpoint: 'desktop',
-        colorTheme: 'default-light',
-        userCurrentThemeId: 'default-light'
+        colorTheme: 'vibrant',
+        userCurrentThemeId: 'vibrant'
       }
     });
 
@@ -197,8 +197,8 @@ describe('BuilderCanvas - Duplicate Positions Regression Tests', () => {
         selectedComponent: currentWidgets[1],
         hoveredComponent: null,
         currentBreakpoint: 'desktop',
-        colorTheme: 'default-light',
-        userCurrentThemeId: 'default-light'
+        colorTheme: 'vibrant',
+        userCurrentThemeId: 'vibrant'
       }
     });
 
@@ -290,8 +290,8 @@ describe('BuilderCanvas - Duplicate Positions Regression Tests', () => {
         selectedComponent: currentWidgets[1], // Select second component (position 0)
         hoveredComponent: null,
         currentBreakpoint: 'desktop',
-        colorTheme: 'default-light',
-        userCurrentThemeId: 'default-light'
+        colorTheme: 'vibrant',
+        userCurrentThemeId: 'vibrant'
       }
     });
 
@@ -391,8 +391,8 @@ describe('BuilderCanvas - Duplicate Positions Regression Tests', () => {
         selectedComponent: currentWidgets[1], // Select text-block (middle component with duplicate position)
         hoveredComponent: null,
         currentBreakpoint: 'desktop',
-        colorTheme: 'default-light',
-        userCurrentThemeId: 'default-light'
+        colorTheme: 'vibrant',
+        userCurrentThemeId: 'vibrant'
       }
     });
 
@@ -496,8 +496,8 @@ describe('BuilderCanvas - Duplicate Positions Regression Tests', () => {
         selectedComponent: pageComponents[0],
         hoveredComponent: null,
         currentBreakpoint: 'desktop',
-        colorTheme: 'default-light',
-        userCurrentThemeId: 'default-light'
+        colorTheme: 'vibrant',
+        userCurrentThemeId: 'vibrant'
       }
     });
 

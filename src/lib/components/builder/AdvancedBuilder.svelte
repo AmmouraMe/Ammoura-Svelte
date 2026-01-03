@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
+  import { confirmStore } from '$lib/stores/confirm';
   import type {
     Page,
     PageComponent,
@@ -14,8 +15,7 @@
   import type { SiteContext, UserInfo } from '$lib/utils/templateSubstitution';
   import BuilderToolbar from './BuilderToolbar.svelte';
   import BuilderCanvas from './BuilderCanvas.svelte';
-  import BuilderSidebar from './BuilderSidebar.svelte';
-  import BuilderPropertiesPanel from './BuilderPropertiesPanel.svelte';
+  import BuilderLeftPanel from './BuilderLeftPanel.svelte';
   import BuilderAIPanel from './BuilderAIPanel.svelte';
   import RevisionModal from '../admin/RevisionModal.svelte';
   import ThemePalette from './ThemePalette.svelte';
@@ -30,6 +30,24 @@
     slug: string;
     components: PageComponent[];
     layout_id?: number;
+    pageProperties?: {
+      backgroundColor?: string;
+      backgroundImage?: string;
+      minHeight?: string;
+      borderColor?: string;
+      borderWidth?: string;
+      borderStyle?: string;
+      borderRadius?: string;
+      padding?: string;
+      boxShadow?: string;
+    };
+    currentRevisionId?: string | null;
+    hasUnsavedChanges?: boolean;
+  }
+
+  /** Result returned by the onSave callback, containing the new revision ID if created */
+  interface SaveResult {
+    revisionId?: string;
   }
 
   export let mode: BuilderMode = 'page';
@@ -45,6 +63,9 @@
   export let components: Component[] = [];
   // Current component ID (for component mode) - used to prevent adding a component to itself
   export let currentComponentId: number | null = null;
+  // Whether the component being edited is a built-in (global) component
+  // Built-in components cannot have their name changed
+  export let isBuiltIn = false;
   // Site context for template variable substitution in preview
   export let siteContext: SiteContext | undefined = undefined;
   // User context for template variable substitution in preview
@@ -52,8 +73,51 @@
 
   // Track if we're currently viewing a published revision (can change after saves)
   let isViewingPublishedRevision = currentRevisionIsPublished;
+
+  // Track the last known revision ID from props to detect external data refreshes
+  let lastKnownRevisionId = currentRevisionId;
+
+  // Track when we internally load/save a revision (vs prop change from parent)
+  // This prevents the reactive sync from overwriting our local state
+  let internalRevisionLoad = false;
+
+  // Store the internally set revision ID to preserve it across prop changes
+  let internalRevisionId: string | null = null;
+
+  // Flag to track if we need to sync components on prop change
+  let needsComponentSync = false;
+
+  // Sync state when props change from external data refresh (e.g., after invalidateAll())
+  // This handles the case where invalidateAll() is called after publishing/saving
+  // Skip if we have an internally set revision ID (e.g., after saving a draft)
+  $: if (currentRevisionId !== lastKnownRevisionId) {
+    lastKnownRevisionId = currentRevisionId;
+    if (!internalRevisionLoad && !internalRevisionId) {
+      isViewingPublishedRevision = currentRevisionIsPublished;
+    }
+    internalRevisionLoad = false; // Reset the flag
+    needsComponentSync = true;
+  }
+
+  // Computed property for the actual revision ID to use (internal takes priority)
+  $: effectiveRevisionId = internalRevisionId || currentRevisionId;
+
   export let userName: string | undefined = undefined;
-  export let onSave: (data: SaveData) => Promise<void>;
+  // Initial page/component root properties (background, etc.)
+  export let initialPageProperties:
+    | {
+        backgroundColor?: string;
+        backgroundImage?: string;
+        minHeight?: string;
+        borderColor?: string;
+        borderWidth?: string;
+        borderStyle?: string;
+        borderRadius?: string;
+        padding?: string;
+        boxShadow?: string;
+      }
+    | undefined = undefined;
+  export let onSave: (data: SaveData) => Promise<SaveResult | void>;
   export let onPublish: (data: SaveData) => Promise<void>;
   export let onExit: () => void;
 
@@ -71,6 +135,8 @@
   $: isPrimitiveMode = mode === 'primitive';
   $: canAddComponents = !isPrimitiveMode; // Primitives have fixed structure
   $: canDeleteComponents = !isPrimitiveMode; // Never delete widgets in primitive mode
+  // Layout mode: can add/remove/reorder components but cannot edit their content
+  $: isContentEditable = mode !== 'layout';
   $: entityLabelLower = entityLabel.toLowerCase();
 
   // Core state
@@ -81,14 +147,56 @@
   let selectedComponent: PageComponent | null = null;
   let hoveredComponent: PageComponent | null = null;
 
+  // Sync pageComponents when external data refresh is detected
+  // This handles the case where invalidateAll() updates initialComponents
+  $: if (needsComponentSync && initialComponents) {
+    pageComponents = JSON.parse(JSON.stringify(initialComponents));
+    // Also sync title and slug from page prop
+    if (page) {
+      title = page.title || title;
+      slug = page.slug || slug;
+    }
+    // Reset the lastSavedState to match the new data
+    lastSavedState = {
+      title,
+      slug,
+      components: JSON.parse(JSON.stringify(pageComponents)),
+      pageProperties: JSON.parse(JSON.stringify(pageProperties))
+    };
+    hasUnsavedChanges = false;
+    needsComponentSync = false;
+  }
+
   // Canvas component reference for scrolling
   let canvasComponent: BuilderCanvas;
 
-  // Page properties (custom styles for the entire page)
-  let pageProperties = {
-    backgroundColor: 'theme:background',
+  // Default page properties
+  const defaultPageProperties = {
+    backgroundColor: 'transparent',
     backgroundImage: '',
-    minHeight: '100vh'
+    minHeight: '100vh',
+    borderColor: '',
+    borderWidth: '0',
+    borderStyle: 'solid',
+    borderRadius: '0',
+    padding: '',
+    boxShadow: ''
+  };
+
+  // Page properties (custom styles for the entire page/component root)
+  // Use initialPageProperties if provided, with defaults as fallback
+  let pageProperties = {
+    backgroundColor:
+      initialPageProperties?.backgroundColor ?? defaultPageProperties.backgroundColor,
+    backgroundImage:
+      initialPageProperties?.backgroundImage ?? defaultPageProperties.backgroundImage,
+    minHeight: initialPageProperties?.minHeight ?? defaultPageProperties.minHeight,
+    borderColor: initialPageProperties?.borderColor ?? defaultPageProperties.borderColor,
+    borderWidth: initialPageProperties?.borderWidth ?? defaultPageProperties.borderWidth,
+    borderStyle: initialPageProperties?.borderStyle ?? defaultPageProperties.borderStyle,
+    borderRadius: initialPageProperties?.borderRadius ?? defaultPageProperties.borderRadius,
+    padding: initialPageProperties?.padding ?? defaultPageProperties.padding,
+    boxShadow: initialPageProperties?.boxShadow ?? defaultPageProperties.boxShadow
   };
 
   // Calculate the user's currently active system theme ID based on their light/dark mode
@@ -135,7 +243,6 @@
 
   // UI state
   let showLeftSidebar = true;
-  let showPropertiesPanel = false;
   let showAIPanel = false;
   let showRevisionModal = false;
   let showThemePalette = false;
@@ -146,6 +253,7 @@
     title: string;
     slug: string;
     components: PageComponent[];
+    pageProperties: typeof pageProperties;
     timestamp: number;
   }
   let history: HistoryEntry[] = [];
@@ -155,8 +263,14 @@
   // Auto-save state
   let hasUnsavedChanges = false;
   let isSaving = false;
+  let isPublishing = false; // Flag to prevent save during publish
   let lastSavedAt: Date | null = null;
-  let lastSavedState: { title: string; slug: string; components: PageComponent[] } | null = null;
+  let lastSavedState: {
+    title: string;
+    slug: string;
+    components: PageComponent[];
+    pageProperties: typeof pageProperties;
+  } | null = null;
 
   // Add to history when state changes
   function addToHistory() {
@@ -164,6 +278,7 @@
       title,
       slug,
       components: JSON.parse(JSON.stringify(pageComponents)),
+      pageProperties: JSON.parse(JSON.stringify(pageProperties)),
       timestamp: Date.now()
     };
 
@@ -188,6 +303,7 @@
       title = state.title;
       slug = state.slug;
       pageComponents = JSON.parse(JSON.stringify(state.components));
+      pageProperties = JSON.parse(JSON.stringify(state.pageProperties));
       hasUnsavedChanges = true;
     }
   }
@@ -199,6 +315,7 @@
       title = state.title;
       slug = state.slug;
       pageComponents = JSON.parse(JSON.stringify(state.components));
+      pageProperties = JSON.parse(JSON.stringify(state.pageProperties));
       hasUnsavedChanges = true;
     }
   }
@@ -227,10 +344,14 @@
     }
 
     for (const child of children) {
-      // Add the child with its parent_id set correctly
+      // Create a clean config without children (children are represented via parent_id in flat format)
+      const { children: _childrenToRemove, ...cleanConfig } = child.config || {};
+
+      // Add the child with its parent_id set correctly and config.children removed
       const childWithParent: PageComponent = {
         ...child,
-        parent_id: parentId
+        parent_id: parentId,
+        config: cleanConfig as typeof child.config
       };
       result.push(childWithParent);
 
@@ -253,14 +374,12 @@
     // Create a map of all updates (the component itself + all its nested children)
     const updateMap = new Map<string, PageComponent>();
 
-    // Add the root component (without config.children since those are stored separately)
+    // Add the root component WITHOUT config.children (children are stored separately with parent_id)
+    // This is critical for undo/redo to work correctly - we store flat format only
+    const { children: _childrenToRemove, ...cleanRootConfig } = updatedComponent.config || {};
     const rootComponentForStorage = {
       ...updatedComponent,
-      config: {
-        ...updatedComponent.config
-        // Keep children in config for components that render with them (navbar, container)
-        // The children field is the source of truth for nested structure
-      }
+      config: cleanRootConfig as typeof updatedComponent.config
     };
     updateMap.set(updatedComponent.id, rootComponentForStorage);
 
@@ -364,13 +483,11 @@
 
   function handleSelectComponent(component: PageComponent | null) {
     selectedComponent = component;
-    if (component) {
-      showPropertiesPanel = true;
-    }
+    // The left panel will auto-switch to properties tab when component is selected
   }
 
   function handleShowPageProperties() {
-    showPropertiesPanel = true;
+    // Deselect component to show page properties in the left panel
     selectedComponent = null;
   }
 
@@ -391,20 +508,39 @@
 
   // Save operations
   async function handleSaveClick() {
+    // Don't save if we're in the middle of publishing
+    if (isPublishing) {
+      return;
+    }
     isSaving = true;
     try {
-      await onSave({
+      const result = await onSave({
         id: page?.id,
         title,
         slug,
         components: pageComponents,
-        layout_id: layoutId || undefined
+        layout_id: layoutId || undefined,
+        pageProperties,
+        currentRevisionId: effectiveRevisionId
       });
+
+      // Update revision tracking if a new revision was created
+      // This ensures the revision history shows the correct "viewing" badge
+      if (result?.revisionId) {
+        // Store internally to prevent prop changes from overwriting
+        internalRevisionId = result.revisionId;
+        // Also update the external prop for compatibility
+        internalRevisionLoad = true;
+        lastKnownRevisionId = result.revisionId;
+        currentRevisionId = result.revisionId;
+      }
+
       // Capture the saved state for future comparison
       lastSavedState = {
         title,
         slug,
-        components: JSON.parse(JSON.stringify(pageComponents))
+        components: JSON.parse(JSON.stringify(pageComponents)),
+        pageProperties: JSON.parse(JSON.stringify(pageProperties))
       };
       hasUnsavedChanges = false;
       lastSavedAt = new Date();
@@ -416,34 +552,22 @@
   }
 
   async function handlePublishClick() {
-    console.log('[AdvancedBuilder] handlePublishClick called', {
-      pageId: page?.id,
-      title,
-      componentsCount: pageComponents.length,
-      canPublish,
-      hasActualChanges,
-      isViewingPublishedRevision
-    });
-
+    isPublishing = true; // Prevent save during publish
     isSaving = true;
     try {
-      // For new pages (no id), skip the draft save and go straight to publish
-      // The onPublish handler will create the page directly as published
-      if (page?.id) {
-        await onSave({
-          id: page?.id,
-          title,
-          slug,
-          components: pageComponents,
-          layout_id: layoutId || undefined
-        });
-      }
+      // Pass along whether we have unsaved changes and the current revision ID
+      // This allows the publish handler to either:
+      // 1. Publish the existing revision (if no unsaved changes)
+      // 2. Create a new revision and publish it (if there are unsaved changes)
       await onPublish({
         id: page?.id,
         title,
         slug,
         components: pageComponents,
-        layout_id: layoutId || undefined
+        layout_id: layoutId || undefined,
+        pageProperties,
+        currentRevisionId: effectiveRevisionId,
+        hasUnsavedChanges
       });
       // After publishing, we're now viewing a published revision
       isViewingPublishedRevision = true;
@@ -451,11 +575,13 @@
       lastSavedState = {
         title,
         slug,
-        components: JSON.parse(JSON.stringify(pageComponents))
+        components: JSON.parse(JSON.stringify(pageComponents)),
+        pageProperties: JSON.parse(JSON.stringify(pageProperties))
       };
       hasUnsavedChanges = false;
       lastSavedAt = new Date();
     } finally {
+      isPublishing = false;
       isSaving = false;
     }
   }
@@ -465,9 +591,20 @@
     hasUnsavedChanges = true;
   }
 
-  function handleExitClick() {
-    if (hasUnsavedChanges) {
-      if (confirm('You have unsaved changes. Are you sure you want to exit?')) {
+  async function handleExitClick(): Promise<void> {
+    // Use hasActualChanges instead of hasUnsavedChanges to avoid false positives
+    // from theme preview changes that don't affect the actual saved state
+    if (hasActualChanges) {
+      const confirmed = await confirmStore.show(
+        'You have unsaved changes. Are you sure you want to exit?',
+        {
+          title: 'Unsaved Changes',
+          confirmText: 'Exit',
+          cancelText: 'Stay',
+          variant: 'warning'
+        }
+      );
+      if (confirmed) {
         onExit();
       }
     } else {
@@ -496,11 +633,37 @@
     showRevisionModal = true;
   }
 
+  /**
+   * Get the API base path for revisions based on current mode
+   */
+  function getRevisionApiPath(): string {
+    if (!page?.id) return '';
+    switch (mode) {
+      case 'page':
+        return `/api/pages/${page.id}/revisions`;
+      case 'layout':
+        return `/api/layouts/${page.id}/revisions`;
+      case 'component':
+      case 'primitive':
+        return `/api/components/${page.id}/revisions`;
+      default:
+        return `/api/pages/${page.id}/revisions`;
+    }
+  }
+
   async function handleRevisionSelect(revisionId: string) {
     if (!page?.id) return;
 
+    // If selecting the current revision, just close the modal without reloading
+    // This preserves any unsaved changes and avoids unnecessary API calls
+    if (revisionId === effectiveRevisionId) {
+      showRevisionModal = false;
+      return;
+    }
+
     try {
-      const response = await fetch(`/api/pages/${page.id}/revisions/${revisionId}`);
+      const apiPath = getRevisionApiPath();
+      const response = await fetch(`${apiPath}/${revisionId}`);
       if (!response.ok) throw new Error('Failed to load revision');
 
       const revision = (await response.json()) as ParsedPageRevision;
@@ -509,43 +672,69 @@
       title = revision.title;
       slug = revision.slug;
       pageComponents = revision.components;
+      // Also load pageProperties from the revision, with defaults for any undefined values
+      if (revision.pageProperties) {
+        pageProperties = {
+          backgroundColor:
+            revision.pageProperties.backgroundColor ?? pageProperties.backgroundColor,
+          backgroundImage:
+            revision.pageProperties.backgroundImage ?? pageProperties.backgroundImage,
+          minHeight: revision.pageProperties.minHeight ?? pageProperties.minHeight,
+          borderColor: revision.pageProperties.borderColor ?? pageProperties.borderColor,
+          borderWidth: revision.pageProperties.borderWidth ?? pageProperties.borderWidth,
+          borderStyle: revision.pageProperties.borderStyle ?? pageProperties.borderStyle,
+          borderRadius: revision.pageProperties.borderRadius ?? pageProperties.borderRadius,
+          padding: revision.pageProperties.padding ?? pageProperties.padding,
+          boxShadow: revision.pageProperties.boxShadow ?? pageProperties.boxShadow
+        };
+      }
+
+      // Mark this as an internal revision load so the reactive sync doesn't overwrite
+      // isViewingPublishedRevision with the stale prop value
+      internalRevisionLoad = true;
+
+      // Clear any internally tracked revision ID since we're explicitly selecting one
+      internalRevisionId = null;
+
+      // Update current revision ID to the newly selected revision
+      currentRevisionId = revisionId;
+      lastKnownRevisionId = revisionId;
 
       // Update whether we're viewing a published revision
-      isViewingPublishedRevision = revision.is_published;
+      // Use Boolean conversion to handle undefined - if undefined, treat as not published
+      isViewingPublishedRevision = Boolean(revision.is_published);
 
       // Set lastSavedState to match the loaded revision
       // This treats the loaded revision as the "saved" state
       lastSavedState = {
         title: revision.title,
         slug: revision.slug,
-        components: JSON.parse(JSON.stringify(revision.components))
+        components: JSON.parse(JSON.stringify(revision.components)),
+        pageProperties: JSON.parse(JSON.stringify(revision.pageProperties || pageProperties))
       };
 
-      addToHistory();
+      // Add the loaded revision to history so user can undo back to the previous state
+      // If history is empty, initialize it; otherwise add the new state
+      // This allows the user to undo to go back to the state they were viewing before
+      if (history.length === 0) {
+        // No prior state, just add this revision as the starting point
+        addToHistory();
+      } else {
+        // Remove any future history if we're not at the end (in case user was in middle of undo stack)
+        if (historyIndex < history.length - 1) {
+          history = history.slice(0, historyIndex + 1);
+        }
+        // Add the loaded revision as a new history entry
+        addToHistory();
+      }
       hasUnsavedChanges = false;
-      lastSavedAt = new Date(revision.created_at);
+      // created_at is stored as Unix timestamp in seconds, convert to milliseconds
+      lastSavedAt = new Date(revision.created_at * 1000);
+
+      // Close the revision modal after successfully loading
+      showRevisionModal = false;
     } catch (_error) {
       alert('Failed to load revision');
-    }
-  }
-
-  async function handleRevisionPublish(revisionId: string) {
-    if (!page?.id) return;
-
-    try {
-      const response = await fetch(`/api/pages/${page.id}/revisions/${revisionId}/publish`, {
-        method: 'POST'
-      });
-
-      if (!response.ok) throw new Error('Failed to publish revision');
-
-      // Update current revision ID
-      currentRevisionId = revisionId;
-
-      // Reload the page to get updated revisions
-      window.location.reload();
-    } catch (_error) {
-      alert('Failed to publish revision');
     }
   }
 
@@ -558,7 +747,7 @@
       } else if (event.key === 'y' || (event.shiftKey && event.key === 'z')) {
         event.preventDefault();
         redo();
-      } else if (event.key === 's') {
+      } else if (event.key === 's' && !isPublishing) {
         event.preventDefault();
         handleSaveClick();
       } else if (event.key === 'h' && revisions.length > 0) {
@@ -587,8 +776,13 @@
       return hasUnsavedChanges;
     }
 
-    // Compare current state with last saved state
-    const currentState = JSON.stringify({ title, slug, components: pageComponents });
+    // Compare current state with last saved state (including pageProperties)
+    const currentState = JSON.stringify({
+      title,
+      slug,
+      components: pageComponents,
+      pageProperties
+    });
     const savedState = JSON.stringify(lastSavedState);
     const changed = currentState !== savedState;
 
@@ -605,13 +799,8 @@
   })();
 
   // Compute whether publish button should be enabled
-  // For component/primitive mode, always allow publishing (they don't have revisions yet)
-  // For page/layout mode, only enable if we're NOT currently viewing the published version
-  // OR if we've made changes since loading the published version
-  $: canPublish =
-    mode === 'component' || mode === 'primitive'
-      ? true
-      : !isViewingPublishedRevision || hasActualChanges;
+  // Enable if viewing a non-published revision OR if there are actual changes to publish
+  $: canPublish = !isViewingPublishedRevision || hasActualChanges;
 
   // Auto-save
   let autoSaveInterval: ReturnType<typeof setInterval>;
@@ -626,7 +815,8 @@
     lastSavedState = {
       title,
       slug,
-      components: JSON.parse(JSON.stringify(pageComponents))
+      components: JSON.parse(JSON.stringify(pageComponents)),
+      pageProperties: JSON.parse(JSON.stringify(pageProperties))
     };
 
     // Activate builder context store for AI awareness
@@ -634,7 +824,7 @@
 
     // Setup auto-save
     autoSaveInterval = setInterval(() => {
-      if (hasActualChanges && !isSaving) {
+      if (hasActualChanges && !isSaving && !isPublishing) {
         handleSaveClick();
       }
     }, 30000); // Auto-save every 30 seconds
@@ -678,10 +868,10 @@
     {lastSavedAt}
     {userName}
     {canPublish}
+    {isBuiltIn}
+    {isViewingPublishedRevision}
     canUndo={historyIndex > 0}
     canRedo={historyIndex < history.length - 1}
-    hasRevisions={revisions.length > 0}
-    revisionCount={revisions.length}
     on:updateTitle={(e) => {
       title = e.detail;
       addToHistory();
@@ -709,30 +899,44 @@
   />
 
   <div class="builder-content">
-    {#if showLeftSidebar && canAddComponents}
-      <BuilderSidebar
-        {mode}
-        {pageComponents}
-        {title}
-        {slug}
-        {components}
-        {currentComponentId}
-        on:addComponent={(e) => handleAddComponent(e.detail)}
-        on:selectComponent={(e) => handleSelectComponent(e.detail)}
-        on:showPageProperties={handleShowPageProperties}
-        on:updateTitle={(e) => {
-          title = e.detail;
-          addToHistory();
-        }}
-        on:updateSlug={(e) => {
-          slug = e.detail;
-          addToHistory();
-        }}
-        on:close={() => {
-          showLeftSidebar = false;
-        }}
-      />
-    {/if}
+    <BuilderLeftPanel
+      {mode}
+      {pageComponents}
+      {title}
+      {slug}
+      {components}
+      {currentComponentId}
+      {isBuiltIn}
+      {canAddComponents}
+      {isContentEditable}
+      {selectedComponent}
+      {pageProperties}
+      {currentBreakpoint}
+      {colorTheme}
+      {colorThemes}
+      collapsed={!showLeftSidebar}
+      on:addComponent={(e) => handleAddComponent(e.detail)}
+      on:selectComponent={(e) => handleSelectComponent(e.detail)}
+      on:selectWidget={(e) => handleSelectComponent(e.detail)}
+      on:showPageProperties={handleShowPageProperties}
+      on:updateTitle={(e) => {
+        title = e.detail;
+        addToHistory();
+      }}
+      on:updateSlug={(e) => {
+        slug = e.detail;
+        addToHistory();
+      }}
+      on:updateComponent={(e) => handleUpdateComponent(e.detail)}
+      on:deleteComponent={(e) => handleDeleteComponent(e.detail)}
+      on:updatePageProperties={(e) => handleUpdatePageProperties(e.detail)}
+      on:deselectComponent={() => {
+        selectedComponent = null;
+      }}
+      on:toggle={() => {
+        showLeftSidebar = !showLeftSidebar;
+      }}
+    />
 
     <BuilderCanvas
       bind:this={canvasComponent}
@@ -749,6 +953,7 @@
       {canDeleteComponents}
       {siteContext}
       {user}
+      {pageProperties}
       on:selectComponent={(e) => handleSelectComponent(e.detail)}
       on:updateComponent={(e) => handleUpdateComponent(e.detail)}
       on:batchUpdateComponents={(e) => handleBatchUpdateComponents(e.detail)}
@@ -759,26 +964,6 @@
       }}
       on:resetTheme={handleResetTheme}
     />
-
-    {#if showPropertiesPanel}
-      <BuilderPropertiesPanel
-        {pageComponents}
-        {selectedComponent}
-        {pageProperties}
-        {currentBreakpoint}
-        {colorTheme}
-        {entityLabel}
-        {components}
-        on:selectComponent={(e) => handleSelectComponent(e.detail)}
-        on:updateComponent={(e) => handleUpdateComponent(e.detail)}
-        on:deleteComponent={(e) => handleDeleteComponent(e.detail)}
-        on:updatePageProperties={(e) => handleUpdatePageProperties(e.detail)}
-        on:close={() => {
-          showPropertiesPanel = false;
-          selectedComponent = null;
-        }}
-      />
-    {/if}
 
     {#if showAIPanel}
       <BuilderAIPanel
@@ -802,9 +987,8 @@
   <RevisionModal
     isOpen={showRevisionModal}
     {revisions}
-    {currentRevisionId}
+    currentRevisionId={effectiveRevisionId}
     onSelect={handleRevisionSelect}
-    onPublish={handleRevisionPublish}
     onClose={() => {
       showRevisionModal = false;
     }}

@@ -1,20 +1,31 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { confirmStore } from '$lib/stores/confirm';
   import { toastStore } from '$lib/stores/toast';
   import type { EnrichedPage } from '$lib/server/db/pages';
 
   export let row: EnrichedPage;
 
-  // Determine what buttons to show
-  $: hasPublished = !!row.published_at;
-  $: hasDraft = !!row.draft_at;
-  // Show preview if:
-  // 1. There's a draft with unpublished changes, OR
-  // 2. No published version exists (always allow previewing unpublished pages)
-  $: showPreview = (hasDraft && row.has_unpublished_changes) || !hasPublished;
+  // A page is considered published if:
+  // 1. It has a published_at timestamp (from published_revision_id join), OR
+  // 2. Its status field is 'published'
+  $: hasPublished = !!row.published_at || row.status === 'published';
+
+  // Show View button if page has been published
+  $: showView = hasPublished;
+
+  // Show Preview button if:
+  // 1. There are unpublished changes (draft is newer than published), OR
+  // 2. Page has never been published (preview the draft)
+  $: showPreview = row.has_unpublished_changes || !hasPublished;
 
   async function handleDelete(): Promise<void> {
-    if (!confirm('Are you sure you want to delete this page?')) {
+    const confirmed = await confirmStore.show('Are you sure you want to delete this page?', {
+      title: 'Delete Page',
+      confirmText: 'Delete',
+      variant: 'danger'
+    });
+    if (!confirmed) {
       return;
     }
 
@@ -41,7 +52,7 @@
 </script>
 
 <div class="actions">
-  {#if hasPublished}
+  {#if showView}
     <a
       href={row.slug}
       target="_blank"

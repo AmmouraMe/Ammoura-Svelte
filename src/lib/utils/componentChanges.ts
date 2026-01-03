@@ -11,7 +11,8 @@ export interface ComponentChange {
     action: 'add' | 'remove' | 'update' | 'reorder';
     components?: PageComponent[];
     componentIds?: string[];
-    targetId?: string;
+    targetId?: string; // ID of the component to insert after (for nested additions)
+    parentId?: string; // Parent container ID for nested widget additions
     position?: number;
   };
 }
@@ -26,10 +27,14 @@ export function applyComponentChanges(
   currentComponents: PageComponent[],
   change: ComponentChange
 ): PageComponent[] {
-  const { action, components, componentIds, position } = change.changes;
+  const { action, components, componentIds, position, parentId, targetId } = change.changes;
 
   switch (action) {
     case 'add':
+      // If parentId is specified, add to parent's children instead of top-level
+      if (parentId) {
+        return handleAddToParent(currentComponents, components || [], parentId, targetId);
+      }
       return handleAddComponents(currentComponents, components || [], position);
     case 'remove':
       return handleRemoveComponents(currentComponents, componentIds || []);
@@ -50,6 +55,147 @@ export const applyWidgetChanges = applyComponentChanges;
  */
 function generateComponentId(): string {
   return `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * Check if components are in flat structure (using parent_id references)
+ * vs hierarchical structure (using config.children arrays)
+ */
+function isFlatStructure(components: PageComponent[]): boolean {
+  // If any component has parent_id set, it's a flat structure
+  return components.some((c) => c.parent_id !== undefined && c.parent_id !== null);
+}
+
+/**
+ * Add new components as children of a parent container
+ * This handles nested widget placement (e.g., adding a theme toggle to a navbar container)
+ *
+ * Supports two structures:
+ * 1. FLAT: Components in a flat array with parent_id references (used by builder)
+ * 2. HIERARCHICAL: Components with config.children arrays (used in some contexts)
+ */
+function handleAddToParent(
+  current: PageComponent[],
+  newComponents: PageComponent[],
+  parentId: string,
+  targetId?: string
+): PageComponent[] {
+  const now = Date.now();
+  const pageId = current[0]?.page_id || '';
+
+  // Check if we're working with a flat or hierarchical structure
+  const isFlat = isFlatStructure(current);
+
+  // Process new components with required fields
+  const processedComponents = newComponents.map((component) => {
+    const id = component.id || generateComponentId();
+
+    return {
+      ...component,
+      id,
+      page_id: component.page_id || pageId,
+      parent_id: parentId,
+      created_at: component.created_at || now,
+      updated_at: component.updated_at || now,
+      position: component.position ?? 0
+    } as PageComponent;
+  });
+
+  if (isFlat) {
+    // FLAT STRUCTURE: Add new components to the array with parent_id set
+    // Find siblings (other components with same parent_id)
+    const siblings = current.filter((c) => c.parent_id === parentId);
+
+    // Determine insert position
+    let insertPosition = siblings.length;
+
+    if (targetId) {
+      // Find target component and insert after it
+      const targetComponent = siblings.find((c) => c.id === targetId);
+      if (targetComponent) {
+        insertPosition = targetComponent.position + 1;
+      }
+    }
+
+    // Set positions for new components
+    const processedWithPositions = processedComponents.map((comp, idx) => ({
+      ...comp,
+      position: insertPosition + idx
+    }));
+
+    // Update positions for siblings that come after the insert position
+    const updatedCurrent = current.map((comp) => {
+      if (comp.parent_id === parentId && comp.position >= insertPosition) {
+        return {
+          ...comp,
+          position: comp.position + processedWithPositions.length,
+          updated_at: now
+        };
+      }
+      return comp;
+    });
+
+    // Add new components to the array
+    return [...updatedCurrent, ...processedWithPositions];
+  }
+
+  // HIERARCHICAL STRUCTURE: Add to config.children of parent
+  const updateComponentChildren = (components: PageComponent[]): PageComponent[] => {
+    return components.map((comp) => {
+      if (comp.id === parentId) {
+        // Found the parent - add new components to its children array
+        const existingChildren = (comp.config?.children as PageComponent[]) || [];
+
+        let insertPosition = existingChildren.length;
+
+        // If targetId is specified, find position after that widget
+        if (targetId) {
+          const targetIndex = existingChildren.findIndex((c) => c.id === targetId);
+          if (targetIndex >= 0) {
+            insertPosition = targetIndex + 1;
+          }
+        }
+
+        // Insert new components at the calculated position
+        const updatedChildren = [...existingChildren];
+        updatedChildren.splice(insertPosition, 0, ...processedComponents);
+
+        // Reindex positions
+        const reindexedChildren = updatedChildren.map((child, idx) => ({
+          ...child,
+          position: idx
+        }));
+
+        return {
+          ...comp,
+          config: {
+            ...comp.config,
+            children: reindexedChildren
+          },
+          updated_at: now
+        };
+      }
+
+      // Recursively check children for nested containers
+      if (comp.config?.children && Array.isArray(comp.config.children)) {
+        const updatedChildren = updateComponentChildren(comp.config.children as PageComponent[]);
+        if (updatedChildren !== comp.config.children) {
+          return {
+            ...comp,
+            config: {
+              ...comp.config,
+              children: updatedChildren
+            },
+            updated_at: now
+          };
+        }
+      }
+
+      return comp;
+    });
+  };
+
+  return updateComponentChildren(current);
 }
 
 /**

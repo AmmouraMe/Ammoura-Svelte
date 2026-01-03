@@ -8,6 +8,7 @@ describe('Component Defaults', () => {
       const config = getDefaultConfig('text');
       expect(config.text).toBe('Enter your text here');
       expect(config.alignment).toBe('left');
+      expect(config.backgroundColor).toBe('transparent');
     });
 
     it('should return default config for heading component', () => {
@@ -15,6 +16,7 @@ describe('Component Defaults', () => {
       expect(config.heading).toBe('Heading Text');
       expect(config.level).toBe(2);
       expect(config.textColor).toBe('theme:text');
+      expect(config.backgroundColor).toBe('transparent');
     });
 
     it('should return default config for image component', () => {
@@ -23,16 +25,23 @@ describe('Component Defaults', () => {
       expect(config.alt).toBe('');
       expect(config.imageWidth).toBe('100%');
       expect(config.imageHeight).toBe('auto');
+      expect(config.backgroundColor).toBe('transparent');
     });
 
     it('should return default config for hero component', () => {
       const config = getDefaultConfig('hero');
-      expect(config.title).toBe('Hero Title');
-      expect(config.subtitle).toBe('Hero subtitle text');
-      expect(config.backgroundColor).toBe('theme:primary');
-      expect(config.contentAlign).toBe('center');
-      expect(config.overlay).toBe(false);
-      expect(config.ctaText).toBe('Get Started');
+      // Hero now uses container-based architecture like Navbar and Footer
+      expect(config.backgroundColor).toBe('transparent');
+      expect(config.containerBackground).toBe('transparent');
+      expect(config.containerMinHeight).toEqual({
+        desktop: '600px',
+        tablet: '500px',
+        mobile: '450px'
+      });
+      expect(config.visibilityRule).toBe('always');
+      expect(config.children).toBeDefined();
+      expect(Array.isArray(config.children)).toBe(true);
+      expect(config.children?.length).toBeGreaterThan(0);
     });
 
     it('should return default config for button component', () => {
@@ -41,11 +50,13 @@ describe('Component Defaults', () => {
       expect(config.url).toBe('#');
       expect(config.variant).toBe('primary');
       expect(config.size).toBe('medium');
+      expect(config.backgroundColor).toBe('transparent');
     });
 
     it('should return default config for spacer component', () => {
       const config = getDefaultConfig('spacer');
       expect(config.space).toEqual({ desktop: 40, tablet: 30, mobile: 20 });
+      expect(config.backgroundColor).toBe('transparent');
     });
 
     it('should return default config for divider component', () => {
@@ -53,6 +64,7 @@ describe('Component Defaults', () => {
       expect(config.thickness).toBe(1);
       expect(config.dividerColor).toBe('theme:border');
       expect(config.dividerStyle).toBe('solid');
+      expect(config.backgroundColor).toBe('transparent');
     });
 
     it('should return default config for columns component', () => {
@@ -60,6 +72,7 @@ describe('Component Defaults', () => {
       expect(config.columnCount).toEqual({ desktop: 2, tablet: 2, mobile: 1 });
       expect(config.gap).toEqual({ desktop: 20 });
       expect(config.verticalAlign).toBe('stretch');
+      expect(config.backgroundColor).toBe('transparent');
     });
 
     it('should return default config for single_product component', () => {
@@ -68,6 +81,7 @@ describe('Component Defaults', () => {
       expect(config.layout).toBe('card');
       expect(config.showPrice).toBe(true);
       expect(config.showDescription).toBe(true);
+      expect(config.backgroundColor).toBe('transparent');
     });
 
     it('should return default config for product_list component', () => {
@@ -76,28 +90,44 @@ describe('Component Defaults', () => {
       expect(config.limit).toBe(6);
       expect(config.sortBy).toBe('created_at');
       expect(config.sortOrder).toBe('desc');
+      expect(config.backgroundColor).toBe('transparent');
     });
 
     it('should return default config for features component', () => {
       const config = getDefaultConfig('features');
-      expect(config.title).toBe('Features');
-      expect(config.subtitle).toBe('Why choose us');
-      expect(config.features).toHaveLength(3);
-      expect(config.cardBackground).toBe('theme:surface');
+      // Container-based architecture
+      expect(config.backgroundColor).toBe('transparent');
+      expect(config.containerBackground).toBe('transparent');
+      expect(config.containerMaxWidth).toBe('100%');
+      expect(config.children).toBeDefined();
+      expect(Array.isArray(config.children)).toBe(true);
+      expect(config.children!.length).toBe(1); // features-main-container
+      // Check nested structure exists
+      const mainContainer = config.children![0];
+      expect(mainContainer.id).toBe('features-main-container');
+      expect(mainContainer.type).toBe('container');
+      expect(mainContainer.config.children).toBeDefined();
+      expect(mainContainer.config.children.length).toBe(2); // header + grid
     });
 
     it('should return default config for pricing component', () => {
       const config = getDefaultConfig('pricing');
-      expect(config.title).toBe('Pricing');
-      expect(config.tagline).toBe('Simple and transparent pricing');
-      expect(config.tiers).toHaveLength(2);
+      // Pricing now uses Container-based architecture
+      expect(config.backgroundColor).toBe('transparent');
+      expect(config.children).toBeDefined();
+      expect(Array.isArray(config.children)).toBe(true);
+      const children = config.children as { type: string }[];
+      expect(children.length).toBeGreaterThan(0);
+      // Verify it has header, cards grid, and CTA sections
+      const childTypes = children.map((c) => c.type);
+      expect(childTypes).toContain('container'); // header and cards containers
     });
 
     it('should return default config for cta component', () => {
       const config = getDefaultConfig('cta');
       expect(config.title).toBe('Ready to Get Started?');
       expect(config.primaryCtaText).toBe('Get Started');
-      expect(config.backgroundColor).toBe('theme:primary');
+      expect(config.backgroundColor).toBe('transparent');
     });
 
     it('should return empty config for unknown component type', () => {
@@ -120,7 +150,7 @@ describe('Component Defaults', () => {
     });
 
     it('should return label for hero component', () => {
-      expect(getComponentLabel('hero')).toBe('Hero Section');
+      expect(getComponentLabel('hero')).toBe('Hero');
     });
 
     it('should return label for button component', () => {
@@ -200,6 +230,7 @@ describe('Component Defaults', () => {
   describe('getDefaultConfig - additional components', () => {
     it('should return default config for container component', () => {
       const config = getDefaultConfig('container');
+      expect(config.backgroundColor).toBe('transparent');
       expect(config.containerBackground).toBe('transparent');
       expect(config.containerMaxWidth).toBe('1200px');
       expect(config.children).toEqual([]);
@@ -207,20 +238,31 @@ describe('Component Defaults', () => {
 
     it('should return default config for navbar component', () => {
       const config = getDefaultConfig('navbar');
-      expect(config.containerBackground).toBe('theme:secondary');
-      expect(config.sticky).toBe(true);
-      expect(config.children).toEqual([]);
+      expect(config.backgroundColor).toBe('transparent');
+      expect(config.containerBackground).toBe('transparent');
+      // position is now responsive, defaults to static
+      expect(config.position).toEqual({
+        desktop: { type: 'static' },
+        tablet: { type: 'static' },
+        mobile: { type: 'static' }
+      });
+      // children now contains full navbar structure with main-container, logo, links, etc.
+      expect(config.children).toBeDefined();
+      expect(config.children).toBeInstanceOf(Array);
+      expect((config.children as Array<{ id: string }>).length).toBeGreaterThan(0);
+      expect((config.children as Array<{ id: string }>)[0].id).toBe('main-container');
     });
 
     it('should return default config for footer component', () => {
       const config = getDefaultConfig('footer');
+      expect(config.backgroundColor).toBe('transparent');
       expect(config.copyright).toContain('2025');
       // New Container-based footer uses linkSections instead of footerLinks
       expect(config.linkSections).toBeDefined();
       expect(config.linkSections).toHaveLength(3);
       expect(config.linkSections?.[0].title).toBe('Company');
       expect(config.socialLinks).toHaveLength(4);
-      expect(config.footerBackground).toBe('theme:surface');
+      expect(config.footerBackground).toBe('transparent');
       // Legacy footerLinks is now empty for backward compatibility
       expect(config.footerLinks).toHaveLength(0);
       // Container-based children structure
@@ -235,11 +277,13 @@ describe('Component Defaults', () => {
 
     it('should return default config for composite component', () => {
       const config = getDefaultConfig('composite');
+      expect(config.backgroundColor).toBe('transparent');
       expect(config.children).toEqual([]);
     });
 
     it('should return default config for dropdown component', () => {
       const config = getDefaultConfig('dropdown');
+      expect(config.backgroundColor).toBe('transparent');
       expect(config.triggerLabel).toBe('Menu');
       expect(config.triggerVariant).toBe('text');
       expect(config.showChevron).toBe(true);
@@ -252,11 +296,12 @@ describe('Component Defaults', () => {
       expect(config.size).toBe('medium');
       expect(config.toggleVariant).toBe('icon');
       expect(config.alignment).toBe('left');
+      expect(config.backgroundColor).toBe('transparent');
     });
 
-    it('should return empty config for yield component', () => {
+    it('should return config with transparent background for yield component', () => {
       const config = getDefaultConfig('yield');
-      expect(config).toEqual({});
+      expect(config).toEqual({ backgroundColor: 'transparent' });
     });
 
     it('should return empty config for component_ref', () => {
@@ -268,7 +313,7 @@ describe('Component Defaults', () => {
   describe('getComponentDisplayLabel', () => {
     it('should return component label for regular widgets', () => {
       const component = { type: 'hero' as ComponentType };
-      expect(getComponentDisplayLabel(component)).toBe('Hero Section');
+      expect(getComponentDisplayLabel(component)).toBe('Hero');
     });
 
     it('should return component label for text component', () => {

@@ -35,20 +35,38 @@ export const GET: RequestHandler = async ({ params, platform, locals, url }) => 
 /**
  * POST /api/pages/[id]/revisions
  * Create a new revision for a page
+ * Query params:
+ *   - publish=true: Create revision and publish in one step (avoids creating duplicate draft)
  */
-export const POST: RequestHandler = async ({ params, request, platform, locals }) => {
+export const POST: RequestHandler = async ({ params, request, platform, locals, url }) => {
   const db = getDB(platform);
   const siteId = locals.siteId;
   const pageId = params.id;
   const userId = locals.user?.id;
+  const shouldPublish = url.searchParams.get('publish') === 'true';
 
   try {
     const data = (await request.json()) as CreateRevisionData;
+
+    // If publishing directly, force status to 'published'
+    if (shouldPublish) {
+      data.status = 'published';
+    }
 
     const revision = await revisionsDb.createRevision(db, siteId, pageId, {
       ...data,
       created_by: userId
     });
+
+    // If publishing, also update the page and mark revision as published
+    if (shouldPublish) {
+      await revisionsDb.markRevisionAsPublished(db, pageId, revision.id, {
+        title: data.title,
+        slug: data.slug,
+        colorTheme: data.colorTheme,
+        components: data.components
+      });
+    }
 
     // Get page name for logging
     const page = await getPageById(db, siteId, pageId);
@@ -57,7 +75,7 @@ export const POST: RequestHandler = async ({ params, request, platform, locals }
     await logRevisionAction(db, {
       siteId,
       userId: userId || null,
-      action: 'created',
+      action: shouldPublish ? 'published' : 'created',
       entityType: 'page',
       entityId: pageId,
       entityName: page?.title,

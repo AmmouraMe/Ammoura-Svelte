@@ -120,6 +120,31 @@ Done!
       const result = parseWidgetChanges(response);
       expect(result?.changes.action).toBe('reorder');
     });
+
+    it('should parse parentId and targetId for nested widget placement', () => {
+      const response = `
+Here's the theme toggle:
+\`\`\`json
+{
+  "type": "widget_changes",
+  "changes": {
+    "action": "add",
+    "parentId": "nav-links-container",
+    "targetId": "cart-button",
+    "widgets": [{"id": "theme-toggle", "type": "theme_toggle"}]
+  }
+}
+\`\`\`
+Done!
+      `;
+
+      const result = parseWidgetChanges(response);
+      expect(result).not.toBeNull();
+      expect(result?.changes.action).toBe('add');
+      expect(result?.changes.parentId).toBe('nav-links-container');
+      expect(result?.changes.targetId).toBe('cart-button');
+      expect(result?.changes.widgets?.[0].id).toBe('theme-toggle');
+    });
   });
 
   describe('applyWidgetChanges', () => {

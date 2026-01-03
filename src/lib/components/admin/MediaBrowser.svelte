@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { confirmStore } from '$lib/stores/confirm';
   import { toastStore } from '$lib/stores/toast';
   import type { MediaLibraryItem } from '$lib/types';
 
@@ -41,10 +42,15 @@
 
   async function handleDelete(item: MediaLibraryItem) {
     if (item.usedCount > 0) {
-      const confirm = window.confirm(
-        `This media is used by ${item.usedCount} product(s). Are you sure you want to delete it?`
+      const confirmed = await confirmStore.show(
+        `This media is used by ${item.usedCount} product(s). Are you sure you want to delete it?`,
+        {
+          title: 'Delete Media',
+          confirmText: 'Delete',
+          variant: 'danger'
+        }
       );
-      if (!confirm) return;
+      if (!confirmed) return;
     }
 
     try {

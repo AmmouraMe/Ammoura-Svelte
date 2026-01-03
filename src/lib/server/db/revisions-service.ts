@@ -305,7 +305,7 @@ export async function buildRevisionTree<T = unknown>(
 
   // Build parent-child relationships
   const rootNodes: RevisionNode<T>[] = [];
-  const orphanedRevisions: ParsedRevision<T>[] = [];
+  const parentlessRevisions: ParsedRevision<T>[] = [];
 
   revisions.forEach((revision) => {
     const node = nodeMap.get(revision.id)!;
@@ -315,31 +315,30 @@ export async function buildRevisionTree<T = unknown>(
       if (parent) {
         parent.children.push(node);
       } else {
-        // Parent not found, this is an orphan
-        orphanedRevisions.push(revision);
+        // Parent not found, treat as parentless
+        parentlessRevisions.push(revision);
       }
     } else {
-      // No parent - could be a true root or an orphaned revision
-      if (rootNodes.length === 0) {
-        rootNodes.push(node);
-      } else {
-        orphanedRevisions.push(revision);
-      }
+      // No parent - collect for chaining
+      parentlessRevisions.push(revision);
     }
   });
 
-  // If we have orphaned revisions, link them in a chronological chain
-  if (orphanedRevisions.length > 0) {
+  // Chain all parentless revisions chronologically into a single vertical line
+  // This ensures proper vertical layout (root at top, descendants below)
+  if (parentlessRevisions.length > 0) {
     // Sort by creation time (oldest first)
-    orphanedRevisions.sort((a, b) => a.created_at - b.created_at);
+    parentlessRevisions.sort((a, b) => a.created_at - b.created_at);
 
-    // Link them as a chain
-    for (let i = 0; i < orphanedRevisions.length; i++) {
-      const node = nodeMap.get(orphanedRevisions[i].id)!;
+    // First parentless becomes the root, rest become a vertical chain
+    for (let i = 0; i < parentlessRevisions.length; i++) {
+      const node = nodeMap.get(parentlessRevisions[i].id)!;
       if (i === 0) {
+        // Oldest parentless revision is the root
         rootNodes.push(node);
       } else {
-        const prevNode = nodeMap.get(orphanedRevisions[i - 1].id)!;
+        // Chain to the previous parentless revision
+        const prevNode = nodeMap.get(parentlessRevisions[i - 1].id)!;
         prevNode.children.push(node);
       }
     }
@@ -387,8 +386,12 @@ export async function buildRevisionTree<T = unknown>(
     }
   }
 
-  // Sort result by creation time (newest first for display)
-  result.sort((a, b) => b.created_at - a.created_at);
+  // Sort result by depth (root first), then by creation time (oldest first within a level)
+  // This matches the graph layout where root is at top and time flows downward
+  result.sort((a, b) => {
+    if (a.depth !== b.depth) return a.depth - b.depth;
+    return a.created_at - b.created_at;
+  });
 
   return result;
 }

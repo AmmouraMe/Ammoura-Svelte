@@ -255,3 +255,35 @@ export function revisionDataToComponent(data: ComponentRevisionData): {
     config
   };
 }
+
+/**
+ * Ensure a component has at least one revision (creates initial if none exist)
+ */
+export async function ensureComponentHasRevision(
+  db: D1Database,
+  siteId: string,
+  componentId: number,
+  component: {
+    name: string;
+    description?: string;
+    type: string;
+    config: Record<string, unknown>;
+  },
+  userId?: string
+): Promise<ParsedRevision<ComponentRevisionData>> {
+  // Check if any revisions exist
+  const existingRevisions = await getComponentRevisions(db, siteId, componentId);
+
+  if (existingRevisions.length > 0) {
+    // Return the current revision or the most recent one
+    const current = existingRevisions.find((r) => r.is_current);
+    return current || existingRevisions[0];
+  }
+
+  // Create initial revision
+  const revisionData = componentToRevisionData(component);
+  return createInitialComponentRevision(db, siteId, componentId, revisionData, {
+    userId,
+    message: 'Initial component configuration'
+  });
+}

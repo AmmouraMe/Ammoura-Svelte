@@ -124,7 +124,7 @@
   .icon-btn-sm:hover:not(:disabled) {
     background: var(--color-bg-secondary);
     border-color: var(--color-border-secondary);
-    color: var(--color-primary);
+    color: #3b82f6;
   }
 
   .icon-btn-sm:disabled {

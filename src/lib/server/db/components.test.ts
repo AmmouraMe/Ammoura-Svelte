@@ -17,7 +17,8 @@ import {
   saveComponentWithChildren,
   resetBuiltInComponent,
   getComponentWithWidgets,
-  saveComponentWithWidgets
+  saveComponentWithWidgets,
+  resolveComponentRefs
 } from './components';
 import type { Component } from '$lib/types/pages';
 
@@ -29,9 +30,12 @@ vi.mock('./componentChildren', () => ({
   saveComponentWidgets: vi.fn()
 }));
 
-// Mock component-revisions module - returns null to trigger fallback to hardcoded defaults
+// Mock component-revisions module - provides mocks for revision tracking
 vi.mock('./component-revisions', () => ({
-  resetComponentToOriginal: vi.fn().mockResolvedValue(null)
+  resetComponentToOriginal: vi.fn().mockResolvedValue(null),
+  getCurrentComponentRevision: vi.fn().mockResolvedValue(null),
+  createComponentRevision: vi.fn().mockResolvedValue({ id: 'mock-revision-id' }),
+  publishComponentRevision: vi.fn().mockResolvedValue(undefined)
 }));
 
 import { getComponentChildren, saveComponentChildren } from './componentChildren';
@@ -78,7 +82,7 @@ describe('Component Database Functions', () => {
         {
           id: 2,
           site_id: '1',
-          name: 'Hero Section',
+          name: 'Hero',
           description: 'A hero component',
           type: 'hero',
           config: '{"title":"Welcome"}',
@@ -390,7 +394,7 @@ describe('Component Database Functions', () => {
           config: '{}'
         },
         { id: 2, name: 'Button', type: 'button', is_global: 1, is_primitive: 1, config: '{}' },
-        { id: 3, name: 'Hero Section', type: 'hero', is_global: 1, is_primitive: 0, config: '{}' },
+        { id: 3, name: 'Hero', type: 'hero', is_global: 1, is_primitive: 0, config: '{}' },
         { id: 4, name: 'Custom Widget', type: 'text', is_global: 0, is_primitive: 0, config: '{}' }
       ];
 
@@ -408,7 +412,7 @@ describe('Component Database Functions', () => {
       expect(custom).toHaveLength(1);
 
       expect(primitives.map((c: Component) => c.name)).toEqual(['Container', 'Button']);
-      expect(builtIn[0].name).toBe('Hero Section');
+      expect(builtIn[0].name).toBe('Hero');
       expect(custom[0].name).toBe('Custom Widget');
     });
   });
@@ -1054,7 +1058,7 @@ describe('Component Database Functions', () => {
       const mainContainer = parsedConfig.children[0];
       expect(mainContainer.id).toBe('main-container');
       expect(mainContainer.type).toBe('container');
-      expect(mainContainer.config.containerBackground).toBe('theme:secondary');
+      expect(mainContainer.config.containerBackground).toBe('transparent');
       expect(mainContainer.config.children).toBeDefined();
       expect(mainContainer.config.children.length).toBe(2); // logo-container and nav-links-container
 
@@ -1098,7 +1102,18 @@ describe('Component Database Functions', () => {
 
       const bindCall = mockDb.bind.mock.calls[0];
       const parsedConfig = JSON.parse(bindCall[0] as string);
-      expect(parsedConfig.title).toBe('Welcome to Our Site');
+      // Hero now uses container-based architecture like Navbar and Footer
+      expect(parsedConfig.children).toBeDefined();
+      expect(Array.isArray(parsedConfig.children)).toBe(true);
+      expect(parsedConfig.children.length).toBeGreaterThan(0);
+      // First child should be the main container
+      expect(parsedConfig.children[0].id).toBe('hero-main-container');
+      expect(parsedConfig.children[0].type).toBe('container');
+      // The main container should have nested children (title, subtitle, buttons, etc.)
+      expect(parsedConfig.children[0].config.children).toBeDefined();
+      expect(parsedConfig.children[0].config.children.length).toBeGreaterThan(0);
+      expect(parsedConfig.containerBackground).toBe('transparent');
+      expect(parsedConfig.containerMinHeight).toBeDefined();
     });
 
     it('should reset component to default container config', async () => {
@@ -1128,7 +1143,7 @@ describe('Component Database Functions', () => {
 
       const bindCall = mockDb.bind.mock.calls[0];
       const parsedConfig = JSON.parse(bindCall[0] as string);
-      expect(parsedConfig.label).toBe('Click Me');
+      expect(parsedConfig.label).toBe('Click Here');
     });
 
     it('should reset component to default image config', async () => {
@@ -1138,7 +1153,9 @@ describe('Component Database Functions', () => {
 
       const bindCall = mockDb.bind.mock.calls[0];
       const parsedConfig = JSON.parse(bindCall[0] as string);
-      expect(parsedConfig.objectFit).toBe('cover');
+      // Actual defaults from componentDefaults.ts: src, alt, imageWidth, imageHeight
+      expect(parsedConfig.imageWidth).toBe('100%');
+      expect(parsedConfig.imageHeight).toBe('auto');
     });
 
     it('should use empty config for unknown component type', async () => {
@@ -1177,6 +1194,111 @@ describe('Component Database Functions', () => {
 
     it('saveComponentWithWidgets is alias for saveComponentWithChildren', () => {
       expect(saveComponentWithWidgets).toBe(saveComponentWithChildren);
+    });
+  });
+
+  describe('resolveComponentRefs', () => {
+    const testSiteId = 'test-site-id';
+
+    it('should return components unchanged if no component_ref types', async () => {
+      const components = [
+        { type: 'hero', config: { title: 'Test' } },
+        { type: 'text', config: { text: 'Hello' } }
+      ];
+
+      const result = await resolveComponentRefs(
+        mockDb as unknown as D1Database,
+        testSiteId,
+        components
+      );
+
+      expect(result).toEqual(components);
+      expect(mockDb.prepare).not.toHaveBeenCalled();
+    });
+
+    it('should resolve component_ref to actual component type', async () => {
+      const mockComponent: Component = {
+        id: 1,
+        site_id: testSiteId,
+        name: 'Hero',
+        type: 'hero',
+        config: { title: 'Hero Title', subtitle: 'Subtitle' },
+        is_global: true,
+        is_primitive: false,
+        created_at: '2024-01-01',
+        updated_at: '2024-01-01'
+      };
+
+      mockDb.first.mockResolvedValue(mockComponent);
+
+      const components = [
+        { type: 'component_ref', config: { componentId: 1 } },
+        { type: 'text', config: { text: 'Hello' } }
+      ];
+
+      const result = await resolveComponentRefs(
+        mockDb as unknown as D1Database,
+        testSiteId,
+        components
+      );
+
+      expect(result).toHaveLength(2);
+      expect(result[0].type).toBe('hero');
+      expect(result[0].config).toEqual({ title: 'Hero Title', subtitle: 'Subtitle' });
+      expect(result[1].type).toBe('text');
+    });
+
+    it('should preserve component_ref if referenced component not found', async () => {
+      mockDb.first.mockResolvedValue(null);
+
+      const components = [{ type: 'component_ref', config: { componentId: 999 } }];
+
+      const result = await resolveComponentRefs(
+        mockDb as unknown as D1Database,
+        testSiteId,
+        components
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].type).toBe('component_ref');
+      expect(result[0].config).toEqual({ componentId: 999 });
+    });
+
+    it('should merge config overrides from component_ref', async () => {
+      const mockComponent: Component = {
+        id: 1,
+        site_id: testSiteId,
+        name: 'Hero',
+        type: 'hero',
+        config: { title: 'Default Title', subtitle: 'Default Subtitle' },
+        is_global: true,
+        is_primitive: false,
+        created_at: '2024-01-01',
+        updated_at: '2024-01-01'
+      };
+
+      mockDb.first.mockResolvedValue(mockComponent);
+
+      const components = [
+        {
+          type: 'component_ref',
+          config: { componentId: 1, title: 'Override Title' }
+        }
+      ];
+
+      const result = await resolveComponentRefs(
+        mockDb as unknown as D1Database,
+        testSiteId,
+        components
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].type).toBe('hero');
+      // Override should be applied
+      expect(result[0].config.title).toBe('Override Title');
+      // Original property should be preserved
+      const mergedConfig = result[0].config as unknown as { title: string; subtitle: string };
+      expect(mergedConfig.subtitle).toBe('Default Subtitle');
     });
   });
 });

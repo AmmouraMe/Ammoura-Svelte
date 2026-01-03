@@ -1,11 +1,27 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { goto } from '$app/navigation';
+  import { confirmStore } from '$lib/stores/confirm';
   import type { PageData } from './$types';
 
   export let data: PageData;
 
   let isDeleting = false;
+  let _pendingDeleteLayoutId: number | null = null;
+
+  async function handleDeleteLayout(layoutId: number): Promise<void> {
+    const confirmed = await confirmStore.show('Are you sure you want to delete this layout?', {
+      title: 'Delete Layout',
+      confirmText: 'Delete',
+      variant: 'danger'
+    });
+    if (confirmed) {
+      _pendingDeleteLayoutId = layoutId;
+      // Trigger form submission
+      const form = document.getElementById(`delete-layout-${layoutId}`) as HTMLFormElement;
+      if (form) form.requestSubmit();
+    }
+  }
 
   function handleEdit(layoutId: number): void {
     goto(`/admin/builder/layout/${layoutId}`);
@@ -92,21 +108,25 @@
               </form>
 
               <form
+                id="delete-layout-{layout.id}"
                 method="POST"
                 action="?/delete"
                 use:enhance={() => {
-                  if (!confirm('Are you sure you want to delete this layout?')) {
-                    return () => {};
-                  }
                   isDeleting = true;
                   return async ({ update }) => {
                     await update();
                     isDeleting = false;
+                    _pendingDeleteLayoutId = null;
                   };
                 }}
               >
                 <input type="hidden" name="layoutId" value={layout.id} />
-                <button type="submit" class="btn btn-danger" disabled={isDeleting}>
+                <button
+                  type="button"
+                  class="btn btn-danger"
+                  disabled={isDeleting}
+                  on:click={() => handleDeleteLayout(layout.id)}
+                >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path
                       d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"

@@ -42,9 +42,10 @@
   export let canUndo: boolean;
   export let canRedo: boolean;
   export let canPublish = true;
-  export let hasRevisions = false;
-  export let revisionCount = 0;
+  export let isViewingPublishedRevision = true;
   export let userName: string | undefined = undefined;
+  // Built-in components cannot have their name changed
+  export let isBuiltIn = false;
 
   const dispatch = createEventDispatcher();
 
@@ -130,9 +131,12 @@
       <input
         type="text"
         class="title-input"
+        class:readonly={isBuiltIn}
         value={title}
-        on:input={(e) => dispatch('updateTitle', e.currentTarget.value)}
+        readonly={isBuiltIn}
+        on:input={(e) => !isBuiltIn && dispatch('updateTitle', e.currentTarget.value)}
         placeholder="Page title"
+        title={isBuiltIn ? 'Built-in component names cannot be changed' : ''}
       />
       {#if mode === 'page'}
         <input
@@ -233,19 +237,11 @@
   <div class="toolbar-right">
     <button
       class="btn-icon"
-      disabled={!hasRevisions}
       on:click={() => dispatch('viewHistory')}
-      aria-label={hasRevisions
-        ? 'View revision history (Ctrl+H)'
-        : 'No revision history yet - save to create first revision'}
-      title={hasRevisions
-        ? `View revision history (${revisionCount} revision${revisionCount === 1 ? '' : 's'})`
-        : 'No revision history yet - save to create first revision'}
+      aria-label="View revision history (Ctrl+H)"
+      title="View revision history"
     >
       <History size={18} />
-      {#if revisionCount > 0}
-        <span class="revision-badge">{revisionCount}</span>
-      {/if}
     </button>
     <button
       class="btn-icon"
@@ -302,7 +298,9 @@
       disabled={isSaving || !canPublish}
       title={canPublish
         ? 'Publish this version'
-        : 'Already viewing the published version - make changes to publish'}
+        : isViewingPublishedRevision
+          ? 'Already viewing the published version - make changes to publish'
+          : 'Viewing an older revision - make changes to create a new publishable version'}
     >
       <Upload size={18} />
       <span>Publish</span>
@@ -440,6 +438,16 @@
     border-color: var(--color-primary);
   }
 
+  .title-input.readonly {
+    opacity: 0.7;
+    cursor: not-allowed;
+    background: var(--color-bg-tertiary);
+  }
+
+  .title-input.readonly:focus {
+    border-color: var(--color-border-secondary);
+  }
+
   .breakpoint-switcher {
     display: flex;
     gap: 0.25rem;
@@ -450,6 +458,7 @@
 
   .btn-icon,
   .btn-breakpoint {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -498,24 +507,6 @@
 
   .btn-ai:hover {
     opacity: 0.9;
-  }
-
-  .revision-badge {
-    position: absolute;
-    top: -4px;
-    right: -4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 4px;
-    background: var(--color-primary);
-    color: white;
-    font-size: 0.625rem;
-    font-weight: 600;
-    border-radius: 9px;
-    border: 2px solid var(--color-bg-primary);
   }
 
   .btn-primary,

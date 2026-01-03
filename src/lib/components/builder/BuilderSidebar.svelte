@@ -13,9 +13,11 @@
     ChevronDownSquare,
     Package,
     SunMoon,
-    Palette
+    Palette,
+    Star
   } from 'lucide-svelte';
   import type { PageComponent, ComponentType, Component } from '$lib/types/pages';
+  import { getDefaultConfig as getEditorDefaultConfig } from '$lib/utils/editor/componentDefaults';
 
   // Extended Component type that may include children_count from server
   interface ComponentWithCount extends Component {
@@ -31,6 +33,10 @@
   export let components: ComponentWithCount[] = [];
   // Current component ID (for component mode) - used to prevent adding a component to itself
   export let currentComponentId: number | null = null;
+  // Built-in components cannot have their name changed
+  export let isBuiltIn = false;
+  // Whether to show the page settings section (hidden when embedded in BuilderLeftPanel)
+  export let showPageSettings = true;
 
   // Entity labels based on mode
   $: entityLabel = mode === 'page' ? 'Page' : mode === 'layout' ? 'Layout' : 'Component';
@@ -61,6 +67,7 @@
       { type: 'text', name: 'Text', icon: Type, description: 'Paragraph text' },
       { type: 'button', name: 'Button', icon: Box, description: 'Call-to-action button' },
       { type: 'image', name: 'Image', icon: Image, description: 'Single image' },
+      { type: 'icon', name: 'Icon', icon: Star, description: 'Decorative Lucide icon' },
       {
         type: 'dropdown',
         name: 'Dropdown',
@@ -77,9 +84,8 @@
       }
     ],
     sections: [
-      { type: 'hero', name: 'Hero Section', icon: Layout, description: 'Large banner with CTA' },
-      { type: 'features', name: 'Features', icon: Layout, description: 'Feature grid showcase' },
-      { type: 'cta', name: 'Call to Action', icon: Layout, description: 'CTA banner section' }
+      { type: 'cta', name: 'Call to Action', icon: Layout, description: 'CTA banner section' },
+      { type: 'pricing', name: 'Pricing', icon: Layout, description: 'Pricing section with tiers' }
     ],
     commerce: [
       {
@@ -108,6 +114,7 @@
   ];
 
   // Built-in component types that shouldn't appear in the custom components list
+  // Note: navbar, footer, hero, features are NOT in this list - they are editable built-in components from database
   const builtInTypes = new Set([
     'container',
     'columns',
@@ -117,9 +124,8 @@
     'text',
     'button',
     'image',
+    'icon',
     'dropdown', // content
-    'hero',
-    'features',
     'cta', // sections
     'theme_toggle', // theme
     'single_product',
@@ -128,16 +134,18 @@
 
   // Filter out components that shouldn't appear in the custom components list:
   // 1. Current component being edited (prevent circular references)
-  // 2. Empty custom components (those with no children) - but allow navbar/footer which store children in config
+  // 2. Empty custom components (those with no children) - but allow navbar/footer/hero/features which store children in config
   // 3. Global primitive components (they're already in the built-in library)
-  // 4. Components with built-in types (container, hero, etc.) - but NOT navbar/footer which are editable
+  // 4. Components with built-in types (container, etc.) - but NOT navbar/footer/hero/features which are editable
   $: availableComponents = components.filter(
     (c) =>
       c.id !== currentComponentId &&
       (c.children_count === undefined ||
         c.children_count > 0 ||
         c.type === 'navbar' ||
-        c.type === 'footer') &&
+        c.type === 'footer' ||
+        c.type === 'hero' ||
+        c.type === 'features') &&
       !c.is_primitive &&
       !builtInTypes.has(c.type)
   );
@@ -229,28 +237,15 @@
   }
 
   function getDefaultConfig(type: ComponentType): Record<string, unknown> {
+    // For container-based components with complex children structures, use the central defaults
+    if (type === 'pricing' || type === 'hero' || type === 'features') {
+      return getEditorDefaultConfig(type) as Record<string, unknown>;
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const defaults: Record<ComponentType, any> = {
-      hero: {
-        // Content
-        title: 'Welcome to Our Site',
-        subtitle: 'Discover amazing products and services',
-        ctaText: 'Get Started',
-        ctaLink: '#',
-        secondaryCtaText: '',
-        secondaryCtaLink: '',
-        // Background
-        backgroundColor: 'theme:primary',
-        backgroundImage: '',
-        overlay: false,
-        overlayOpacity: 50,
-        // Layout
-        contentAlign: 'center',
-        heroHeight: { desktop: '500px', tablet: '400px', mobile: '300px' },
-        // Text colors
-        titleColor: 'theme:text',
-        subtitleColor: 'theme:textSecondary'
-      },
+      // Hero is now a database-based built-in component, added via component_ref
+      hero: {},
       text: {
         text: 'Enter your text here',
         alignment: 'left',
@@ -263,6 +258,13 @@
         imageWidth: '100%',
         borderRadius: 0,
         objectFit: 'cover'
+      },
+      icon: {
+        iconName: 'Star',
+        iconSize: 24,
+        iconColor: 'theme:text',
+        strokeWidth: 2,
+        alignment: 'center'
       },
       heading: {
         heading: 'Heading',
@@ -453,66 +455,71 @@
 </script>
 
 <aside class="builder-sidebar">
-  <div class="page-settings-section">
-    <button
-      class="section-header"
-      on:click={() => {
-        pageSettingsExpanded = !pageSettingsExpanded;
-      }}
-    >
-      <h4>{entityLabel} Settings</h4>
-      <div class="chevron" class:expanded={pageSettingsExpanded}>
-        <ChevronDown size={16} />
-      </div>
-    </button>
-    {#if pageSettingsExpanded}
-      <div class="section-content">
-        <div class="setting-group">
-          <label for="page-title" class="setting-label">Title</label>
-          <input
-            id="page-title"
-            type="text"
-            class="setting-input"
-            value={title}
-            on:input={(e) => dispatch('updateTitle', e.currentTarget.value)}
-            placeholder="{entityLabel} title"
-          />
+  {#if showPageSettings}
+    <div class="page-settings-section">
+      <button
+        class="section-header"
+        on:click={() => {
+          pageSettingsExpanded = !pageSettingsExpanded;
+        }}
+      >
+        <h4>{entityLabel} Settings</h4>
+        <div class="chevron" class:expanded={pageSettingsExpanded}>
+          <ChevronDown size={16} />
         </div>
-        {#if mode === 'page'}
+      </button>
+      {#if pageSettingsExpanded}
+        <div class="section-content">
           <div class="setting-group">
-            <label for="page-slug" class="setting-label">URL Slug</label>
+            <label for="page-title" class="setting-label">Title</label>
             <input
-              id="page-slug"
+              id="page-title"
               type="text"
               class="setting-input"
-              value={slug}
-              on:input={(e) => dispatch('updateSlug', e.currentTarget.value)}
-              placeholder="/{entityLabelLower}-url"
+              class:readonly={isBuiltIn}
+              value={title}
+              readonly={isBuiltIn}
+              on:input={(e) => !isBuiltIn && dispatch('updateTitle', e.currentTarget.value)}
+              placeholder="{entityLabel} title"
+              title={isBuiltIn ? 'Built-in component names cannot be changed' : ''}
             />
           </div>
-        {/if}
-        <button class="btn-properties" on:click={() => dispatch('showPageProperties')}>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path
-              d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
-            />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
-          <span>Properties</span>
-        </button>
-      </div>
-    {/if}
-  </div>
+          {#if mode === 'page'}
+            <div class="setting-group">
+              <label for="page-slug" class="setting-label">URL Slug</label>
+              <input
+                id="page-slug"
+                type="text"
+                class="setting-input"
+                value={slug}
+                on:input={(e) => dispatch('updateSlug', e.currentTarget.value)}
+                placeholder="/{entityLabelLower}-url"
+              />
+            </div>
+          {/if}
+          <button class="btn-properties" on:click={() => dispatch('showPageProperties')}>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+              />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <span>Properties</span>
+          </button>
+        </div>
+      {/if}
+    </div>
+  {/if}
 
   <div class="components-section">
     <div class="sidebar-header">
@@ -735,6 +742,16 @@
   .setting-input:focus {
     outline: none;
     border-color: var(--color-primary);
+  }
+
+  .setting-input.readonly {
+    opacity: 0.7;
+    cursor: not-allowed;
+    background: var(--color-bg-tertiary);
+  }
+
+  .setting-input.readonly:focus {
+    border-color: var(--color-border-secondary);
   }
 
   .btn-properties {

@@ -28,7 +28,7 @@
     "db:setup:local:seed": "node scripts/db-setup.js --local --seed",
     "db:setup:preview": "node scripts/db-setup.js --remote --preview",
     "db:setup:preview:seed": "node scripts/db-setup.js --remote --preview --seed",
-    "db:reset:local": "node scripts/db-reset.js --local --skip-reinit",
+    "db:reset:local": "node scripts/db-reset.js --local",
     "db:reset:preview": "node scripts/db-reset.js --remote --preview --skip-reinit",
     "prepare": "npm run format && npm run lint && npm run check && npm run test"
   },

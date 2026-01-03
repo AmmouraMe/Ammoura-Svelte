@@ -6,6 +6,20 @@
 /* Do NOT hardcode color values here as they will override system theme settings */
 
 :root {
+  /* Fallback theme CSS variables for components that use theme:* color references */
+  /* These are overridden by the dynamic styles from +layout.svelte when available */
+  --theme-primary: #ec4899;
+  --theme-secondary: #8b5cf6;
+  --theme-accent: #f59e0b;
+  --theme-background: #fdf2f8;
+  --theme-surface: #fae8ff;
+  --theme-text: #1e1b4b;
+  --theme-text-secondary: #6b21a8;
+  --theme-border: #f5d0fe;
+  --theme-success: #22c55e;
+  --theme-warning: #fb923c;
+  --theme-error: #f43f5e;
+
   /* Danger/Error colors (not part of theme system) */
   --color-danger: #ef4444;
   --color-danger-hover: #dc2626;
@@ -84,6 +98,20 @@
 
 /* Dark Theme - Colors dynamically loaded from database */
 [data-theme='dark'] {
+  /* Fallback theme CSS variables for dark mode */
+  /* These are overridden by the dynamic styles from +layout.svelte when available */
+  --theme-primary: #a78bfa;
+  --theme-secondary: #94a3b8;
+  --theme-accent: #c084fc;
+  --theme-background: #0f172a;
+  --theme-surface: #1e293b;
+  --theme-text: #f1f5f9;
+  --theme-text-secondary: #cbd5e1;
+  --theme-border: #334155;
+  --theme-success: #34d399;
+  --theme-warning: #fbbf24;
+  --theme-error: #f87171;
+
   /* Status colors (not part of theme system) */
   --color-danger: #f87171;
   --color-danger-hover: #ef4444;
