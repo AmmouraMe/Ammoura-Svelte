@@ -28,7 +28,9 @@
   export let pageTitle: string;
   export let colorTheme: string = 'vibrant';
   export let siteContext: SiteContext | undefined = undefined;
-  export let showPageTitle = true;
+  // Page-level override for showing title (from pageProperties.showPageTitle)
+  // undefined means use layout setting, true/false is an explicit override
+  export let pageShowPageTitle: boolean | undefined = undefined;
   export let user: UserInfo | null | undefined = undefined; // For visibility filtering
 
   // Sort layout components by position
@@ -39,6 +41,17 @@
 
   // Check if there's a yield component in the layout
   $: _hasYield = sortedLayoutComponents.some((c) => c.type === 'yield');
+
+  // Find the yield component to get its showPageTitle config
+  $: yieldComponent = sortedLayoutComponents.find((c) => c.type === 'yield');
+  // Get the layout's showPageTitle setting from yield config (default: false)
+  $: layoutShowPageTitle = yieldComponent?.config?.showPageTitle ?? false;
+
+  // Compute effective showPageTitle:
+  // 1. If page has explicit setting, use it
+  // 2. Otherwise, use layout yield setting
+  // 3. Default is false (don't show title)
+  $: showPageTitle = pageShowPageTitle !== undefined ? pageShowPageTitle : layoutShowPageTitle;
 
   // Filter out component_ref types (navbar/footer are handled by root layout)
   // and only keep layout components we can render or the yield placeholder

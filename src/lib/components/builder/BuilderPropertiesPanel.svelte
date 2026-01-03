@@ -12,6 +12,7 @@
   import ThemeColorInput from '$lib/components/admin/ThemeColorInput.svelte';
   import MediaBrowser from '$lib/components/admin/MediaBrowser.svelte';
   import MediaUpload from '$lib/components/admin/MediaUpload.svelte';
+  import ToggleSwitch from '$lib/components/ToggleSwitch.svelte';
   import { getComponentDisplayLabel } from '$lib/utils/editor/componentDefaults';
   import { getThemeColors } from '$lib/utils/editor/colorThemes';
 
@@ -19,6 +20,8 @@
   export let selectedComponent: PageComponent | null = null;
   export let pageProperties:
     | {
+        // Page title display - overrides layout yield setting
+        showPageTitle?: boolean;
         backgroundColor: string;
         backgroundImage: string;
         minHeight: string;
@@ -459,9 +462,26 @@
 
             <div class="tab-content">
               {#if pageActiveTab === 'content'}
-                <div class="property-section">
-                  <p class="empty-state">No content properties available</p>
-                </div>
+                {#if entityLabel === 'Page'}
+                  <div class="property-section">
+                    <h4>Title Display</h4>
+                    <ToggleSwitch
+                      checked={pageProperties?.showPageTitle ?? false}
+                      label="Show page title above content"
+                      description="Override the layout's default setting. When enabled, the page title will be displayed above the page content."
+                      onChange={(checked) => {
+                        dispatch('updatePageProperties', {
+                          ...pageProperties,
+                          showPageTitle: checked
+                        });
+                      }}
+                    />
+                  </div>
+                {:else}
+                  <div class="property-section">
+                    <p class="help-text">No content settings available for layouts.</p>
+                  </div>
+                {/if}
               {:else if pageActiveTab === 'style'}
                 <!-- Padding Section -->
                 <div class="property-section">

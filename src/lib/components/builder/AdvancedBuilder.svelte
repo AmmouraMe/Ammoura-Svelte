@@ -740,29 +740,44 @@
 
   // Keyboard shortcuts
   function handleKeydown(event: KeyboardEvent) {
+    // Skip keyboard shortcuts when user is typing in an input field
+    const target = event.target as HTMLElement;
+    const isInputField =
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'SELECT' ||
+      target.isContentEditable;
+
     if (event.ctrlKey || event.metaKey) {
-      if (event.key === 'z') {
-        event.preventDefault();
-        undo();
-      } else if (event.key === 'y' || (event.shiftKey && event.key === 'z')) {
-        event.preventDefault();
-        redo();
-      } else if (event.key === 's' && !isPublishing) {
+      // Allow Ctrl+S to save even when in input field
+      if (event.key === 's' && !isPublishing) {
         event.preventDefault();
         handleSaveClick();
-      } else if (event.key === 'h' && revisions.length > 0) {
+      } else if (!isInputField) {
+        // Other Ctrl shortcuts only when not in input field
+        if (event.key === 'z') {
+          event.preventDefault();
+          undo();
+        } else if (event.key === 'y' || (event.shiftKey && event.key === 'z')) {
+          event.preventDefault();
+          redo();
+        } else if (event.key === 'h' && revisions.length > 0) {
+          event.preventDefault();
+          handleViewHistory();
+        }
+      }
+    } else if (!isInputField) {
+      // Non-modifier shortcuts only when not in input field
+      if (event.key === 'Delete' && selectedComponent) {
         event.preventDefault();
-        handleViewHistory();
+        // Don't delete Yield component in layout mode
+        if (!(mode === 'layout' && selectedComponent.type === 'yield')) {
+          handleDeleteComponent(selectedComponent.id);
+        }
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        handleSelectComponent(null);
       }
-    } else if (event.key === 'Delete' && selectedComponent) {
-      event.preventDefault();
-      // Don't delete Yield component in layout mode
-      if (!(mode === 'layout' && selectedComponent.type === 'yield')) {
-        handleDeleteComponent(selectedComponent.id);
-      }
-    } else if (event.key === 'Escape') {
-      event.preventDefault();
-      handleSelectComponent(null);
     }
   }
 

@@ -17,6 +17,7 @@
   import TailwindContainerEditor from '../builder/TailwindContainerEditor.svelte';
   import ChildLayoutEditor from '../builder/ChildLayoutEditor.svelte';
   import UniversalStyleEditor from '../builder/UniversalStyleEditor.svelte';
+  import ToggleSwitch from '../ToggleSwitch.svelte';
   import { GripVertical, Trash2 } from 'lucide-svelte';
   import { getThemeColors } from '$lib/utils/editor/colorThemes';
 
@@ -108,6 +109,8 @@
 
   // Debounce timer for handleUpdate
   let updateDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  // Timer for resetting _isLocalUpdate flag
+  let localUpdateResetTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Initialize config with defaults only for missing properties (not empty strings)
   function initConfig(
@@ -249,8 +252,7 @@
   $: {
     const currentConfigString = JSON.stringify(component.config);
     if (currentConfigString !== _lastConfigString) {
-      // If it's not a local update, or if the change came from outside (like contenteditable)
-      // we should sync it to the local config
+      // If it's not a local update, sync from external source
       if (!_isLocalUpdate) {
         // Update individual properties to maintain bind:value reactivity
         // IMPORTANT: Skip 'children' - those are managed locally and should not be synced back
@@ -262,27 +264,11 @@
           }
         });
         _lastConfigString = currentConfigString;
-      } else {
-        // Even if it's marked as local update, if the external config differs significantly,
-        // it means another component (like contenteditable) made the change, so sync it
-        // Check if the difference is in a field we care about
-        const currentConfig = component.config;
-        const hasExternalChange =
-          currentConfig.title !== config.title ||
-          currentConfig.subtitle !== config.subtitle ||
-          currentConfig.heading !== config.heading ||
-          currentConfig.text !== config.text;
-
-        if (hasExternalChange) {
-          // Update individual properties to maintain bind:value reactivity
-          if (currentConfig.title !== config.title) config.title = currentConfig.title;
-          if (currentConfig.subtitle !== config.subtitle) config.subtitle = currentConfig.subtitle;
-          if (currentConfig.heading !== config.heading) config.heading = currentConfig.heading;
-          if (currentConfig.text !== config.text) config.text = currentConfig.text;
-          _lastConfigString = currentConfigString;
-          _isLocalUpdate = false; // Reset the flag since this was an external change
-        }
       }
+      // NOTE: When _isLocalUpdate is true, we intentionally do NOT sync back.
+      // The previous logic tried to detect "external changes" even during local updates,
+      // but this caused race conditions where typing in a textarea would be overwritten
+      // because the debounced update hadn't finished yet.
     }
   }
 
@@ -291,20 +277,25 @@
     _isLocalUpdate = true;
     _lastConfigString = JSON.stringify(config);
 
-    // Clear any existing debounce timer
+    // Clear any existing timers to prevent stale resets
     if (updateDebounceTimer) {
       clearTimeout(updateDebounceTimer);
+    }
+    if (localUpdateResetTimer) {
+      clearTimeout(localUpdateResetTimer);
+      localUpdateResetTimer = null;
     }
 
     // Debounce updates to avoid excessive calls while typing
     updateDebounceTimer = setTimeout(() => {
       // Send the updated config to parent
       onUpdate(config);
-      // Reset flag after a brief delay
-      setTimeout(() => {
+      // Reset flag after a brief delay, but track the timer so it can be canceled
+      localUpdateResetTimer = setTimeout(() => {
         _isLocalUpdate = false;
+        localUpdateResetTimer = null;
       }, 100);
-    }, 100); // 100ms debounce delay (reduced from 150ms)
+    }, 100); // 100ms debounce delay
   }
 
   // Immediate update without debouncing (for select changes, buttons, etc.)
@@ -313,17 +304,22 @@
     _isLocalUpdate = true;
     _lastConfigString = JSON.stringify(config);
 
-    // Clear any pending debounced update
+    // Clear any pending timers
     if (updateDebounceTimer) {
       clearTimeout(updateDebounceTimer);
       updateDebounceTimer = null;
     }
+    if (localUpdateResetTimer) {
+      clearTimeout(localUpdateResetTimer);
+      localUpdateResetTimer = null;
+    }
 
     // Send the updated config to parent
     onUpdate(config);
-    // Reset flag after a brief delay
-    setTimeout(() => {
+    // Reset flag after a brief delay, but track the timer
+    localUpdateResetTimer = setTimeout(() => {
       _isLocalUpdate = false;
+      localUpdateResetTimer = null;
     }, 100);
   }
 
@@ -3186,6 +3182,26 @@
       </div>
     {:else if activeTab === 'advanced'}
       <div class="advanced-tab">
+        {#if component.type === 'yield'}
+          <!-- Yield-specific settings -->
+          <div class="section yield-settings-section">
+            <h4>Page Content Settings</h4>
+            <p class="section-description">
+              Configure how page content is displayed within this layout.
+            </p>
+
+            <ToggleSwitch
+              checked={config.showPageTitle ?? false}
+              label="Show page title above content"
+              description="When enabled, the page title will be displayed above the page content. This is the default setting for all pages using this layout. Individual pages can override this setting."
+              onChange={(checked) => {
+                config.showPageTitle = checked;
+                handleImmediateUpdate();
+              }}
+            />
+          </div>
+        {/if}
+
         <div class="section visibility-section">
           <h4>Visibility Controls</h4>
           <p class="section-description">

@@ -652,7 +652,8 @@ export interface ComponentConfig {
   }>;
 
   // Yield component (special - renders page content in layout)
-  // No configuration needed - just a placeholder
+  // Configuration for page content rendering
+  showPageTitle?: boolean; // Whether to show the page title above content (default: false)
 
   // Container component - wraps content with padding and background (horizontal row layout)
   containerPadding?: ResponsiveValue<SpacingConfig>;
@@ -866,6 +867,8 @@ export type WidgetFormData = ComponentFormData;
 
 // Page properties for page-level styling (background, borders, positioning, etc.)
 export interface PageProperties {
+  // Page title display - overrides layout yield setting if set
+  showPageTitle?: boolean; // true = show, false = hide, undefined = use layout yield setting (default: false)
   backgroundColor?: string;
   backgroundImage?: string;
   minHeight?: string;

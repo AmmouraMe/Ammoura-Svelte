@@ -2131,9 +2131,8 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
           {
             title: 'Legal',
             links: [
-              { text: 'Privacy Policy', url: '/privacy' },
-              { text: 'Terms of Service', url: '/terms' },
-              { text: 'Cookie Policy', url: '/cookies' }
+              { text: 'Privacy Policy', url: '/privacy-policy' },
+              { text: 'Terms of Service', url: '/terms-of-service' }
             ]
           }
         ],
@@ -2179,7 +2178,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                       desktop: { top: 0, right: 0, bottom: 0, left: 0 }
                     },
                     containerDisplay: { desktop: 'flex', tablet: 'grid', mobile: 'grid' },
-                    containerGridCols: { desktop: 4, tablet: 2, mobile: 1 },
+                    containerGridCols: { desktop: 3, tablet: 2, mobile: 1 },
                     containerGap: { desktop: 32, tablet: 24, mobile: 24 },
                     containerFlexDirection: { desktop: 'row', tablet: 'row', mobile: 'column' },
                     containerJustifyContent: 'space-around',
@@ -2191,56 +2190,131 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                     containerPlaceItems: '',
                     children: [
                       {
-                        id: 'footer-about-btn',
-                        type: 'button',
+                        id: 'footer-column-1',
+                        type: 'container',
                         position: 0,
                         config: {
-                          label: 'About',
-                          url: '/about',
-                          variant: 'text',
-                          size: 'medium',
-                          fullWidth: { desktop: false, tablet: false, mobile: true }
+                          containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+                          containerFlexDirection: {
+                            desktop: 'column',
+                            tablet: 'column',
+                            mobile: 'column'
+                          },
+                          containerGap: { desktop: 8, tablet: 8, mobile: 8 },
+                          containerAlignItems: 'flex-start',
+                          children: [
+                            {
+                              id: 'footer-about-btn',
+                              type: 'button',
+                              position: 0,
+                              config: {
+                                label: 'About',
+                                url: '/about',
+                                variant: 'text',
+                                size: 'medium',
+                                fullWidth: { desktop: false, tablet: false, mobile: true }
+                              }
+                            },
+                            {
+                              id: 'footer-products-btn',
+                              type: 'button',
+                              position: 1,
+                              config: {
+                                label: 'Products',
+                                url: '/#products',
+                                variant: 'text',
+                                size: 'medium',
+                                fullWidth: { desktop: false, tablet: false, mobile: true }
+                              }
+                            }
+                          ]
                         }
                       },
                       {
-                        id: 'footer-products-btn',
-                        type: 'button',
+                        id: 'footer-column-2',
+                        type: 'container',
                         position: 1,
                         config: {
-                          label: 'Products',
-                          url: '/#products',
-                          variant: 'text',
-                          size: 'medium',
-                          fullWidth: { desktop: false, tablet: false, mobile: true }
+                          containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+                          containerFlexDirection: {
+                            desktop: 'column',
+                            tablet: 'column',
+                            mobile: 'column'
+                          },
+                          containerGap: { desktop: 8, tablet: 8, mobile: 8 },
+                          containerAlignItems: 'flex-start',
+                          children: [
+                            {
+                              id: 'footer-admin-btn',
+                              type: 'button',
+                              position: 0,
+                              config: {
+                                label: 'Admin Dashboard',
+                                url: '/admin/dashboard',
+                                variant: 'text',
+                                size: 'medium',
+                                fullWidth: { desktop: false, tablet: false, mobile: true },
+                                icon: 'Settings',
+                                visibilityRule: 'role',
+                                requiredRoles: ['admin']
+                              }
+                            },
+                            {
+                              id: 'footer-login-btn',
+                              type: 'button',
+                              position: 1,
+                              config: {
+                                label: 'Login',
+                                url: '/auth/login',
+                                variant: 'text',
+                                size: 'medium',
+                                fullWidth: { desktop: false, tablet: false, mobile: true },
+                                icon: 'LogIn',
+                                visibilityRule: 'unauthenticated'
+                              }
+                            }
+                          ]
                         }
                       },
                       {
-                        id: 'footer-admin-btn',
-                        type: 'button',
+                        id: 'footer-column-3',
+                        type: 'container',
                         position: 2,
                         config: {
-                          label: 'Admin Dashboard',
-                          url: '/admin/dashboard',
-                          variant: 'text',
-                          size: 'medium',
-                          fullWidth: { desktop: false, tablet: false, mobile: true },
-                          icon: 'Settings',
-                          visibilityRule: 'role',
-                          requiredRoles: ['admin']
-                        }
-                      },
-                      {
-                        id: 'footer-login-btn',
-                        type: 'button',
-                        position: 3,
-                        config: {
-                          label: 'Login',
-                          url: '/auth/login',
-                          variant: 'text',
-                          size: 'medium',
-                          fullWidth: { desktop: false, tablet: false, mobile: true },
-                          icon: 'LogIn',
-                          visibilityRule: 'unauthenticated'
+                          containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+                          containerFlexDirection: {
+                            desktop: 'column',
+                            tablet: 'column',
+                            mobile: 'column'
+                          },
+                          containerGap: { desktop: 8, tablet: 8, mobile: 8 },
+                          containerAlignItems: 'flex-start',
+                          children: [
+                            {
+                              id: 'footer-privacy-btn',
+                              type: 'button',
+                              position: 0,
+                              config: {
+                                label: 'Privacy Policy',
+                                url: '/privacy-policy',
+                                variant: 'text',
+                                size: 'small',
+                                fullWidth: { desktop: false, tablet: false, mobile: true }
+                              }
+                            },
+                            {
+                              id: 'footer-terms-btn',
+                              type: 'button',
+                              position: 1,
+                              config: {
+                                label: 'Terms of Service',
+                                url: '/terms-of-service',
+                                variant: 'text',
+                                size: 'small',
+                                fullWidth: { desktop: false, tablet: false, mobile: true }
+                              }
+                            }
+                          ]
                         }
                       }
                     ]

@@ -6,7 +6,8 @@
 
   export let data: PageData;
 
-  const { page, components, layoutComponents, isPreview, isAdmin: _isAdmin } = data;
+  // Use reactive declarations to ensure data updates on client-side navigation
+  $: ({ page, components, layoutComponents, isPreview, isAdmin: _isAdmin } = data);
 
   // Get the site context from the parent layout data for template substitution
   $: siteContext = $pageStore.data.siteContext;
@@ -58,6 +59,7 @@
   {colorTheme}
   {siteContext}
   user={data.currentUser}
+  pageShowPageTitle={data.pageShowPageTitle}
 />
 
 <style>

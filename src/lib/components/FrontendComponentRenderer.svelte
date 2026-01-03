@@ -121,7 +121,7 @@
   // Extract children from config for container-based components
   $: children = (config.children as ChildWidget[] | undefined) || [];
 
-  // Get responsive values for container styling
+  // Get responsive values for container styling (returns desktop value for inline styles)
   function getResponsiveValue<T>(
     value: T | { mobile?: T; tablet?: T; desktop: T } | undefined,
     defaultValue: T
@@ -132,6 +132,84 @@
     }
     return value as T;
   }
+
+  // Get value for a specific breakpoint from a responsive config
+  function getBreakpointValue<T>(
+    value: T | { mobile?: T; tablet?: T; desktop: T } | undefined,
+    breakpoint: 'mobile' | 'tablet' | 'desktop',
+    defaultValue: T
+  ): T {
+    if (value === undefined || value === null) return defaultValue;
+    if (typeof value === 'object' && value !== null && 'desktop' in value) {
+      const responsive = value as { mobile?: T; tablet?: T; desktop: T };
+      return responsive[breakpoint] ?? responsive.desktop ?? defaultValue;
+    }
+    return value as T;
+  }
+
+  // Generate CSS custom properties for responsive layout values
+  function generateResponsiveVars(): string {
+    const gap = config.containerGap;
+    const gapDesktop = getBreakpointValue(gap, 'desktop', 16);
+    const gapTablet = getBreakpointValue(gap, 'tablet', gapDesktop);
+    const gapMobile = getBreakpointValue(gap, 'mobile', gapTablet);
+
+    const display = config.containerDisplay;
+    const displayDesktop = getBreakpointValue(display, 'desktop', 'flex');
+    const displayTablet = getBreakpointValue(display, 'tablet', displayDesktop);
+    const displayMobile = getBreakpointValue(display, 'mobile', displayTablet);
+
+    const flexDir = config.containerFlexDirection;
+    const flexDirDesktop = getBreakpointValue(flexDir, 'desktop', 'row');
+    const flexDirTablet = getBreakpointValue(flexDir, 'tablet', flexDirDesktop);
+    const flexDirMobile = getBreakpointValue(flexDir, 'mobile', 'column');
+
+    const gridCols = config.containerGridCols;
+    const gridColsDesktop = getBreakpointValue(gridCols, 'desktop', 3);
+    const gridColsTablet = getBreakpointValue(gridCols, 'tablet', 2);
+    const gridColsMobile = getBreakpointValue(gridCols, 'mobile', 1);
+
+    const minHeight = config.containerMinHeight;
+    const minHeightDesktop = getBreakpointValue(minHeight, 'desktop', 'auto');
+    const minHeightTablet = getBreakpointValue(minHeight, 'tablet', minHeightDesktop);
+    const minHeightMobile = getBreakpointValue(minHeight, 'mobile', minHeightTablet);
+
+    // Padding responsive values
+    const padding = config.containerPadding;
+    const paddingDesktop =
+      padding?.desktop ||
+      getBreakpointValue(padding, 'desktop', { top: 0, right: 0, bottom: 0, left: 0 });
+    const paddingTablet = padding?.tablet || paddingDesktop;
+    const paddingMobile = padding?.mobile || {
+      top: paddingTablet.top,
+      right: 16,
+      bottom: paddingTablet.bottom,
+      left: 16
+    };
+
+    return `
+      --fcr-gap-desktop: ${gapDesktop}px;
+      --fcr-gap-tablet: ${gapTablet}px;
+      --fcr-gap-mobile: ${gapMobile}px;
+      --fcr-display-desktop: ${displayDesktop};
+      --fcr-display-tablet: ${displayTablet};
+      --fcr-display-mobile: ${displayMobile};
+      --fcr-flex-dir-desktop: ${flexDirDesktop};
+      --fcr-flex-dir-tablet: ${flexDirTablet};
+      --fcr-flex-dir-mobile: ${flexDirMobile};
+      --fcr-grid-cols-desktop: ${gridColsDesktop};
+      --fcr-grid-cols-tablet: ${gridColsTablet};
+      --fcr-grid-cols-mobile: ${gridColsMobile};
+      --fcr-min-height-desktop: ${typeof minHeightDesktop === 'number' ? minHeightDesktop + 'px' : minHeightDesktop};
+      --fcr-min-height-tablet: ${typeof minHeightTablet === 'number' ? minHeightTablet + 'px' : minHeightTablet};
+      --fcr-min-height-mobile: ${typeof minHeightMobile === 'number' ? minHeightMobile + 'px' : minHeightMobile};
+      --fcr-padding-desktop: ${paddingDesktop.top}px ${paddingDesktop.right}px ${paddingDesktop.bottom}px ${paddingDesktop.left}px;
+      --fcr-padding-tablet: ${paddingTablet.top}px ${paddingTablet.right}px ${paddingTablet.bottom}px ${paddingTablet.left}px;
+      --fcr-padding-mobile: ${paddingMobile.top}px ${paddingMobile.right}px ${paddingMobile.bottom}px ${paddingMobile.left}px;
+    `;
+  }
+
+  $: responsiveVars = generateResponsiveVars();
 
   // Helper to format grid template columns/rows
   function formatGridTemplate(
@@ -175,9 +253,9 @@
   // Simple border style - always render, 0 width means no visible border
   $: borderStyles = `border: ${containerBorderWidth}px ${containerBorderStyle} ${containerBorderColor};`;
   $: containerMaxWidth = config.containerMaxWidth || '100%';
-  $: containerMinHeight = getResponsiveValue(config.containerMinHeight, 'auto');
+  $: _containerMinHeight = getResponsiveValue(config.containerMinHeight, 'auto');
   $: containerWidth = getResponsiveValue(config.containerWidth, '100%');
-  $: containerGap = getResponsiveValue(config.containerGap, 16);
+  $: _containerGap = getResponsiveValue(config.containerGap, 16);
   $: containerDisplay = getResponsiveValue(config.containerDisplay, 'flex');
   $: containerFlexDirection = getResponsiveValue(config.containerFlexDirection, 'row');
   $: containerJustifyContent = config.containerJustifyContent || 'flex-start';
@@ -190,8 +268,8 @@
   $: containerPlaceItems = config.containerPlaceItems;
   $: containerPlaceContent = config.containerPlaceContent;
 
-  // Build grid-specific styles
-  $: gridStyles =
+  // Build grid-specific styles (kept for legacy non-responsive containers)
+  $: _gridStyles =
     containerDisplay === 'grid'
       ? `
     grid-template-columns: ${formatGridTemplate(containerGridCols, 'repeat(3, 1fr)')};
@@ -202,8 +280,8 @@
   `
       : '';
 
-  // Build flex-specific styles
-  $: flexStyles =
+  // Build flex-specific styles (kept for legacy non-responsive containers)
+  $: _flexStyles =
     containerDisplay === 'flex'
       ? `
     flex-direction: ${containerFlexDirection};
@@ -213,7 +291,7 @@
   `
       : '';
 
-  $: paddingDesktop = containerPadding.desktop || { top: 0, right: 0, bottom: 0, left: 0 };
+  $: _paddingDesktop = containerPadding.desktop || { top: 0, right: 0, bottom: 0, left: 0 };
   $: marginDesktop = containerMargin.desktop || { top: 0, right: 0, bottom: 0, left: 0 };
 
   // Position styling - get values from position prop (override) or config.position (responsive)
@@ -422,23 +500,21 @@
   {#if usesContainerChildren}
     <!-- Container-based navbar/footer/hero/features with custom children -->
     <div
-      class="frontend-container {type}-container"
+      class="frontend-container frontend-responsive-container {type}-container"
       id={config.anchorName || undefined}
       style="
         {themeStyles}
+        {responsiveVars}
         {positionStyle}
         background: {containerBackground};
         {advancedStyles}
-        display: {containerDisplay};
-        {flexStyles}
-        {gridStyles}
-        gap: {containerGap}px;
+        justify-content: {containerJustifyContent};
+        align-items: {containerAlignItems};
+        flex-wrap: {containerWrap};
         max-width: {containerMaxWidth};
-        min-height: {containerMinHeight};
         width: {containerWidth};
         border-radius: {containerBorderRadius}px;
         {borderStyles}
-        padding: {paddingDesktop.top}px {paddingDesktop.right}px {paddingDesktop.bottom}px {paddingDesktop.left}px;
         margin: {marginDesktop.top}px auto {marginDesktop.bottom}px;
         box-sizing: border-box;
       "
@@ -466,23 +542,21 @@
   {:else if isContainer}
     <!-- Generic container with children -->
     <div
-      class="frontend-container"
+      class="frontend-container frontend-responsive-container"
       id={config.anchorName || undefined}
       style="
         {themeStyles}
+        {responsiveVars}
         {positionStyle}
         background: {containerBackground};
         {advancedStyles}
-        display: {containerDisplay};
-        {flexStyles}
-        {gridStyles}
-        gap: {containerGap}px;
+        justify-content: {containerJustifyContent};
+        align-items: {containerAlignItems};
+        flex-wrap: {containerWrap};
         max-width: {containerMaxWidth};
-        min-height: {containerMinHeight};
         width: {containerWidth};
         border-radius: {containerBorderRadius}px;
         {borderStyles}
-        padding: {paddingDesktop.top}px {paddingDesktop.right}px {paddingDesktop.bottom}px {paddingDesktop.left}px;
         margin: {marginDesktop.top}px auto {marginDesktop.bottom}px;
         box-sizing: border-box;
       "
@@ -744,6 +818,55 @@
   .frontend-container {
     width: 100%;
     box-sizing: border-box;
+  }
+
+  /* Responsive container using CSS custom properties */
+  .frontend-responsive-container {
+    /* Desktop (default - mobile-first reversed to desktop-first for inline override) */
+    display: var(--fcr-display-desktop, flex);
+    flex-direction: var(--fcr-flex-dir-desktop, row);
+    gap: var(--fcr-gap-desktop, 16px);
+    min-height: var(--fcr-min-height-desktop, auto);
+    padding: var(--fcr-padding-desktop, 0);
+  }
+
+  /* Grid display mode for responsive container */
+  .frontend-responsive-container[style*='--fcr-display-desktop: grid'] {
+    display: grid;
+    grid-template-columns: repeat(var(--fcr-grid-cols-desktop, 3), 1fr);
+  }
+
+  /* Tablet breakpoint (max-width: 1024px) */
+  @media (max-width: 1024px) {
+    .frontend-responsive-container {
+      display: var(--fcr-display-tablet, var(--fcr-display-desktop, flex));
+      flex-direction: var(--fcr-flex-dir-tablet, var(--fcr-flex-dir-desktop, row));
+      gap: var(--fcr-gap-tablet, var(--fcr-gap-desktop, 16px));
+      min-height: var(--fcr-min-height-tablet, var(--fcr-min-height-desktop, auto));
+      padding: var(--fcr-padding-tablet, var(--fcr-padding-desktop, 0));
+    }
+
+    .frontend-responsive-container[style*='--fcr-display-tablet: grid'],
+    .frontend-responsive-container[style*='--fcr-display-desktop: grid'] {
+      grid-template-columns: repeat(var(--fcr-grid-cols-tablet, 2), 1fr);
+    }
+  }
+
+  /* Mobile breakpoint (max-width: 768px) */
+  @media (max-width: 768px) {
+    .frontend-responsive-container {
+      display: var(--fcr-display-mobile, var(--fcr-display-tablet, flex));
+      flex-direction: var(--fcr-flex-dir-mobile, column);
+      gap: var(--fcr-gap-mobile, var(--fcr-gap-tablet, 16px));
+      min-height: var(--fcr-min-height-mobile, var(--fcr-min-height-tablet, auto));
+      padding: var(--fcr-padding-mobile, var(--fcr-padding-tablet, 16px));
+    }
+
+    .frontend-responsive-container[style*='--fcr-display-mobile: grid'],
+    .frontend-responsive-container[style*='--fcr-display-tablet: grid'],
+    .frontend-responsive-container[style*='--fcr-display-desktop: grid'] {
+      grid-template-columns: repeat(var(--fcr-grid-cols-mobile, 1), 1fr);
+    }
   }
 
   .position-wrapper {

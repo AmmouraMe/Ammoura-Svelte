@@ -52,7 +52,8 @@
     true
   );
   $: containerMinHeight = getBreakpointValue(config.containerMinHeight) || 'auto';
-  $: containerPadding = getBreakpointValue(config.containerPadding);
+  // containerPadding kept for editor mode - frontend uses CSS custom properties
+  $: _containerPadding = getBreakpointValue(config.containerPadding);
   $: containerMaxWidth = config.containerMaxWidth || '100%';
   $: containerDisplay = getBreakpointValue(config.containerDisplay) || 'flex';
   $: containerFlexDirection = getBreakpointValue(config.containerFlexDirection) || 'column';
@@ -159,6 +160,69 @@
 
     onUpdate({ ...config, children: childrenWithUpdatedPositions });
   }
+
+  // Generate CSS custom properties for responsive layout (frontend mode)
+  function generateResponsiveStyles(): string {
+    const display = config.containerDisplay;
+    const displayDesktop = getValueForBreakpoint(display, 'desktop') || 'flex';
+    const displayTablet = getValueForBreakpoint(display, 'tablet') || displayDesktop;
+    const displayMobile = getValueForBreakpoint(display, 'mobile') || displayTablet;
+
+    const flexDir = config.containerFlexDirection;
+    const flexDirDesktop = getValueForBreakpoint(flexDir, 'desktop') || 'column';
+    const flexDirTablet = getValueForBreakpoint(flexDir, 'tablet') || flexDirDesktop;
+    const flexDirMobile = getValueForBreakpoint(flexDir, 'mobile') || 'column';
+
+    const gap = config.containerGap;
+    const gapDesktop = getValueForBreakpoint(gap, 'desktop') || 48;
+    const gapTablet = getValueForBreakpoint(gap, 'tablet') || gapDesktop;
+    const gapMobile = getValueForBreakpoint(gap, 'mobile') || 24;
+
+    const padding = config.containerPadding;
+    const paddingDesktop = getValueForBreakpoint(padding, 'desktop') || {
+      top: 80,
+      right: 24,
+      bottom: 80,
+      left: 24
+    };
+    const paddingTablet = getValueForBreakpoint(padding, 'tablet') || paddingDesktop;
+    const paddingMobile = getValueForBreakpoint(padding, 'mobile') || {
+      top: 48,
+      right: 16,
+      bottom: 48,
+      left: 16
+    };
+
+    return `
+      --pricing-display-desktop: ${displayDesktop};
+      --pricing-display-tablet: ${displayTablet};
+      --pricing-display-mobile: ${displayMobile};
+      --pricing-flex-dir-desktop: ${flexDirDesktop};
+      --pricing-flex-dir-tablet: ${flexDirTablet};
+      --pricing-flex-dir-mobile: ${flexDirMobile};
+      --pricing-gap-desktop: ${gapDesktop}px;
+      --pricing-gap-tablet: ${gapTablet}px;
+      --pricing-gap-mobile: ${gapMobile}px;
+      --pricing-padding-desktop: ${paddingDesktop.top}px ${paddingDesktop.right}px ${paddingDesktop.bottom}px ${paddingDesktop.left}px;
+      --pricing-padding-tablet: ${paddingTablet.top}px ${paddingTablet.right}px ${paddingTablet.bottom}px ${paddingTablet.left}px;
+      --pricing-padding-mobile: ${paddingMobile.top}px ${paddingMobile.right}px ${paddingMobile.bottom}px ${paddingMobile.left}px;
+    `;
+  }
+
+  // Helper to get value for a specific breakpoint
+  function getValueForBreakpoint<T>(
+    value: T | { mobile?: T; tablet?: T; desktop: T } | undefined,
+    breakpoint: 'mobile' | 'tablet' | 'desktop'
+  ): T | undefined {
+    if (value === undefined) return undefined;
+    if (typeof value === 'object' && value !== null && 'desktop' in value) {
+      const responsive = value as { mobile?: T; tablet?: T; desktop: T };
+      return responsive[breakpoint] ?? responsive.desktop;
+    }
+    return value as T;
+  }
+
+  $: responsiveStyles = generateResponsiveStyles();
 </script>
 
 {#if hasChildren || isEditable}
@@ -168,14 +232,11 @@
     class:is-editable={isEditable}
     id={config.anchorName || undefined}
     style="
+      {responsiveStyles}
       background: {containerBackground};
-      min-height: {containerMinHeight};
       max-width: {containerMaxWidth};
       width: 100%;
       box-sizing: border-box;
-      padding: {containerPadding
-      ? `${containerPadding.top || 0}px ${containerPadding.right || 0}px ${containerPadding.bottom || 0}px ${containerPadding.left || 0}px`
-      : '80px 24px'};
     "
   >
     {#if isEditable}
@@ -209,16 +270,12 @@
         </svelte:fragment>
       </ContainerDropZone>
     {:else}
-      <!-- Frontend mode: render children directly -->
+      <!-- Frontend mode: render children directly with responsive CSS -->
       <div
         class="pricing-content-wrapper"
         style="
-          display: {containerDisplay};
-          flex-direction: {containerFlexDirection};
           justify-content: {containerJustifyContent};
           align-items: {containerAlignItems};
-          gap: {containerGap}px;
-          min-height: {containerMinHeight};
           width: 100%;
           max-width: 1200px;
           margin: 0 auto;
@@ -254,6 +311,8 @@
     align-items: center;
     justify-content: center;
     width: 100%;
+    /* Desktop padding from CSS custom properties */
+    padding: var(--pricing-padding-desktop, 80px 24px);
   }
 
   .pricing-container.is-editable {
@@ -262,6 +321,10 @@
 
   .pricing-content-wrapper {
     width: 100%;
+    /* Desktop layout from CSS custom properties */
+    display: var(--pricing-display-desktop, flex);
+    flex-direction: var(--pricing-flex-dir-desktop, column);
+    gap: var(--pricing-gap-desktop, 48px);
   }
 
   .pricing-empty {
@@ -286,10 +349,29 @@
     font-size: 1rem;
   }
 
-  /* Responsive adjustments */
+  /* Tablet breakpoint */
+  @media (max-width: 1024px) {
+    .pricing-container {
+      padding: var(--pricing-padding-tablet, var(--pricing-padding-desktop, 64px 20px));
+    }
+
+    .pricing-content-wrapper {
+      display: var(--pricing-display-tablet, var(--pricing-display-desktop, flex));
+      flex-direction: var(--pricing-flex-dir-tablet, var(--pricing-flex-dir-desktop, column));
+      gap: var(--pricing-gap-tablet, var(--pricing-gap-desktop, 32px));
+    }
+  }
+
+  /* Mobile breakpoint */
   @media (max-width: 768px) {
     .pricing-container {
-      padding: 48px 16px;
+      padding: var(--pricing-padding-mobile, 48px 16px);
+    }
+
+    .pricing-content-wrapper {
+      display: var(--pricing-display-mobile, flex);
+      flex-direction: var(--pricing-flex-dir-mobile, column);
+      gap: var(--pricing-gap-mobile, 24px);
     }
   }
 </style>

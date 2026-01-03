@@ -44,6 +44,7 @@ export const load: PageServerLoad = async ({
     // Fetch components from published revision (Builder content)
     const publishedRevision = await getPublishedRevision(db, siteId, page.id);
     const rawComponents = publishedRevision?.components || [];
+    const pageProperties = publishedRevision?.pageProperties;
 
     // Resolve component_ref types to actual component types for frontend rendering
     const components = await resolveComponentRefs(db, siteId, rawComponents);
@@ -90,7 +91,9 @@ export const load: PageServerLoad = async ({
       colorTheme: page.colorTheme || null,
       isPreview: isPreview && page.status === 'draft',
       isAdmin: locals.isAdmin || false,
-      currentUser: locals.currentUser || null
+      currentUser: locals.currentUser || null,
+      // Page properties for title display override
+      pageShowPageTitle: pageProperties?.showPageTitle
     };
   } catch (err) {
     if (err && typeof err === 'object' && 'status' in err) {
