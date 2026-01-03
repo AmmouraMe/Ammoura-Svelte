@@ -57,7 +57,7 @@ capabilities.
 
   // Account menu items
   "accountMenuItems": [
-    { "text": "Profile", "url": "/profile", "icon": "👤" },
+    { "text": "Profile", "url": "/user/profile", "icon": "👤" },
     {
       "text": "Settings",
       "url": "/settings",

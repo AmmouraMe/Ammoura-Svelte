@@ -2031,7 +2031,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                               position: 2,
                               config: {
                                 label: 'Profile',
-                                url: '/profile',
+                                url: '/user/profile',
                                 variant: 'text',
                                 size: 'medium',
                                 fullWidth: { desktop: false, tablet: false, mobile: true }

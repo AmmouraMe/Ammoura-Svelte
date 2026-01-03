@@ -1911,7 +1911,7 @@
                             type="url"
                             bind:value={item.url}
                             on:input={handleUpdate}
-                            placeholder="/profile"
+                            placeholder="/user/profile"
                           />
                         </label>
                         <label class="checkbox-label">

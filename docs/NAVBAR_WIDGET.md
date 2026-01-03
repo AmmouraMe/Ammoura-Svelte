@@ -243,7 +243,7 @@ When you add a new navbar widget, it comes with these defaults:
   showAccountMenu: true,
   actionsPosition: 'right',
   accountMenuItems: [
-    { text: 'Profile', url: '/profile', icon: '👤' },
+    { text: 'Profile', url: '/user/profile', icon: '👤' },
     { text: 'Settings', url: '/settings', icon: '⚙️', dividerBefore: true }
   ],
   navbarBackground: '#ffffff',

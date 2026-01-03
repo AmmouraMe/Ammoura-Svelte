@@ -376,7 +376,7 @@
         actionsPosition: 'right',
         // Account menu items
         accountMenuItems: [
-          { text: 'Profile', url: '/profile', icon: '👤' },
+          { text: 'Profile', url: '/user/profile', icon: '👤' },
           { text: 'Settings', url: '/settings', icon: '⚙️', dividerBefore: true }
         ],
         // Styling (backward compatibility)
