@@ -264,190 +264,293 @@
 </div>
 
 <style>
+  /* Mobile-first base styles */
   .profile-container {
-    max-width: 800px;
+    width: 100%;
+    max-width: 1200px;
     margin: 0 auto;
-    padding: 2rem;
+    padding: var(--spacing-md);
   }
 
   .profile-header {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 1.5rem;
-    padding: 2rem;
-    background: var(--bg-secondary, #f8f9fa);
+    text-align: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg);
+    background: var(--color-bg-secondary);
     border-radius: 12px;
-    margin-bottom: 2rem;
+    margin-bottom: var(--spacing-lg);
+    border: 1px solid var(--color-border-primary);
   }
 
   .header-info h1 {
-    margin: 0 0 0.25rem 0;
-    font-size: 1.75rem;
-    color: var(--text-primary, #1a1a1a);
+    margin: 0 0 var(--spacing-xs) 0;
+    font-size: 1.5rem;
+    color: var(--color-text-primary);
   }
 
   .header-info .email {
-    margin: 0 0 0.5rem 0;
-    color: var(--text-secondary, #666);
+    margin: 0 0 var(--spacing-sm) 0;
+    color: var(--color-text-secondary);
+    word-break: break-word;
   }
 
   .role-badge {
     display: inline-block;
-    padding: 0.25rem 0.75rem;
+    padding: var(--spacing-xs) var(--spacing-sm);
     border-radius: 9999px;
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
   }
 
+  /* Role badges using theme colors */
   .badge-admin {
-    background: #fee2e2;
-    color: #991b1b;
+    background: var(--color-bg-danger-light);
+    color: var(--color-danger);
   }
 
   .badge-engineer {
-    background: #dbeafe;
-    color: #1e40af;
+    background: var(--color-bg-info-light);
+    color: var(--color-info);
   }
 
   .badge-user {
-    background: #dcfce7;
-    color: #166534;
+    background: var(--color-bg-success-light);
+    color: var(--color-success);
   }
 
   .badge-customer {
-    background: #f3e8ff;
-    color: #6b21a8;
+    background: rgba(139, 92, 246, 0.1);
+    color: var(--color-primary);
   }
 
   .badge-default {
-    background: #f3f4f6;
-    color: #374151;
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
   }
 
   .profile-content {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: var(--spacing-lg);
   }
 
   .profile-section {
-    background: var(--bg-primary, #fff);
-    border: 1px solid var(--border-primary, #e5e7eb);
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border-primary);
     border-radius: 12px;
-    padding: 1.5rem;
+    padding: var(--spacing-md);
   }
 
   .profile-section h2 {
-    margin: 0 0 1.5rem 0;
-    font-size: 1.25rem;
-    color: var(--text-primary, #1a1a1a);
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--border-primary, #e5e7eb);
+    margin: 0 0 var(--spacing-md) 0;
+    font-size: 1.125rem;
+    color: var(--color-text-primary);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--color-border-primary);
   }
 
   .form-group {
-    margin-bottom: 1.25rem;
+    margin-bottom: var(--spacing-md);
   }
 
   .form-group label {
     display: block;
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--spacing-xs);
     font-weight: 500;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--color-text-primary);
   }
 
   .form-group input {
     width: 100%;
-    padding: 0.75rem 1rem;
-    border: 1px solid var(--border-primary, #d1d5db);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid var(--color-border-primary);
     border-radius: 8px;
     font-size: 1rem;
-    background: var(--bg-primary, #fff);
-    color: var(--text-primary, #1a1a1a);
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
     transition:
-      border-color 0.2s,
-      box-shadow 0.2s;
+      border-color var(--transition-fast),
+      box-shadow var(--transition-fast);
+    /* Ensure minimum touch target */
+    min-height: 44px;
+  }
+
+  .form-group input::placeholder {
+    color: var(--color-text-secondary);
+    opacity: 0.7;
   }
 
   .form-group input:focus {
     outline: none;
-    border-color: var(--color-primary, #3b82f6);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-bg-info-light);
   }
 
   .field-error {
     display: block;
-    margin-top: 0.25rem;
-    color: #dc2626;
+    margin-top: var(--spacing-xs);
+    color: var(--color-danger);
     font-size: 0.875rem;
   }
 
   .field-hint {
     display: block;
-    margin-top: 0.25rem;
-    color: var(--text-secondary, #6b7280);
+    margin-top: var(--spacing-xs);
+    color: var(--color-text-secondary);
     font-size: 0.875rem;
   }
 
   .error-message {
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    color: #dc2626;
-    padding: 0.75rem 1rem;
+    background: var(--color-bg-danger-light);
+    border: 1px solid var(--color-danger);
+    color: var(--color-danger);
+    padding: var(--spacing-sm) var(--spacing-md);
     border-radius: 8px;
-    margin-bottom: 1rem;
+    margin-bottom: var(--spacing-md);
   }
 
   .form-actions {
-    margin-top: 1.5rem;
+    margin-top: var(--spacing-md);
   }
 
   .details-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
+    grid-template-columns: 1fr;
+    gap: var(--spacing-md);
   }
 
   .detail-item {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm);
+    background: var(--color-bg-secondary);
+    border-radius: 8px;
   }
 
   .detail-item .label {
-    font-size: 0.875rem;
-    color: var(--text-secondary, #6b7280);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-secondary);
   }
 
   .detail-item .value {
     font-weight: 500;
-    color: var(--text-primary, #1a1a1a);
+    color: var(--color-text-primary);
+    word-break: break-word;
   }
 
   .status-active {
-    color: #059669;
+    color: var(--color-success);
   }
 
   .status-inactive,
   .status-expired,
   .status-suspended {
-    color: #dc2626;
+    color: var(--color-danger);
   }
 
-  @media (max-width: 640px) {
+  /* Tablet breakpoint (768px+) */
+  @media (min-width: 768px) {
     .profile-container {
-      padding: 1rem;
+      padding: var(--spacing-xl);
     }
 
     .profile-header {
-      flex-direction: column;
-      text-align: center;
-      padding: 1.5rem;
+      flex-direction: row;
+      text-align: left;
+      gap: var(--spacing-lg);
+      padding: var(--spacing-xl);
+    }
+
+    .header-info h1 {
+      font-size: 1.75rem;
+    }
+
+    .profile-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--spacing-xl);
+    }
+
+    /* Profile section spans full width for forms, half for details */
+    .profile-section:first-child {
+      grid-column: 1 / 2;
+    }
+
+    .profile-section:nth-child(2) {
+      grid-column: 2 / 3;
+    }
+
+    .profile-section:nth-child(3) {
+      grid-column: 1 / -1;
+    }
+
+    .profile-section {
+      padding: var(--spacing-lg);
+    }
+
+    .profile-section h2 {
+      font-size: 1.25rem;
+      margin-bottom: var(--spacing-lg);
+      padding-bottom: var(--spacing-sm);
     }
 
     .details-grid {
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  /* Desktop breakpoint (968px+) */
+  @media (min-width: 968px) {
+    .profile-container {
+      padding: var(--spacing-2xl);
+    }
+
+    .profile-header {
+      padding: var(--spacing-2xl);
+    }
+
+    .profile-content {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    /* Rearrange for better desktop layout */
+    .profile-section:first-child {
+      grid-column: 1 / 2;
+      grid-row: 1 / 3;
+    }
+
+    .profile-section:nth-child(2) {
+      grid-column: 2 / 3;
+      grid-row: 1 / 2;
+    }
+
+    .profile-section:nth-child(3) {
+      grid-column: 2 / 3;
+      grid-row: 2 / 3;
+    }
+
+    .details-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--spacing-md);
+    }
+  }
+
+  /* Large desktop (1200px+) */
+  @media (min-width: 1200px) {
+    .details-grid {
+      grid-template-columns: repeat(3, 1fr);
     }
   }
 </style>
