@@ -252,7 +252,7 @@
   page={data.page}
   initialComponents={parsedComponents}
   initialPageProperties={data.pageProperties}
-  layoutComponents={data.layoutComponents}
+  initialLayoutComponents={data.layoutComponents}
   revisions={data.revisions}
   currentRevisionId={data.currentRevisionId}
   currentRevisionIsPublished={data.currentRevisionIsPublished}

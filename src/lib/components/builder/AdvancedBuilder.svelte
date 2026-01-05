@@ -53,7 +53,7 @@
   export let mode: BuilderMode = 'page';
   export let page: Page | null;
   export let initialComponents: PageComponent[] = [];
-  export let layoutComponents: LayoutComponent[] = []; // Layout components to show grayed out in page mode
+  export let initialLayoutComponents: LayoutComponent[] = []; // Layout components to show grayed out in page mode
   export let revisions: RevisionNode[] = [];
   export let currentRevisionId: string | null = null;
   export let currentRevisionIsPublished = false;
@@ -121,15 +121,16 @@
   export let onPublish: (data: SaveData) => Promise<void>;
   export let onExit: () => void;
 
-  // Entity labels based on mode
-  $: entityLabel =
-    mode === 'page'
+  // Compute entity label immediately (not as a reactive statement) for initial values
+  function getEntityLabel(): string {
+    return mode === 'page'
       ? 'Page'
       : mode === 'layout'
         ? 'Layout'
         : mode === 'primitive'
           ? 'Primitive'
           : 'Component';
+  }
 
   // Primitive mode restrictions
   $: isPrimitiveMode = mode === 'primitive';
@@ -137,13 +138,14 @@
   $: canDeleteComponents = !isPrimitiveMode; // Never delete widgets in primitive mode
   // Layout mode: can add/remove/reorder components but cannot edit their content
   $: isContentEditable = mode !== 'layout';
-  $: entityLabelLower = entityLabel.toLowerCase();
 
-  // Core state
-  let title = page?.title || `Untitled ${entityLabel}`;
-  let slug = page?.slug || `/${entityLabelLower}-${Date.now()}`;
+  // Core state - use getEntityLabel() for initial values
+  const initialEntityLabel = getEntityLabel();
+  let title = page?.title || `Untitled ${initialEntityLabel}`;
+  let slug = page?.slug || `/${initialEntityLabel.toLowerCase()}-${Date.now()}`;
   let layoutId: number | null = page?.layout_id || defaultLayoutId;
   let pageComponents: PageComponent[] = JSON.parse(JSON.stringify(initialComponents));
+  let layoutComponents: LayoutComponent[] = JSON.parse(JSON.stringify(initialLayoutComponents));
   let selectedComponent: PageComponent | null = null;
   let hoveredComponent: PageComponent | null = null;
 
@@ -160,6 +162,7 @@
     lastSavedState = {
       title,
       slug,
+      layoutId,
       components: JSON.parse(JSON.stringify(pageComponents)),
       pageProperties: JSON.parse(JSON.stringify(pageProperties))
     };
@@ -252,6 +255,7 @@
   interface HistoryEntry {
     title: string;
     slug: string;
+    layoutId: number | null;
     components: PageComponent[];
     pageProperties: typeof pageProperties;
     timestamp: number;
@@ -268,6 +272,7 @@
   let lastSavedState: {
     title: string;
     slug: string;
+    layoutId: number | null;
     components: PageComponent[];
     pageProperties: typeof pageProperties;
   } | null = null;
@@ -277,6 +282,7 @@
     const state: HistoryEntry = {
       title,
       slug,
+      layoutId,
       components: JSON.parse(JSON.stringify(pageComponents)),
       pageProperties: JSON.parse(JSON.stringify(pageProperties)),
       timestamp: Date.now()
@@ -302,6 +308,7 @@
       const state = history[historyIndex];
       title = state.title;
       slug = state.slug;
+      layoutId = state.layoutId;
       pageComponents = JSON.parse(JSON.stringify(state.components));
       pageProperties = JSON.parse(JSON.stringify(state.pageProperties));
       hasUnsavedChanges = true;
@@ -314,6 +321,7 @@
       const state = history[historyIndex];
       title = state.title;
       slug = state.slug;
+      layoutId = state.layoutId;
       pageComponents = JSON.parse(JSON.stringify(state.components));
       pageProperties = JSON.parse(JSON.stringify(state.pageProperties));
       hasUnsavedChanges = true;
@@ -539,6 +547,7 @@
       lastSavedState = {
         title,
         slug,
+        layoutId,
         components: JSON.parse(JSON.stringify(pageComponents)),
         pageProperties: JSON.parse(JSON.stringify(pageProperties))
       };
@@ -575,6 +584,7 @@
       lastSavedState = {
         title,
         slug,
+        layoutId,
         components: JSON.parse(JSON.stringify(pageComponents)),
         pageProperties: JSON.parse(JSON.stringify(pageProperties))
       };
@@ -586,9 +596,25 @@
     }
   }
 
-  function handleUpdateLayout(newLayoutId: number) {
+  async function handleUpdateLayout(newLayoutId: number): Promise<void> {
     layoutId = newLayoutId;
-    hasUnsavedChanges = true;
+
+    // Fetch the new layout's components for real-time preview
+    try {
+      const response = await fetch(`/api/layouts/${newLayoutId}/components`);
+      if (response.ok) {
+        const data = (await response.json()) as { components: LayoutComponent[] };
+        layoutComponents = data.components || [];
+      } else {
+        console.error('Failed to fetch layout components:', response.status);
+        layoutComponents = [];
+      }
+    } catch (err) {
+      console.error('Error fetching layout components:', err);
+      layoutComponents = [];
+    }
+
+    addToHistory();
   }
 
   async function handleExitClick(): Promise<void> {
@@ -709,6 +735,7 @@
       lastSavedState = {
         title: revision.title,
         slug: revision.slug,
+        layoutId,
         components: JSON.parse(JSON.stringify(revision.components)),
         pageProperties: JSON.parse(JSON.stringify(revision.pageProperties || pageProperties))
       };
@@ -791,10 +818,11 @@
       return hasUnsavedChanges;
     }
 
-    // Compare current state with last saved state (including pageProperties)
+    // Compare current state with last saved state (including pageProperties and layoutId)
     const currentState = JSON.stringify({
       title,
       slug,
+      layoutId,
       components: pageComponents,
       pageProperties
     });
@@ -830,6 +858,7 @@
     lastSavedState = {
       title,
       slug,
+      layoutId,
       components: JSON.parse(JSON.stringify(pageComponents)),
       pageProperties: JSON.parse(JSON.stringify(pageProperties))
     };

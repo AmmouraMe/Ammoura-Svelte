@@ -104,9 +104,35 @@
 
   async function handlePublish(saveData: SaveData): Promise<void> {
     if (data.isNewLayout) {
-      // For new layouts, onSave should have been called first
-      toastStore.info('Layout created!');
-      return;
+      // For new layouts, create the layout first
+      try {
+        const response = await fetch('/api/layouts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: saveData.title,
+            slug: saveData.slug,
+            components: saveData.components
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = (await response.json()) as { error?: string };
+          throw new Error(errorData.error || 'Failed to create layout');
+        }
+
+        const result = (await response.json()) as { layoutId: number };
+        toastStore.success('Layout created!');
+
+        // Redirect to the edit page with the new layout ID
+        await goto(`/admin/builder/layout/${result.layoutId}`);
+        await invalidateAll();
+        return;
+      } catch (error) {
+        console.error('Failed to create layout:', error);
+        toastStore.error(error instanceof Error ? error.message : 'Failed to create layout');
+        throw error;
+      }
     }
 
     try {

@@ -15,6 +15,7 @@
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import type { LayoutData } from './$types';
+  import type { ResponsiveValue, PositionConfig } from '$lib/types/pages';
 
   export let data: LayoutData;
 
@@ -42,22 +43,59 @@
     $authState.isAuthenticated &&
     ($authState.user?.role === 'admin' || $authState.user?.role === 'platform_engineer');
 
+  // Check if the current page has a custom layout via $page.data.pageLayoutData
+  // This allows pages to override the default navbar/footer
+  $: pageLayoutData = $page.data?.pageLayoutData as
+    | {
+        navbar: {
+          type: 'navbar';
+          config: Record<string, unknown>;
+          position?: ResponsiveValue<PositionConfig>;
+        } | null;
+        footer: {
+          type: 'footer';
+          config: Record<string, unknown>;
+          position?: ResponsiveValue<PositionConfig>;
+        } | null;
+        hasCustomLayout: boolean;
+      }
+    | undefined;
+
+  // Determine effective navbar/footer based on page layout
+  // If page has a custom layout, use its navbar/footer (which may be null for blank layouts)
+  // Otherwise, use the site's default layout
+  $: effectiveNavbar = pageLayoutData?.hasCustomLayout
+    ? pageLayoutData.navbar
+    : data.layoutData?.navbar;
+
+  $: effectiveFooter = pageLayoutData?.hasCustomLayout
+    ? pageLayoutData.footer
+    : data.layoutData?.footer;
+
   // Build the navbar config with admin menu items if applicable
-  $: navbarConfig = data.layoutData?.navbar?.config
+  $: navbarConfig = effectiveNavbar?.config
     ? {
-        ...data.layoutData.navbar.config,
+        ...effectiveNavbar.config,
         // Add admin dashboard link if user can access admin
         accountMenuItems: canAccessAdmin
           ? [
               { text: 'Admin Dashboard', url: '/admin/dashboard', icon: '📊' },
-              ...(data.layoutData.navbar.config.accountMenuItems || [])
+              ...((effectiveNavbar.config.accountMenuItems as Array<{
+                text: string;
+                url: string;
+                icon?: string;
+              }>) || [])
             ]
-          : data.layoutData.navbar.config.accountMenuItems || []
+          : (effectiveNavbar.config.accountMenuItems as Array<{
+              text: string;
+              url: string;
+              icon?: string;
+            }>) || []
       }
     : null;
 
-  // Footer config from layout data
-  $: footerConfig = data.layoutData?.footer?.config || null;
+  // Footer config from effective layout data
+  $: footerConfig = effectiveFooter?.config || null;
 
   // Generate CSS custom properties from theme colors
   // Note: We generate both --color-* (for app compatibility) and --theme-* (for component theme:* references)
@@ -170,7 +208,7 @@
         type="navbar"
         config={navbarConfig}
         colorTheme={activeColorTheme}
-        position={data.layoutData?.navbar?.position}
+        position={effectiveNavbar?.position}
         onLogout={handleLogout}
         siteContext={data.siteContext}
         user={data.currentUser}
@@ -186,7 +224,7 @@
         type="footer"
         config={footerConfig}
         colorTheme={activeColorTheme}
-        position={data.layoutData?.footer?.position}
+        position={effectiveFooter?.position}
         siteContext={data.siteContext}
         user={data.currentUser}
       />

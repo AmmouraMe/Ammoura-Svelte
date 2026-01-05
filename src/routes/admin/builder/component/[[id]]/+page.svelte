@@ -227,24 +227,10 @@
           componentConfig.boxShadow = saveData.pageProperties.boxShadow;
         }
 
-        // Update the component
-        const response = await fetch(`/api/components/${data.component!.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: saveData.title,
-            type: componentType,
-            config: componentConfig,
-            children: children
-          })
-        });
-
-        if (!response.ok) {
-          const errorData = (await response.json()) as { error?: string };
-          throw new Error(errorData.error || 'Failed to save component');
-        }
-
-        // Create a new revision to track this change
+        // Create a new revision to track this change (draft save)
+        // IMPORTANT: We only create a revision here, NOT updating the live component.
+        // The live component is only updated when the user publishes via handlePublish.
+        // This ensures draft changes don't leak to the front-end until published.
         const revisionResponse = await fetch(`/api/components/${data.component!.id}/revisions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -262,7 +248,8 @@
 
         let revisionId: string | undefined;
         if (!revisionResponse.ok) {
-          console.error('Failed to create revision, but component was saved');
+          const errorData = (await revisionResponse.json()) as { error?: string };
+          throw new Error(errorData.error || 'Failed to save draft');
         } else {
           // Extract the revision ID from the response to return to the builder
           const revisionData = (await revisionResponse.json()) as { id: string };
@@ -271,7 +258,7 @@
 
         // Only show toast if not called silently (e.g., from handlePublish)
         if (!options?.silent) {
-          toastStore.success('Component saved successfully!');
+          toastStore.success('Draft saved successfully!');
         }
         await invalidateAll();
 
