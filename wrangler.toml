@@ -17,6 +17,10 @@ database_id = "2e952313-eb3d-4a77-914f-828a112a317b"
 preview_database_id = "a60090e4-72b8-4101-a4f2-83d19c4b6266"
 migrations_dir = "migrations"
 
+# Preview environment configuration
+[env.preview]
+name = "hermes-preview"
+
 # Preview database
 [[env.preview.d1_databases]]
 binding = "DB"
@@ -24,7 +28,13 @@ database_name = "hermes-db-preview"
 database_id = "a60090e4-72b8-4101-a4f2-83d19c4b6266"
 migrations_dir = "migrations"
 
-# R2 Storage Configuration for media files
+# Preview R2 bucket (use same bucket for both dev and remote in preview env)
+[[env.preview.r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "hermes-media-preview"
+preview_bucket_name = "hermes-media-preview"
+
+# R2 Storage Configuration for media files (production)
 [[r2_buckets]]
 binding = "MEDIA_BUCKET"
 bucket_name = "hermes-media"

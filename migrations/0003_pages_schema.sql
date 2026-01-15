@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS pages (
   slug TEXT NOT NULL, -- URL path like '/about' or '/item/product-slug'
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
   content TEXT, -- Optional legacy HTML/markdown content
+  color_theme TEXT DEFAULT NULL, -- Page-specific color theme override (null = use site theme)
   created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
   updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
   FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,

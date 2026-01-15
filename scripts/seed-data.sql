@@ -13,7 +13,7 @@ VALUES (
 );
 
 -- Insert sample products for default site
-INSERT INTO products (id, site_id, name, description, price, image, category, stock, type, tags)
+INSERT OR IGNORE INTO products (id, site_id, name, description, price, image, category, stock, type, tags)
 VALUES
   (
     '1',
@@ -96,7 +96,7 @@ VALUES
 -- Email: user@hermes.local
 -- Password: TfppPEsXnfZluUi52ne538O (23-character random alphanumeric)
 -- SHA-256 hash: 5f24110047b63ba5e3aa6da96bae758f18f576b05e3872a3e33207422c4acbfa
-INSERT INTO users (id, site_id, email, name, password_hash, role, permissions, status, grace_period_days)
+INSERT OR IGNORE INTO users (id, site_id, email, name, password_hash, role, permissions, status, grace_period_days)
 VALUES (
   'user-1',
   'default-site',
@@ -113,7 +113,7 @@ VALUES (
 -- Email: owner@hermes.local
 -- Password: 4a6lJebYdNkr2zjq5j59rTt (23-character random alphanumeric)
 -- SHA-256 hash: 848182b0ad7be9c4994b06e335776bfe576cf91044896aea4622445dffed8f33
-INSERT INTO users (id, site_id, email, name, password_hash, role, permissions, status, grace_period_days)
+INSERT OR IGNORE INTO users (id, site_id, email, name, password_hash, role, permissions, status, grace_period_days)
 VALUES (
   'admin-1',
   'default-site',
@@ -131,7 +131,7 @@ VALUES (
 -- Password: engineer123 (for demo/development only)
 -- SHA-256 hash: 80ca306ac6e68366dd0a26125c9647e0c61fac6668cec6016f5fe30fb12e99bd
 -- Note: In production, change this password immediately after first login
-INSERT INTO users (id, site_id, email, name, password_hash, role, permissions, status, grace_period_days)
+INSERT OR IGNORE INTO users (id, site_id, email, name, password_hash, role, permissions, status, grace_period_days)
 VALUES (
   'engineer-1',
   'default-site',
