@@ -124,9 +124,12 @@
     max-width: 800px;
     width: 90%;
     max-height: 85vh;
+    max-height: 85dvh; /* Dynamic viewport height for iOS */
     display: flex;
     flex-direction: column;
     animation: slideIn 0.2s ease-out;
+    /* Prevent content from pushing modal off-screen */
+    overflow: hidden;
   }
 
   @keyframes slideIn {
@@ -202,15 +205,25 @@
   }
 
   @media (max-width: 640px) {
+    .modal-overlay {
+      /* Use safe-area insets for notched devices */
+      padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0)
+        env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+    }
+
     .modal-content {
-      width: 95%;
+      width: calc(100% - 1rem);
       max-width: 100%;
       max-height: 90vh;
+      max-height: 90dvh; /* Dynamic viewport height for iOS */
+      max-height: calc(100dvh - 2rem); /* Ensure some margin */
       border-radius: 8px;
+      margin: 0.5rem;
     }
 
     .modal-header {
       padding: 0.75rem;
+      flex-shrink: 0;
     }
 
     .modal-header h2 {
@@ -219,6 +232,9 @@
 
     .modal-body {
       padding: 0.5rem;
+      min-height: 0; /* Allow flexbox shrinking */
+      /* Ensure scrolling works on iOS */
+      -webkit-overflow-scrolling: touch;
     }
   }
 </style>

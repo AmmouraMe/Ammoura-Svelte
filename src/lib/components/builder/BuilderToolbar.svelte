@@ -19,7 +19,9 @@
     Moon,
     MonitorSmartphone,
     Check,
-    Palette
+    Palette,
+    Menu,
+    PanelLeft
   } from 'lucide-svelte';
   import { themeStore } from '$lib/stores/theme';
   import type { Theme } from '$lib/types/theme';
@@ -46,15 +48,19 @@
   export let userName: string | undefined = undefined;
   // Built-in components cannot have their name changed
   export let isBuiltIn = false;
+  // Mobile view state
+  export let isMobileView = false;
 
   const dispatch = createEventDispatcher();
 
   let showUserMenu = false;
   let showLayoutDropdown = false;
+  let showMobileMenu = false;
 
   function toggleUserMenu() {
     showUserMenu = !showUserMenu;
     showLayoutDropdown = false;
+    showMobileMenu = false;
   }
 
   function closeUserMenu() {
@@ -120,37 +126,70 @@
     if (minutes < 60) return `${minutes}m ago`;
     return lastSavedAt.toLocaleTimeString();
   }
+
+  function toggleMobileMenu() {
+    showMobileMenu = !showMobileMenu;
+    showUserMenu = false;
+    showLayoutDropdown = false;
+  }
+
+  function closeMobileMenu() {
+    showMobileMenu = false;
+  }
 </script>
 
-<div class="builder-toolbar">
+<div class="builder-toolbar" class:mobile={isMobileView}>
   <div class="toolbar-left">
     <button class="btn-icon" on:click={() => dispatch('exit')} aria-label="Exit builder">
       <X size={20} />
     </button>
-    <div class="page-info">
-      <input
-        type="text"
-        class="title-input"
-        class:readonly={isBuiltIn}
-        value={title}
-        readonly={isBuiltIn}
-        on:input={(e) => !isBuiltIn && dispatch('updateTitle', e.currentTarget.value)}
-        placeholder="Page title"
-        title={isBuiltIn ? 'Built-in component names cannot be changed' : ''}
-      />
-      {#if mode === 'page'}
-        <input
-          type="text"
-          class="slug-input"
-          value={slug}
-          on:input={(e) => dispatch('updateSlug', e.currentTarget.value)}
-          placeholder="/page-url"
-        />
+
+    <!-- Mobile: Show hamburger menu for sidebar -->
+    {#if isMobileView}
+      <button
+        class="btn-icon btn-sidebar-toggle"
+        on:click={() => dispatch('toggleSidebar')}
+        aria-label="Toggle sidebar"
+      >
+        <PanelLeft size={20} />
+      </button>
+    {/if}
+
+    <!-- Title - shown on mobile in toolbar -->
+    <div class="page-info" class:mobile-visible={isMobileView}>
+      <span class="title-display" {title}>{title || 'Untitled'}</span>
+      {#if hasUnsavedChanges}
+        <span class="unsaved-indicator" title="Unsaved changes">•</span>
       {/if}
     </div>
+
+    <!-- Desktop: Show full inputs -->
+    {#if !isMobileView}
+      <div class="page-info desktop-only">
+        <input
+          type="text"
+          class="title-input"
+          class:readonly={isBuiltIn}
+          value={title}
+          readonly={isBuiltIn}
+          on:input={(e) => !isBuiltIn && dispatch('updateTitle', e.currentTarget.value)}
+          placeholder="Page title"
+          title={isBuiltIn ? 'Built-in component names cannot be changed' : ''}
+        />
+        {#if mode === 'page'}
+          <input
+            type="text"
+            class="slug-input"
+            value={slug}
+            on:input={(e) => dispatch('updateSlug', e.currentTarget.value)}
+            placeholder="/page-url"
+          />
+        {/if}
+      </div>
+    {/if}
   </div>
 
-  <div class="toolbar-center">
+  <div class="toolbar-center" class:hidden={isMobileView}>
     <div class="breakpoint-switcher">
       <button
         class="btn-breakpoint"
@@ -235,141 +274,327 @@
   </div>
 
   <div class="toolbar-right">
-    <button
-      class="btn-icon"
-      on:click={() => dispatch('viewHistory')}
-      aria-label="View revision history (Ctrl+H)"
-      title="View revision history"
-    >
-      <History size={18} />
-    </button>
-    <button
-      class="btn-icon"
-      disabled={!canUndo}
-      on:click={() => dispatch('undo')}
-      aria-label="Undo"
-    >
-      <Undo2 size={18} />
-    </button>
-    <button
-      class="btn-icon"
-      disabled={!canRedo}
-      on:click={() => dispatch('redo')}
-      aria-label="Redo"
-    >
-      <Redo2 size={18} />
-    </button>
-
-    <button class="btn-ai" on:click={() => dispatch('toggleAI')} aria-label="AI Assistant">
-      <Sparkles size={18} />
-      <span>AI</span>
-    </button>
-
-    <div class="save-status">
-      {#if isSaving}
-        <span class="saving">
-          <span class="status-dot pulsing"></span>
-          Saving...
-        </span>
-      {:else if hasUnsavedChanges}
-        <span class="unsaved">
-          <span class="status-dot"></span>
-          Unsaved changes
-        </span>
-      {:else if lastSavedAt}
-        <span class="saved">
-          <span class="status-dot"></span>
-          Saved {formatLastSaved()}
-        </span>
-      {/if}
-    </div>
-
-    <button
-      class="btn-primary"
-      on:click={() => dispatch('save')}
-      disabled={isSaving || !hasUnsavedChanges}
-    >
-      <Save size={18} />
-      <span>Save Draft</span>
-    </button>
-    <button
-      class="btn-publish"
-      on:click={() => dispatch('publish')}
-      disabled={isSaving || !canPublish}
-      title={canPublish
-        ? 'Publish this version'
-        : isViewingPublishedRevision
-          ? 'Already viewing the published version - make changes to publish'
-          : 'Viewing an older revision - make changes to create a new publishable version'}
-    >
-      <Upload size={18} />
-      <span>Publish</span>
-    </button>
-
-    <div class="user-menu-container">
-      <button class="btn-user-menu" on:click={toggleUserMenu} aria-label="User menu">
-        <Avatar name={userName} size="small" />
-        <ChevronDown size={14} />
+    <!-- Desktop actions -->
+    {#if !isMobileView}
+      <button
+        class="btn-icon"
+        on:click={() => dispatch('viewHistory')}
+        aria-label="View revision history (Ctrl+H)"
+        title="View revision history"
+      >
+        <History size={18} />
+      </button>
+      <button
+        class="btn-icon"
+        disabled={!canUndo}
+        on:click={() => dispatch('undo')}
+        aria-label="Undo"
+      >
+        <Undo2 size={18} />
+      </button>
+      <button
+        class="btn-icon"
+        disabled={!canRedo}
+        on:click={() => dispatch('redo')}
+        aria-label="Redo"
+      >
+        <Redo2 size={18} />
       </button>
 
-      {#if showUserMenu}
-        <div class="user-menu-dropdown">
-          <div class="menu-section">
-            <div class="menu-label">Theme</div>
-            <button
-              class="menu-item"
-              class:active={$themeStore === 'light'}
-              on:click={() => handleThemeChange('light')}
-            >
-              <Sun size={16} />
-              <span>Light</span>
-              {#if $themeStore === 'light'}
-                <Check size={16} class="check-icon" />
-              {/if}
-            </button>
-            <button
-              class="menu-item"
-              class:active={$themeStore === 'dark'}
-              on:click={() => handleThemeChange('dark')}
-            >
-              <Moon size={16} />
-              <span>Dark</span>
-              {#if $themeStore === 'dark'}
-                <Check size={16} class="check-icon" />
-              {/if}
-            </button>
-            <button
-              class="menu-item"
-              class:active={$themeStore === 'system'}
-              on:click={() => handleThemeChange('system')}
-            >
-              <MonitorSmartphone size={16} />
-              <span>System</span>
-              {#if $themeStore === 'system'}
-                <Check size={16} class="check-icon" />
-              {/if}
-            </button>
-          </div>
+      <button class="btn-ai" on:click={() => dispatch('toggleAI')} aria-label="AI Assistant">
+        <Sparkles size={18} />
+        <span>AI</span>
+      </button>
 
-          <div class="menu-divider"></div>
+      <div class="save-status">
+        {#if isSaving}
+          <span class="saving">
+            <span class="status-dot pulsing"></span>
+            Saving...
+          </span>
+        {:else if hasUnsavedChanges}
+          <span class="unsaved">
+            <span class="status-dot"></span>
+            Unsaved changes
+          </span>
+        {:else if lastSavedAt}
+          <span class="saved">
+            <span class="status-dot"></span>
+            Saved {formatLastSaved()}
+          </span>
+        {/if}
+      </div>
 
-          <div class="menu-section">
-            <button class="menu-item" on:click={navigateToAdmin}>
-              <LayoutDashboard size={16} />
-              <span>Admin Dashboard</span>
-            </button>
-            <button class="menu-item" on:click={navigateToPublicSite}>
-              <Globe size={16} />
-              <span>View Public Site</span>
-            </button>
-          </div>
+      <button
+        class="btn-primary"
+        on:click={() => dispatch('save')}
+        disabled={isSaving || !hasUnsavedChanges}
+      >
+        <Save size={18} />
+        <span>Save Draft</span>
+      </button>
+      <button
+        class="btn-publish"
+        on:click={() => dispatch('publish')}
+        disabled={isSaving || !canPublish}
+        title={canPublish
+          ? 'Publish this version'
+          : isViewingPublishedRevision
+            ? 'Already viewing the published version - make changes to publish'
+            : 'Viewing an older revision - make changes to create a new publishable version'}
+      >
+        <Upload size={18} />
+        <span>Publish</span>
+      </button>
+    {:else}
+      <!-- Mobile: Compact action buttons -->
+      <button
+        class="btn-icon"
+        on:click={() => dispatch('save')}
+        disabled={isSaving || !hasUnsavedChanges}
+        aria-label="Save"
+      >
+        <Save size={20} />
+      </button>
+      <button
+        class="btn-icon btn-publish-icon"
+        on:click={() => dispatch('publish')}
+        disabled={isSaving || !canPublish}
+        aria-label="Publish"
+      >
+        <Upload size={20} />
+      </button>
+      <button class="btn-icon" on:click={toggleMobileMenu} aria-label="More options">
+        <Menu size={20} />
+      </button>
+    {/if}
+
+    <!-- Mobile menu dropdown -->
+    {#if isMobileView && showMobileMenu}
+      <div class="mobile-menu-dropdown">
+        <div class="menu-section">
+          <div class="menu-label">Actions</div>
+          <button
+            class="menu-item"
+            on:click={() => {
+              dispatch('toggleAI');
+              closeMobileMenu();
+            }}
+          >
+            <Sparkles size={16} />
+            <span>AI Assistant</span>
+          </button>
+          <button
+            class="menu-item"
+            on:click={() => {
+              dispatch('viewHistory');
+              closeMobileMenu();
+            }}
+          >
+            <History size={16} />
+            <span>Revision History</span>
+          </button>
+          <button
+            class="menu-item"
+            disabled={!canUndo}
+            on:click={() => {
+              dispatch('undo');
+              closeMobileMenu();
+            }}
+          >
+            <Undo2 size={16} />
+            <span>Undo</span>
+          </button>
+          <button
+            class="menu-item"
+            disabled={!canRedo}
+            on:click={() => {
+              dispatch('redo');
+              closeMobileMenu();
+            }}
+          >
+            <Redo2 size={16} />
+            <span>Redo</span>
+          </button>
         </div>
-      {/if}
 
-      {#if showUserMenu}
-        <button class="menu-backdrop" on:click={closeUserMenu} aria-label="Close menu"></button>
-      {/if}
-    </div>
+        <div class="menu-divider"></div>
+
+        <div class="menu-section">
+          <div class="menu-label">Preview Breakpoint</div>
+          <button
+            class="menu-item"
+            class:active={currentBreakpoint === 'mobile'}
+            on:click={() => {
+              dispatch('changeBreakpoint', 'mobile');
+              closeMobileMenu();
+            }}
+          >
+            <Smartphone size={16} />
+            <span>Mobile</span>
+            {#if currentBreakpoint === 'mobile'}<Check size={16} />{/if}
+          </button>
+          <button
+            class="menu-item"
+            class:active={currentBreakpoint === 'tablet'}
+            on:click={() => {
+              dispatch('changeBreakpoint', 'tablet');
+              closeMobileMenu();
+            }}
+          >
+            <Tablet size={16} />
+            <span>Tablet</span>
+            {#if currentBreakpoint === 'tablet'}<Check size={16} />{/if}
+          </button>
+          <button
+            class="menu-item"
+            class:active={currentBreakpoint === 'desktop'}
+            on:click={() => {
+              dispatch('changeBreakpoint', 'desktop');
+              closeMobileMenu();
+            }}
+          >
+            <Monitor size={16} />
+            <span>Desktop</span>
+            {#if currentBreakpoint === 'desktop'}<Check size={16} />{/if}
+          </button>
+        </div>
+
+        <div class="menu-divider"></div>
+
+        <div class="menu-section">
+          <div class="menu-label">Theme</div>
+          <button
+            class="menu-item"
+            on:click={() => {
+              openThemePalette();
+              closeMobileMenu();
+            }}
+          >
+            <Palette size={16} />
+            <span>{selectedThemeName}</span>
+          </button>
+        </div>
+
+        <div class="menu-divider"></div>
+
+        <div class="menu-section">
+          <div class="menu-label">Editor Theme</div>
+          <button
+            class="menu-item"
+            class:active={$themeStore === 'light'}
+            on:click={() => handleThemeChange('light')}
+          >
+            <Sun size={16} />
+            <span>Light</span>
+            {#if $themeStore === 'light'}<Check size={16} />{/if}
+          </button>
+          <button
+            class="menu-item"
+            class:active={$themeStore === 'dark'}
+            on:click={() => handleThemeChange('dark')}
+          >
+            <Moon size={16} />
+            <span>Dark</span>
+            {#if $themeStore === 'dark'}<Check size={16} />{/if}
+          </button>
+        </div>
+
+        <div class="menu-divider"></div>
+
+        <div class="menu-section">
+          <button
+            class="menu-item"
+            on:click={() => {
+              navigateToAdmin();
+              closeMobileMenu();
+            }}
+          >
+            <LayoutDashboard size={16} />
+            <span>Admin Dashboard</span>
+          </button>
+          <button
+            class="menu-item"
+            on:click={() => {
+              navigateToPublicSite();
+              closeMobileMenu();
+            }}
+          >
+            <Globe size={16} />
+            <span>View Public Site</span>
+          </button>
+        </div>
+      </div>
+      <button class="menu-backdrop" on:click={closeMobileMenu} aria-label="Close menu"></button>
+    {/if}
+
+    <!-- Desktop user menu -->
+    {#if !isMobileView}
+      <div class="user-menu-container">
+        <button class="btn-user-menu" on:click={toggleUserMenu} aria-label="User menu">
+          <Avatar name={userName} size="small" />
+          <ChevronDown size={14} />
+        </button>
+
+        {#if showUserMenu}
+          <div class="user-menu-dropdown">
+            <div class="menu-section">
+              <div class="menu-label">Theme</div>
+              <button
+                class="menu-item"
+                class:active={$themeStore === 'light'}
+                on:click={() => handleThemeChange('light')}
+              >
+                <Sun size={16} />
+                <span>Light</span>
+                {#if $themeStore === 'light'}
+                  <Check size={16} class="check-icon" />
+                {/if}
+              </button>
+              <button
+                class="menu-item"
+                class:active={$themeStore === 'dark'}
+                on:click={() => handleThemeChange('dark')}
+              >
+                <Moon size={16} />
+                <span>Dark</span>
+                {#if $themeStore === 'dark'}
+                  <Check size={16} class="check-icon" />
+                {/if}
+              </button>
+              <button
+                class="menu-item"
+                class:active={$themeStore === 'system'}
+                on:click={() => handleThemeChange('system')}
+              >
+                <MonitorSmartphone size={16} />
+                <span>System</span>
+                {#if $themeStore === 'system'}
+                  <Check size={16} class="check-icon" />
+                {/if}
+              </button>
+            </div>
+
+            <div class="menu-divider"></div>
+
+            <div class="menu-section">
+              <button class="menu-item" on:click={navigateToAdmin}>
+                <LayoutDashboard size={16} />
+                <span>Admin Dashboard</span>
+              </button>
+              <button class="menu-item" on:click={navigateToPublicSite}>
+                <Globe size={16} />
+                <span>View Public Site</span>
+              </button>
+            </div>
+          </div>
+        {/if}
+
+        {#if showUserMenu}
+          <button class="menu-backdrop" on:click={closeUserMenu} aria-label="Close menu"></button>
+        {/if}
+      </div>
+    {/if}
   </div>
 </div>
 
@@ -382,8 +607,14 @@
     padding: 0 1rem;
     background: var(--color-bg-primary);
     border-bottom: 1px solid var(--color-border-secondary);
-    gap: 1rem;
+    gap: 0.5rem;
     flex-shrink: 0;
+  }
+
+  .builder-toolbar.mobile {
+    height: 56px;
+    padding: 0 0.75rem;
+    gap: 0.25rem;
   }
 
   .toolbar-left,
@@ -398,13 +629,67 @@
     flex-shrink: 0;
   }
 
+  .builder-toolbar.mobile .toolbar-left {
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 0;
+  }
+
   .toolbar-center {
     flex: 1;
     justify-content: center;
   }
 
+  .toolbar-center.hidden {
+    display: none;
+  }
+
+  .toolbar-right {
+    position: relative;
+  }
+
+  .builder-toolbar.mobile .toolbar-right {
+    gap: 0.25rem;
+    flex-shrink: 0;
+  }
+
+  /* Page info - desktop inputs hidden by default */
   .page-info {
     display: none;
+  }
+
+  .page-info.desktop-only {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 150px;
+    max-width: 200px;
+  }
+
+  /* Mobile title display */
+  .page-info.mobile-visible {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .title-display {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+  }
+
+  .unsaved-indicator {
+    color: var(--color-warning);
+    font-size: 1.25rem;
+    line-height: 1;
+    flex-shrink: 0;
   }
 
   .title-input,
@@ -828,30 +1113,59 @@
     margin: 0.5rem 0;
   }
 
+  /* Mobile menu dropdown */
+  .mobile-menu-dropdown {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    min-width: 260px;
+    max-width: calc(100vw - 2rem);
+    max-height: calc(100dvh - 80px);
+    overflow-y: auto;
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+  }
+
+  .btn-sidebar-toggle {
+    color: var(--color-primary);
+  }
+
+  .btn-publish-icon {
+    color: var(--color-success);
+  }
+
+  .menu-item:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .menu-item:disabled:hover {
+    background: none;
+  }
+
   @media (max-width: 1200px) {
     .toolbar-center {
       display: none;
     }
   }
 
-  @media (max-width: 768px) {
-    .builder-toolbar {
-      padding: 0.5rem;
-      gap: 0.5rem;
-    }
+  /* Mobile-specific overrides - using .mobile class instead of media query */
+  .builder-toolbar.mobile .btn-icon {
+    padding: 0.625rem;
+  }
 
-    .toolbar-right {
-      gap: 0.5rem;
-    }
+  .builder-toolbar.mobile .btn-primary,
+  .builder-toolbar.mobile .btn-publish,
+  .builder-toolbar.mobile .btn-ai {
+    padding: 0.5rem;
+  }
 
-    .btn-primary span,
-    .btn-publish span,
-    .btn-ai span {
-      display: none;
-    }
-
-    .save-status {
-      display: none;
-    }
+  .builder-toolbar.mobile .btn-primary span,
+  .builder-toolbar.mobile .btn-publish span,
+  .builder-toolbar.mobile .btn-ai span {
+    display: none;
   }
 </style>

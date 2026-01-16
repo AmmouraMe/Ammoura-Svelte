@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import { Settings, LayoutGrid, SlidersHorizontal, ChevronLeft } from 'lucide-svelte';
+  import { Settings, LayoutGrid, SlidersHorizontal, ChevronLeft, X } from 'lucide-svelte';
   import type {
     PageComponent,
     Component,
@@ -23,6 +23,8 @@
   export let collapsed = false;
   // Whether adding components is allowed (false in primitive mode)
   export let canAddComponents = true;
+  // Mobile view state
+  export let isMobileView = false;
 
   // Properties panel props
   export let selectedComponent: PageComponent | null = null;
@@ -77,16 +79,26 @@
   function handleToggle(): void {
     dispatch('toggle');
   }
+
+  function handleClose(): void {
+    dispatch('close');
+  }
 </script>
 
-<aside class="builder-left-panel" class:collapsed>
-  {#if collapsed}
+<aside class="builder-left-panel" class:collapsed class:mobile={isMobileView}>
+  {#if collapsed && !isMobileView}
     <button type="button" class="collapsed-toggle" on:click={handleToggle} title="Expand panel">
       <LayoutGrid size={20} />
       <span class="collapsed-label">Panel</span>
     </button>
-  {:else}
+  {:else if !collapsed}
     <div class="panel-header">
+      <!-- Mobile close button -->
+      {#if isMobileView}
+        <button type="button" class="btn-mobile-close" on:click={handleClose} title="Close panel">
+          <X size={20} />
+        </button>
+      {/if}
       <div class="tab-bar">
         {#each tabs as tab}
           <button
@@ -162,6 +174,8 @@
             showPageSettings={false}
             on:addComponent
             on:selectComponent
+            on:componentDragStart
+            on:componentDragEnd
             on:showPageProperties={() => {
               dispatch('showPageProperties');
               activeTab = 'properties';
@@ -467,20 +481,66 @@
     border-color: var(--color-primary);
   }
 
-  @media (max-width: 768px) {
-    .builder-left-panel {
-      width: 100%;
-      position: absolute;
-      top: 0;
-      left: 0;
-      z-index: 100;
-    }
+  /* Mobile close button */
+  .btn-mobile-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--color-border-secondary);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
 
-    .builder-left-panel.collapsed {
-      width: 48px;
-    }
+  .btn-mobile-close:hover {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+  }
 
-    .tab-label {
+  /* Mobile styles using class instead of media query */
+  .builder-left-panel.mobile {
+    position: fixed;
+    top: 56px; /* Below mobile toolbar */
+    left: 0;
+    bottom: 0;
+    width: 85%;
+    max-width: 360px;
+    height: auto;
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+  }
+
+  .builder-left-panel.mobile:not(.collapsed) {
+    transform: translateX(0);
+  }
+
+  .builder-left-panel.mobile.collapsed {
+    transform: translateX(-100%);
+    width: 0;
+  }
+
+  .builder-left-panel.mobile .tab-label {
+    display: block;
+  }
+
+  .builder-left-panel.mobile .panel-header {
+    padding-right: 0;
+  }
+
+  .builder-left-panel.mobile .btn-collapse {
+    display: none;
+  }
+
+  /* Desktop media query for hiding collapsed toggle on mobile */
+  @media (max-width: 767px) {
+    .builder-left-panel:not(.mobile).collapsed {
       display: none;
     }
   }

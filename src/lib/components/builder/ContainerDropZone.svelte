@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import { Plus, GripVertical, Trash2 } from 'lucide-svelte';
   import type { PageComponent } from '$lib/types/pages';
 
@@ -30,6 +30,14 @@
   let dropIndicatorIndex: number | null = null;
   let dragEnterCounter = 0; // Track nested dragenter/dragleave events
   let hoveredChildId: string | null = null; // Track which child is being hovered (JS-based, not CSS)
+
+  // Touch drag state
+  let touchDragChildIndex: number | null = null;
+  let touchDragGhost: HTMLElement | null = null;
+  let touchStartPos = { x: 0, y: 0 };
+  let touchCurrentPos = { x: 0, y: 0 };
+  let isTouchDragging = false;
+  let touchDragThreshold = 10; // pixels before drag starts
 
   // Check if a drag event contains a droppable component type
   function isValidDrag(event: DragEvent): boolean {
@@ -185,6 +193,229 @@
     setTimeout(() => document.body.removeChild(dragImage), 0);
   }
 
+  // ========== Touch Drag-and-Drop for Mobile ==========
+
+  function handleTouchStart(event: TouchEvent, index: number): void {
+    if (event.touches.length !== 1) return;
+
+    const touch = event.touches[0];
+    touchStartPos = { x: touch.clientX, y: touch.clientY };
+    touchCurrentPos = { x: touch.clientX, y: touch.clientY };
+    touchDragChildIndex = index;
+    isTouchDragging = false;
+  }
+
+  function handleTouchMove(event: TouchEvent): void {
+    if (touchDragChildIndex === null) return;
+    if (event.touches.length !== 1) return;
+
+    const touch = event.touches[0];
+    touchCurrentPos = { x: touch.clientX, y: touch.clientY };
+
+    // Check if we've moved enough to start dragging
+    const dx = touchCurrentPos.x - touchStartPos.x;
+    const dy = touchCurrentPos.y - touchStartPos.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (!isTouchDragging && distance > touchDragThreshold) {
+      isTouchDragging = true;
+      createTouchDragGhost(touchDragChildIndex);
+      isDragOver = true;
+    }
+
+    if (isTouchDragging) {
+      event.preventDefault(); // Prevent scrolling while dragging
+      updateTouchDragGhost();
+      calculateTouchDropPosition(touch.clientX, touch.clientY);
+    }
+  }
+
+  function handleTouchEnd(_event: TouchEvent): void {
+    if (touchDragChildIndex === null) return;
+
+    if (isTouchDragging && dropIndicatorIndex !== null) {
+      // Complete the reorder
+      dispatch('reorder', {
+        containerId,
+        fromIndex: touchDragChildIndex,
+        toIndex: dropIndicatorIndex
+      });
+    }
+
+    // Clean up
+    cleanupTouchDrag();
+  }
+
+  function handleTouchCancel(): void {
+    cleanupTouchDrag();
+  }
+
+  function createTouchDragGhost(index: number): void {
+    if (!dropZoneElement) return;
+
+    const childElements = Array.from(
+      dropZoneElement.querySelectorAll(':scope > .child-component')
+    ) as HTMLElement[];
+
+    if (childElements[index]) {
+      touchDragGhost = document.createElement('div');
+      touchDragGhost.className = 'touch-drag-ghost';
+      touchDragGhost.innerHTML = '📦 Moving...';
+      touchDragGhost.style.cssText = `
+        position: fixed;
+        z-index: 10000;
+        padding: 8px 12px;
+        background: #3b82f6;
+        color: white;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        pointer-events: none;
+        transform: translate(-50%, -100%);
+        white-space: nowrap;
+      `;
+      document.body.appendChild(touchDragGhost);
+      updateTouchDragGhost();
+    }
+  }
+
+  function updateTouchDragGhost(): void {
+    if (touchDragGhost) {
+      touchDragGhost.style.left = `${touchCurrentPos.x}px`;
+      touchDragGhost.style.top = `${touchCurrentPos.y - 20}px`;
+    }
+  }
+
+  function calculateTouchDropPosition(clientX: number, clientY: number): void {
+    if (!dropZoneElement) return;
+
+    const childElements = Array.from(
+      dropZoneElement.querySelectorAll(':scope > .child-component')
+    ) as HTMLElement[];
+
+    if (childElements.length === 0) {
+      dropIndicatorIndex = 0;
+      return;
+    }
+
+    const isHorizontal =
+      displayMode === 'flex' &&
+      (containerStyles.includes('row') || !containerStyles.includes('column'));
+
+    let closestIndex = 0;
+    let closestDistance = Infinity;
+
+    childElements.forEach((child, index) => {
+      const rect = child.getBoundingClientRect();
+
+      if (isHorizontal) {
+        const childCenter = rect.left + rect.width / 2;
+        const distance = Math.abs(clientX - childCenter);
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestIndex = clientX < childCenter ? index : index + 1;
+        }
+      } else {
+        const childCenter = rect.top + rect.height / 2;
+        const distance = Math.abs(clientY - childCenter);
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestIndex = clientY < childCenter ? index : index + 1;
+        }
+      }
+    });
+
+    dropIndicatorIndex = closestIndex;
+  }
+
+  function cleanupTouchDrag(): void {
+    if (touchDragGhost && touchDragGhost.parentNode) {
+      touchDragGhost.parentNode.removeChild(touchDragGhost);
+    }
+    touchDragGhost = null;
+    touchDragChildIndex = null;
+    isTouchDragging = false;
+    isDragOver = false;
+    dropIndicatorIndex = null;
+  }
+
+  // Listen for global touch events from sidebar component drags
+  function handleGlobalTouchDrop(event: CustomEvent): void {
+    const { componentType, clientX, clientY } = event.detail;
+
+    // Check if the touch point is inside this drop zone
+    if (!dropZoneElement) return;
+
+    const rect = dropZoneElement.getBoundingClientRect();
+    if (
+      clientX >= rect.left &&
+      clientX <= rect.right &&
+      clientY >= rect.top &&
+      clientY <= rect.bottom
+    ) {
+      // Calculate insert position
+      calculateTouchDropPosition(clientX, clientY);
+      const insertIndex = dropIndicatorIndex !== null ? dropIndicatorIndex : children.length;
+
+      // Check if type is allowed
+      if (allowedTypes.length > 0 && !allowedTypes.includes(componentType)) {
+        dropIndicatorIndex = null;
+        return;
+      }
+
+      dispatch('drop', { containerId, componentType, insertIndex });
+      dropIndicatorIndex = null;
+    }
+  }
+
+  // Handle touch drag over this container from external source
+  function handleGlobalTouchDragOver(event: CustomEvent): void {
+    const { clientX, clientY } = event.detail;
+
+    if (!dropZoneElement) return;
+
+    const rect = dropZoneElement.getBoundingClientRect();
+    const isInside =
+      clientX >= rect.left &&
+      clientX <= rect.right &&
+      clientY >= rect.top &&
+      clientY <= rect.bottom;
+
+    if (isInside) {
+      isDragOver = true;
+      calculateTouchDropPosition(clientX, clientY);
+    } else if (!isTouchDragging) {
+      // Only reset if we're not in our own internal drag
+      isDragOver = false;
+      dropIndicatorIndex = null;
+    }
+  }
+
+  onMount(() => {
+    // Listen for touch drag events from other components
+    window.addEventListener(
+      'touchComponentDrop',
+      handleGlobalTouchDrop as unknown as (e: Event) => void
+    );
+    window.addEventListener(
+      'touchComponentDragOver',
+      handleGlobalTouchDragOver as unknown as (e: Event) => void
+    );
+  });
+
+  onDestroy(() => {
+    window.removeEventListener(
+      'touchComponentDrop',
+      handleGlobalTouchDrop as unknown as (e: Event) => void
+    );
+    window.removeEventListener(
+      'touchComponentDragOver',
+      handleGlobalTouchDragOver as unknown as (e: Event) => void
+    );
+    cleanupTouchDrag();
+  });
+
   function handleChildDelete(event: MouseEvent, childId: string, index: number): void {
     event.stopPropagation();
     event.preventDefault();
@@ -303,8 +534,10 @@
         class:drop-before={dropIndicatorIndex === index && isDragOver}
         class:is-hovered={hoveredChildId === child.id}
         class:is-focused={focusedChildId === child.id}
-        draggable="true"
-        on:dragstart={(e) => handleChildDragStart(e, index)}
+        class:touch-dragging={isTouchDragging && touchDragChildIndex === index}
+        on:touchmove={handleTouchMove}
+        on:touchend={handleTouchEnd}
+        on:touchcancel={handleTouchCancel}
         on:click={(e) => handleChildClick(e, child.id)}
         on:mouseenter={(e) => handleChildMouseEnter(e, child.id)}
         on:mouseleave={(e) => handleChildMouseLeave(e, child.id)}
@@ -328,7 +561,10 @@
           <button
             type="button"
             class="control-btn drag-handle"
+            draggable="true"
             title="Drag to reorder"
+            on:dragstart={(e) => handleChildDragStart(e, index)}
+            on:touchstart={(e) => handleTouchStart(e, index)}
             on:mousedown|stopPropagation
             on:click|stopPropagation
           >
@@ -629,5 +865,74 @@
   .show-hints .child-component.is-hovered:not(:has(.child-component.is-hovered)) {
     outline: 1px dashed rgba(59, 130, 246, 0.5);
     outline-offset: 2px;
+  }
+
+  /* Touch drag styles */
+  .child-component.touch-dragging {
+    opacity: 0.4;
+    transform: scale(0.98);
+    transition:
+      opacity 0.15s ease,
+      transform 0.15s ease;
+  }
+
+  /* Prevent text selection and tap highlights during touch drag */
+  .child-component {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Mobile: Controls are HIDDEN by default on touch devices (preview mode) */
+  @media (hover: none) and (pointer: coarse) {
+    .child-controls {
+      /* Default: hidden in preview mode */
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      /* Stack controls vertically on mobile to prevent overlap */
+      flex-direction: column;
+      top: 2px;
+      right: 2px;
+      gap: 2px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 4px;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .control-btn {
+      width: 36px;
+      height: 36px;
+      min-width: 36px;
+      min-height: 36px;
+    }
+
+    /* Larger touch targets for drag handle */
+    .drag-handle {
+      touch-action: none;
+    }
+
+    /* In preview mode (edit mode OFF), no extra padding needed */
+    .child-component {
+      padding-right: 0;
+      padding-top: 0;
+    }
+  }
+
+  /* Mobile Edit Mode ON: Show controls when ancestor has data-mobile-edit-mode="on" */
+  @media (hover: none) and (pointer: coarse) {
+    :global([data-mobile-edit-mode='on']) .child-controls {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    /* Add padding to child components when edit mode is on to prevent content overlapping controls */
+    :global([data-mobile-edit-mode='on']) .child-component {
+      padding-right: 48px;
+      padding-top: 4px;
+    }
   }
 </style>

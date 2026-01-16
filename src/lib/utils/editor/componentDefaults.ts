@@ -2409,24 +2409,211 @@ export function getComponentLabel(type: ComponentType): string {
 export const getWidgetLabel = getComponentLabel;
 
 /**
+ * Extract a content preview from a component's config for display purposes.
+ * Returns a short string that helps identify the component's content.
+ * @param component - The component to extract content from
+ * @returns A short content preview or empty string if none available
+ */
+export function getComponentContentPreview(component: {
+  type: ComponentType;
+  config?: ComponentConfig;
+}): string {
+  const config = component.config as Record<string, unknown> | undefined;
+  if (!config) return '';
+
+  // Helper to strip HTML tags and get plain text
+  const stripHtml = (html: string): string => {
+    return html.replace(/<[^>]*>/g, '').trim();
+  };
+
+  // Helper to truncate text
+  const truncate = (text: string, maxLength: number = 30): string => {
+    const clean = text.trim();
+    if (clean.length <= maxLength) return clean;
+    return clean.substring(0, maxLength).trim() + '…';
+  };
+
+  switch (component.type) {
+    case 'text':
+      // Text components have html or content
+      if (typeof config.html === 'string') {
+        const text = stripHtml(config.html);
+        if (text) return truncate(text);
+      }
+      if (typeof config.content === 'string') {
+        const text = stripHtml(config.content);
+        if (text) return truncate(text);
+      }
+      break;
+
+    case 'heading':
+      // Headings have text property
+      if (typeof config.text === 'string' && config.text) {
+        return truncate(config.text);
+      }
+      break;
+
+    case 'button':
+      // Buttons have text or label
+      if (typeof config.text === 'string' && config.text) {
+        return truncate(config.text, 25);
+      }
+      if (typeof config.label === 'string' && config.label) {
+        return truncate(config.label, 25);
+      }
+      break;
+
+    case 'image':
+      // Images might have alt text or src
+      if (typeof config.alt === 'string' && config.alt) {
+        return truncate(config.alt, 25);
+      }
+      if (typeof config.src === 'string' && config.src) {
+        // Extract filename from path
+        const filename = config.src.split('/').pop() || '';
+        if (filename) return truncate(filename, 25);
+      }
+      break;
+
+    case 'hero':
+      // Heroes have title and subtitle
+      if (typeof config.title === 'string' && config.title) {
+        return truncate(config.title);
+      }
+      break;
+
+    case 'cta':
+      // CTAs have headline or title
+      if (typeof config.headline === 'string' && config.headline) {
+        return truncate(config.headline);
+      }
+      if (typeof config.title === 'string' && config.title) {
+        return truncate(config.title);
+      }
+      break;
+
+    case 'features':
+      // Features might have a title
+      if (typeof config.title === 'string' && config.title) {
+        return truncate(config.title);
+      }
+      break;
+
+    case 'pricing':
+      // Pricing might have a title
+      if (typeof config.title === 'string' && config.title) {
+        return truncate(config.title);
+      }
+      break;
+
+    case 'icon':
+      // Icons have an icon name
+      if (typeof config.icon === 'string' && config.icon) {
+        return config.icon;
+      }
+      if (typeof config.name === 'string' && config.name) {
+        return config.name;
+      }
+      break;
+
+    case 'dropdown':
+      // Dropdowns have a label
+      if (typeof config.label === 'string' && config.label) {
+        return truncate(config.label, 25);
+      }
+      break;
+
+    case 'navbar':
+      // Navbars might have a logo text or brand name
+      if (typeof config.brandName === 'string' && config.brandName) {
+        return truncate(config.brandName, 25);
+      }
+      if (typeof config.logoText === 'string' && config.logoText) {
+        return truncate(config.logoText, 25);
+      }
+      break;
+
+    case 'footer':
+      // Footers might have copyright text
+      if (typeof config.copyright === 'string' && config.copyright) {
+        return truncate(config.copyright, 25);
+      }
+      break;
+
+    case 'container':
+    case 'columns':
+      // Containers might have a name or label
+      if (typeof config.name === 'string' && config.name) {
+        return truncate(config.name, 25);
+      }
+      if (typeof config.label === 'string' && config.label) {
+        return truncate(config.label, 25);
+      }
+      break;
+
+    case 'spacer':
+      // Spacers have height
+      if (config.height !== undefined) {
+        return `${config.height}`;
+      }
+      break;
+
+    case 'divider':
+      // Dividers might have a style
+      if (typeof config.style === 'string' && config.style) {
+        return config.style;
+      }
+      break;
+
+    default:
+      // For other types, try common properties
+      if (typeof config.title === 'string' && config.title) {
+        return truncate(config.title);
+      }
+      if (typeof config.text === 'string' && config.text) {
+        return truncate(config.text);
+      }
+      if (typeof config.label === 'string' && config.label) {
+        return truncate(config.label);
+      }
+      break;
+  }
+
+  return '';
+}
+
+/**
  * Get the display label for a component, resolving component names for component_ref types.
+ * Optionally includes a content preview for better identification.
  * @param component - The component to get the label for
  * @param components - Optional list of components to look up component names
+ * @param includeContent - Whether to include content preview (default: false for backwards compatibility)
  * @returns The display label for the component
  */
 export function getComponentDisplayLabel(
-  component: { type: ComponentType; config?: { componentId?: number } },
-  components?: { id: number; name: string }[]
+  component: { type: ComponentType; config?: ComponentConfig },
+  components?: { id: number; name: string }[],
+  includeContent: boolean = false
 ): string {
+  const config = component.config as Record<string, unknown> | undefined;
   // For component_ref types, try to resolve the component name
-  if (component.type === 'component_ref' && component.config?.componentId && components) {
-    const found = components.find((c) => c.id === component.config?.componentId);
+  if (component.type === 'component_ref' && config?.componentId && components) {
+    const found = components.find((c) => c.id === config?.componentId);
     if (found) {
       return found.name;
     }
   }
 
-  return getComponentLabel(component.type);
+  const baseLabel = getComponentLabel(component.type);
+
+  if (includeContent) {
+    const contentPreview = getComponentContentPreview(component);
+    if (contentPreview) {
+      return `${baseLabel}: ${contentPreview}`;
+    }
+  }
+
+  return baseLabel;
 }
 
 // Deprecated: Use getComponentDisplayLabel instead

@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { getDefaultConfig, getComponentLabel, getComponentDisplayLabel } from './componentDefaults';
-import type { ComponentType } from '$lib/types/pages';
+import {
+  getDefaultConfig,
+  getComponentLabel,
+  getComponentDisplayLabel,
+  getComponentContentPreview
+} from './componentDefaults';
+import type { ComponentType, ComponentConfig } from '$lib/types/pages';
 
 describe('Component Defaults', () => {
   describe('getDefaultConfig', () => {
@@ -366,6 +371,135 @@ describe('Component Defaults', () => {
       const component = { type: 'navbar' as ComponentType };
       const components = [{ id: 1, name: 'Navigation Bar' }];
       expect(getComponentDisplayLabel(component, components)).toBe('Navigation Bar');
+    });
+
+    it('should include content preview when includeContent is true', () => {
+      const component = {
+        type: 'button' as ComponentType,
+        config: { text: 'Click Me' }
+      };
+      expect(getComponentDisplayLabel(component, [], true)).toBe('Button: Click Me');
+    });
+
+    it('should not include content preview when includeContent is false', () => {
+      const component = {
+        type: 'button' as ComponentType,
+        config: { text: 'Click Me' }
+      };
+      expect(getComponentDisplayLabel(component, [], false)).toBe('Button');
+    });
+  });
+
+  describe('getComponentContentPreview', () => {
+    it('should return empty string for component without config', () => {
+      const component = { type: 'text' as ComponentType };
+      expect(getComponentContentPreview(component)).toBe('');
+    });
+
+    it('should extract text from text component html', () => {
+      const component = {
+        type: 'text' as ComponentType,
+        config: { html: '<p>Hello World</p>' }
+      };
+      expect(getComponentContentPreview(component)).toBe('Hello World');
+    });
+
+    it('should truncate long text content', () => {
+      const component = {
+        type: 'text' as ComponentType,
+        config: { html: '<p>This is a very long text that should be truncated for display</p>' }
+      };
+      const result = getComponentContentPreview(component);
+      expect(result.length).toBeLessThanOrEqual(31); // 30 chars + ellipsis
+      expect(result.endsWith('…')).toBe(true);
+    });
+
+    it('should extract text from heading component', () => {
+      const component = {
+        type: 'heading' as ComponentType,
+        config: { text: 'Welcome to our site' }
+      };
+      expect(getComponentContentPreview(component)).toBe('Welcome to our site');
+    });
+
+    it('should extract text from button component', () => {
+      const component = {
+        type: 'button' as ComponentType,
+        config: { text: 'Submit' }
+      };
+      expect(getComponentContentPreview(component)).toBe('Submit');
+    });
+
+    it('should extract label from button component', () => {
+      const component = {
+        type: 'button' as ComponentType,
+        config: { label: 'Cancel' }
+      };
+      expect(getComponentContentPreview(component)).toBe('Cancel');
+    });
+
+    it('should extract alt text from image component', () => {
+      const component = {
+        type: 'image' as ComponentType,
+        config: { alt: 'Product photo' }
+      };
+      expect(getComponentContentPreview(component)).toBe('Product photo');
+    });
+
+    it('should extract filename from image src', () => {
+      const component = {
+        type: 'image' as ComponentType,
+        config: { src: '/images/hero-banner.jpg' }
+      };
+      expect(getComponentContentPreview(component)).toBe('hero-banner.jpg');
+    });
+
+    it('should extract title from hero component', () => {
+      const component = {
+        type: 'hero' as ComponentType,
+        config: { title: 'Welcome to Our Store' }
+      };
+      expect(getComponentContentPreview(component)).toBe('Welcome to Our Store');
+    });
+
+    it('should extract headline from cta component', () => {
+      const component = {
+        type: 'cta' as ComponentType,
+        config: { headline: 'Get Started Today' } as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('Get Started Today');
+    });
+
+    it('should extract icon name from icon component', () => {
+      const component = {
+        type: 'icon' as ComponentType,
+        config: { icon: 'ShoppingCart' }
+      };
+      expect(getComponentContentPreview(component)).toBe('ShoppingCart');
+    });
+
+    it('should extract height from spacer component', () => {
+      const component = {
+        type: 'spacer' as ComponentType,
+        config: { height: '2rem' } as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('2rem');
+    });
+
+    it('should return empty string for component with empty config', () => {
+      const component = {
+        type: 'container' as ComponentType,
+        config: {}
+      };
+      expect(getComponentContentPreview(component)).toBe('');
+    });
+
+    it('should strip HTML tags from text content', () => {
+      const component = {
+        type: 'text' as ComponentType,
+        config: { html: '<p><strong>Bold</strong> and <em>italic</em> text</p>' }
+      };
+      expect(getComponentContentPreview(component)).toBe('Bold and italic text');
     });
   });
 });

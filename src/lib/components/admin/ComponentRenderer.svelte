@@ -53,8 +53,10 @@
   let isDropdownExpanded = false;
 
   // Toggle dropdown expanded state when clicking the trigger in edit mode
-  function toggleDropdownExpanded(): void {
+  function toggleDropdownExpanded(event?: MouseEvent | TouchEvent): void {
     if (isEditable) {
+      // Stop propagation to prevent parent click handler from opening properties panel
+      event?.stopPropagation();
       isDropdownExpanded = !isDropdownExpanded;
     }
   }
@@ -638,7 +640,11 @@
         type="button"
         class="dropdown-trigger-preview variant-{triggerVariant}"
         class:expanded={isDropdownExpanded}
-        on:click={toggleDropdownExpanded}
+        on:click={(e) => toggleDropdownExpanded(e)}
+        on:touchend|stopPropagation={(e) => {
+          e.preventDefault();
+          toggleDropdownExpanded(e);
+        }}
         aria-expanded={isDropdownExpanded}
         aria-haspopup="true"
       >

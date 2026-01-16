@@ -1,6 +1,19 @@
 <script lang="ts">
-  import { createEventDispatcher, tick } from 'svelte';
-  import { Copy, Trash2, MoveUp, MoveDown, RotateCcw, Palette } from 'lucide-svelte';
+  import { createEventDispatcher, tick, onMount, onDestroy } from 'svelte';
+  import {
+    Copy,
+    Trash2,
+    RotateCcw,
+    Palette,
+    Pencil,
+    Eye,
+    GripVertical,
+    ChevronRight,
+    ChevronDown,
+    Layers,
+    MoveUp,
+    MoveDown
+  } from 'lucide-svelte';
   import type {
     PageComponent,
     LayoutComponent,
@@ -55,6 +68,18 @@
   export let canDeleteComponents = true;
   export let siteContext: SiteContext | undefined = undefined;
   export let user: UserInfo | null | undefined = undefined;
+  // Mobile view state - used for zoom-out scaling when viewing larger breakpoints
+  export let isMobileView = false;
+  // Mobile edit mode: when ON, show component controls; when OFF, show clean preview
+  export let mobileEditMode = false;
+
+  // Computed: Should we show edit controls? Always on desktop, only when edit mode is on for mobile
+  $: showEditControls = !isMobileView || mobileEditMode;
+
+  // Toggle mobile edit mode
+  function toggleMobileEditMode(): void {
+    dispatch('toggleMobileEditMode');
+  }
   // Page/component root properties (background, border, etc.)
   export let pageProperties:
     | {
@@ -71,6 +96,18 @@
     | undefined = undefined;
 
   const dispatch = createEventDispatcher();
+
+  // Calculate zoom scale for viewing larger breakpoints on mobile
+  // When on mobile and viewing tablet/desktop, scale down to fit
+  $: viewportScale = (() => {
+    if (!isMobileView) return 1;
+    // On mobile, scale down larger breakpoints to fit
+    if (currentBreakpoint === 'desktop') return 0.35; // 1024px -> ~358px
+    if (currentBreakpoint === 'tablet') return 0.5; // 768px -> 384px
+    return 1; // Mobile breakpoint: no scaling
+  })();
+
+  $: needsScaling = isMobileView && currentBreakpoint !== 'mobile';
 
   // Generate theme styles reactively from the loaded themes
   $: currentThemeData = colorThemes.find((t) => t.id === colorTheme);
@@ -300,6 +337,446 @@
 
   // Layout mode: can add/remove/reorder components but cannot edit their content inline
   $: isContentEditable = mode !== 'layout';
+
+  // Tree view state for mobile edit mode
+  let expandedNodes = new Set<string>();
+
+  // Auto-expand all container nodes when tree view is shown
+  $: if (mobileEditMode && isMobileView) {
+    // Expand all nodes that have children
+    for (const id of Object.keys(childrenMap)) {
+      expandedNodes.add(id);
+    }
+    expandedNodes = expandedNodes;
+  }
+
+  // Toggle expanded state of a tree node
+  function toggleExpanded(componentId: string): void {
+    if (expandedNodes.has(componentId)) {
+      expandedNodes.delete(componentId);
+    } else {
+      expandedNodes.add(componentId);
+    }
+    expandedNodes = expandedNodes; // Trigger reactivity
+  }
+
+  // Check if a component has children
+  function hasChildren(componentId: string): boolean {
+    return !!childrenMap[componentId]?.length;
+  }
+
+  // Get children of a component for tree rendering
+  function getChildren(componentId: string): PageComponent[] {
+    return (childrenMap[componentId] || []).sort((a, b) => a.position - b.position);
+  }
+
+  // Handle tree item click (select component)
+  function handleTreeItemClick(component: PageComponent, event: MouseEvent): void {
+    event.stopPropagation();
+    dispatch('selectComponent', component);
+  }
+
+  // Handle tree item drag start
+  let draggedTreeItem: PageComponent | null = null;
+  let dragOverTreeItem: PageComponent | null = null;
+  let dragOverPosition: 'before' | 'after' | 'inside' | null = null;
+
+  function handleTreeDragStart(event: DragEvent, component: PageComponent): void {
+    if (!event.dataTransfer) return;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', component.id);
+    draggedTreeItem = component;
+  }
+
+  function handleTreeDragOver(event: DragEvent, component: PageComponent): void {
+    if (!draggedTreeItem || draggedTreeItem.id === component.id) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const y = event.clientY - rect.top;
+    const height = rect.height;
+
+    // Determine drop position based on mouse Y position
+    if (y < height * 0.25) {
+      dragOverPosition = 'before';
+    } else if (y > height * 0.75) {
+      dragOverPosition = 'after';
+    } else if (
+      hasChildren(component.id) ||
+      component.type === 'container' ||
+      component.type === 'columns' ||
+      component.type === 'navbar' ||
+      component.type === 'footer'
+    ) {
+      dragOverPosition = 'inside';
+    } else {
+      dragOverPosition = 'after';
+    }
+    dragOverTreeItem = component;
+  }
+
+  function handleTreeDragLeave(): void {
+    dragOverTreeItem = null;
+    dragOverPosition = null;
+  }
+
+  function handleTreeDrop(event: DragEvent, targetComponent: PageComponent): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!draggedTreeItem || draggedTreeItem.id === targetComponent.id) {
+      draggedTreeItem = null;
+      dragOverTreeItem = null;
+      dragOverPosition = null;
+      return;
+    }
+
+    // Find indices and calculate new positions
+    const allComponents = [...sortedComponents];
+    const draggedIndex = allComponents.findIndex((c) => c.id === draggedTreeItem!.id);
+    const targetIndex = allComponents.findIndex((c) => c.id === targetComponent.id);
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      draggedTreeItem = null;
+      dragOverTreeItem = null;
+      dragOverPosition = null;
+      return;
+    }
+
+    // Remove the dragged item from the array
+    const [draggedComp] = allComponents.splice(draggedIndex, 1);
+
+    // Handle different drop positions
+    if (dragOverPosition === 'inside') {
+      // Move into the target as a child
+      const updatedDragged = {
+        ...draggedComp,
+        parent_id: targetComponent.id,
+        position: getChildren(targetComponent.id).length
+      };
+      // Expand the target node
+      expandedNodes.add(targetComponent.id);
+      expandedNodes = expandedNodes;
+      dispatch('updateComponent', updatedDragged);
+    } else {
+      // Move before or after the target at the same level
+      const newParentId = targetComponent.parent_id || null;
+      let newPosition: number;
+
+      if (dragOverPosition === 'before') {
+        newPosition = targetComponent.position;
+      } else {
+        newPosition = targetComponent.position + 1;
+      }
+
+      const updatedDragged = {
+        ...draggedComp,
+        parent_id: newParentId,
+        position: newPosition
+      };
+
+      // Adjust positions of siblings
+      const siblings = allComponents.filter((c) => c.parent_id === newParentId);
+      const updatedSiblings = siblings.map((c) => {
+        if (c.position >= newPosition) {
+          return { ...c, position: c.position + 1 };
+        }
+        return c;
+      });
+
+      // Dispatch batch update
+      dispatch('batchUpdateComponents', [...updatedSiblings, updatedDragged]);
+    }
+
+    draggedTreeItem = null;
+    dragOverTreeItem = null;
+    dragOverPosition = null;
+  }
+
+  function handleTreeDragEnd(): void {
+    draggedTreeItem = null;
+    dragOverTreeItem = null;
+    dragOverPosition = null;
+  }
+
+  // ==================== Touch Drag & Drop Support ====================
+  // Touch-based drag and drop for mobile devices (HTML5 drag doesn't work with touch)
+  let touchDragItem: PageComponent | null = null;
+  let touchDragGhost: HTMLElement | null = null;
+  let touchStartY = 0;
+  let touchCurrentY = 0;
+  let touchDragActive = false;
+  let touchDragThreshold = 10; // Pixels before drag starts
+  let treeListElement: HTMLElement | null = null;
+
+  // Store refs to tree item elements for hit testing
+  function getTreeItemElements(): HTMLElement[] {
+    if (!treeListElement) return [];
+    return Array.from(treeListElement.querySelectorAll('.tree-item'));
+  }
+
+  // Find which tree item is under the touch point
+  function findTreeItemAtPoint(y: number): {
+    element: HTMLElement;
+    component: PageComponent;
+    position: 'before' | 'after' | 'inside';
+  } | null {
+    const items = getTreeItemElements();
+
+    for (const item of items) {
+      const rect = item.getBoundingClientRect();
+      const componentId = item.dataset.componentId;
+      if (!componentId) continue;
+
+      const component = sortedComponents.find((c) => c.id === componentId);
+      if (!component || component.id === touchDragItem?.id) continue;
+
+      // Check if point is within this element's vertical bounds
+      if (y >= rect.top && y <= rect.bottom) {
+        const relativeY = y - rect.top;
+        const height = rect.height;
+
+        let position: 'before' | 'after' | 'inside';
+        if (relativeY < height * 0.25) {
+          position = 'before';
+        } else if (relativeY > height * 0.75) {
+          position = 'after';
+        } else if (
+          hasChildren(component.id) ||
+          component.type === 'container' ||
+          component.type === 'columns' ||
+          component.type === 'navbar' ||
+          component.type === 'footer'
+        ) {
+          position = 'inside';
+        } else {
+          position = 'after';
+        }
+
+        return { element: item, component, position };
+      }
+    }
+
+    return null;
+  }
+
+  // Create ghost element for visual feedback
+  function createTouchDragGhost(sourceElement: HTMLElement): void {
+    const rect = sourceElement.getBoundingClientRect();
+    const ghost = document.createElement('div');
+    ghost.className = 'touch-drag-ghost';
+    ghost.textContent = sourceElement.querySelector('.tree-item-label')?.textContent || 'Component';
+    ghost.style.cssText = `
+      position: fixed;
+      top: ${rect.top}px;
+      left: ${rect.left}px;
+      width: ${rect.width}px;
+      padding: 0.5rem 0.75rem;
+      background: rgba(59, 130, 246, 0.95);
+      color: white;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      pointer-events: none;
+      z-index: 10000;
+      transform: scale(0.95);
+      transition: transform 0.15s ease;
+    `;
+    document.body.appendChild(ghost);
+    touchDragGhost = ghost;
+
+    // Animate in
+    requestAnimationFrame(() => {
+      if (touchDragGhost) {
+        touchDragGhost.style.transform = 'scale(1)';
+      }
+    });
+  }
+
+  // Update ghost position during drag
+  function updateTouchDragGhost(y: number): void {
+    if (!touchDragGhost) return;
+    const rect = touchDragGhost.getBoundingClientRect();
+    touchDragGhost.style.top = `${y - rect.height / 2}px`;
+  }
+
+  // Remove ghost element
+  function removeTouchDragGhost(): void {
+    if (touchDragGhost) {
+      touchDragGhost.remove();
+      touchDragGhost = null;
+    }
+  }
+
+  // Clear all drop indicators
+  function clearTouchDropIndicators(): void {
+    const items = getTreeItemElements();
+    for (const item of items) {
+      item.classList.remove('drag-over-before', 'drag-over-after', 'drag-over-inside');
+    }
+    dragOverTreeItem = null;
+    dragOverPosition = null;
+  }
+
+  // Handle touch start on drag handle
+  function handleTouchDragStart(event: TouchEvent, component: PageComponent): void {
+    const touch = event.touches[0];
+    touchStartY = touch.clientY;
+    touchCurrentY = touch.clientY;
+    touchDragItem = component;
+    touchDragActive = false;
+
+    // Store reference to tree list for later
+    treeListElement = (event.target as HTMLElement).closest('.tree-list');
+  }
+
+  // Handle touch move
+  function handleTouchDragMove(event: TouchEvent): void {
+    if (!touchDragItem) return;
+
+    const touch = event.touches[0];
+    touchCurrentY = touch.clientY;
+
+    // Check if we've moved past threshold to start drag
+    if (!touchDragActive && Math.abs(touchCurrentY - touchStartY) > touchDragThreshold) {
+      touchDragActive = true;
+      draggedTreeItem = touchDragItem;
+
+      // Find source element and create ghost
+      const sourceElement = getTreeItemElements().find(
+        (el) => el.dataset.componentId === touchDragItem?.id
+      );
+      if (sourceElement) {
+        createTouchDragGhost(sourceElement);
+        sourceElement.classList.add('dragging');
+      }
+    }
+
+    if (touchDragActive) {
+      event.preventDefault(); // Prevent scrolling while dragging
+
+      // Update ghost position
+      updateTouchDragGhost(touchCurrentY);
+
+      // Clear previous indicators
+      clearTouchDropIndicators();
+
+      // Find element under touch point
+      const target = findTreeItemAtPoint(touchCurrentY);
+      if (target) {
+        dragOverTreeItem = target.component;
+        dragOverPosition = target.position;
+        target.element.classList.add(`drag-over-${target.position}`);
+      }
+    }
+  }
+
+  // Handle touch end
+  function handleTouchDragEnd(_event: TouchEvent): void {
+    if (touchDragActive && touchDragItem && dragOverTreeItem && dragOverPosition) {
+      // Perform the drop
+      performTreeDrop(touchDragItem, dragOverTreeItem, dragOverPosition);
+    }
+
+    // Clean up
+    if (touchDragActive) {
+      const sourceElement = getTreeItemElements().find(
+        (el) => el.dataset.componentId === touchDragItem?.id
+      );
+      if (sourceElement) {
+        sourceElement.classList.remove('dragging');
+      }
+    }
+
+    removeTouchDragGhost();
+    clearTouchDropIndicators();
+    touchDragItem = null;
+    touchDragActive = false;
+    draggedTreeItem = null;
+  }
+
+  // Shared drop logic for both mouse and touch drag
+  function performTreeDrop(
+    draggedComp: PageComponent,
+    targetComponent: PageComponent,
+    position: 'before' | 'after' | 'inside'
+  ): void {
+    const allComponents = [...sortedComponents];
+    const draggedIndex = allComponents.findIndex((c) => c.id === draggedComp.id);
+    const targetIndex = allComponents.findIndex((c) => c.id === targetComponent.id);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    // Remove the dragged item from the array
+    const [removed] = allComponents.splice(draggedIndex, 1);
+
+    if (position === 'inside') {
+      // Move into the target as a child
+      const updatedDragged = {
+        ...removed,
+        parent_id: targetComponent.id,
+        position: getChildren(targetComponent.id).length
+      };
+      // Expand the target node
+      expandedNodes.add(targetComponent.id);
+      expandedNodes = expandedNodes;
+      dispatch('updateComponent', updatedDragged);
+    } else {
+      // Move before or after the target at the same level
+      const newParentId = targetComponent.parent_id || null;
+      let newPosition: number;
+
+      if (position === 'before') {
+        newPosition = targetComponent.position;
+      } else {
+        newPosition = targetComponent.position + 1;
+      }
+
+      const updatedDragged = {
+        ...removed,
+        parent_id: newParentId,
+        position: newPosition
+      };
+
+      // Adjust positions of siblings
+      const siblings = allComponents.filter((c) => c.parent_id === newParentId);
+      const updatedSiblings = siblings.map((c) => {
+        if (c.position >= newPosition) {
+          return { ...c, position: c.position + 1 };
+        }
+        return c;
+      });
+
+      dispatch('batchUpdateComponents', [...updatedSiblings, updatedDragged]);
+    }
+  }
+
+  // Global touch move/end handlers
+  function onGlobalTouchMove(event: TouchEvent): void {
+    if (touchDragItem) {
+      handleTouchDragMove(event);
+    }
+  }
+
+  function onGlobalTouchEnd(event: TouchEvent): void {
+    if (touchDragItem) {
+      handleTouchDragEnd(event);
+    }
+  }
+
+  // Set up global touch listeners
+  onMount(() => {
+    document.addEventListener('touchmove', onGlobalTouchMove, { passive: false });
+    document.addEventListener('touchend', onGlobalTouchEnd);
+  });
+
+  onDestroy(() => {
+    document.removeEventListener('touchmove', onGlobalTouchMove);
+    document.removeEventListener('touchend', onGlobalTouchEnd);
+    removeTouchDragGhost();
+  });
 </script>
 
 <div
@@ -427,206 +904,91 @@
       {/if}
     </div>
   {/if}
-  <div
-    class="canvas-viewport"
-    class:fit-content={mode === 'component' || mode === 'primitive' || mode === 'layout'}
-    style="width: {canvasWidth}; max-width: 100%; background-color: {themeColors.background};"
-  >
-    <div
-      class="canvas-content"
-      style="{themeStyles}; {componentThemeOverrides}; {pagePropertiesStyle}"
-    >
-      {#if showLayoutContext}
-        <!-- Page mode with layout: render layout components with page content in yield area -->
-        {#each sortedLayoutComponents as layoutComponent, _layoutIndex (layoutComponent.id)}
-          {#if layoutComponent.type === 'yield'}
-            <!-- Yield area: render page components here (editable) -->
-            <div class="layout-yield-area" data-layout-component-type="yield">
-              <div class="yield-label">
-                <span class="yield-icon">📄</span>
-                <span>Page Content Area</span>
-              </div>
-              <div class="yield-content">
-                {#each componentsWithChildren as component, index (component.id)}
-                  <div
-                    class="component-wrapper"
-                    class:selected={selectedComponent?.id === component.id}
-                    class:hovered={hoveredComponent?.id === component.id}
-                    data-component-id={component.id}
-                    on:click={(e) => handleComponentClick(component, e)}
-                    on:mouseenter={() => handleComponentMouseEnter(component)}
-                    on:mouseleave={handleComponentMouseLeave}
-                    role="button"
-                    tabindex="0"
-                    on:keydown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        dispatch('selectComponent', component);
-                      }
-                    }}
-                  >
-                    {#if selectedComponent?.id === component.id || hoveredComponent?.id === component.id}
-                      <div class="component-controls">
-                        <div class="component-label">
-                          {getComponentDisplayLabel(component, components)}
-                        </div>
-                        <div class="component-actions">
-                          {#if mode !== 'primitive'}
-                            <button
-                              class="btn-control"
-                              on:click|stopPropagation={() => moveUp(component)}
-                              disabled={index === 0}
-                              aria-label="Move up"
-                              title="Move up"
-                            >
-                              <MoveUp size={14} />
-                            </button>
-                            <button
-                              class="btn-control"
-                              on:click|stopPropagation={() => moveDown(component)}
-                              disabled={index === componentsWithChildren.length - 1}
-                              aria-label="Move down"
-                              title="Move down"
-                            >
-                              <MoveDown size={14} />
-                            </button>
-                          {/if}
-                          {#if canDeleteComponents}
-                            <button
-                              class="btn-control"
-                              on:click|stopPropagation={() =>
-                                dispatch('duplicateComponent', component)}
-                              aria-label="Duplicate"
-                              title="Duplicate"
-                            >
-                              <Copy size={14} />
-                            </button>
-                          {/if}
-                          {#if canDeleteComponents}
-                            <button
-                              class="btn-control btn-danger"
-                              on:click|stopPropagation={() =>
-                                dispatch('deleteComponent', component.id)}
-                              aria-label="Delete"
-                              title="Delete"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          {/if}
-                        </div>
-                      </div>
-                    {/if}
-                    <div
-                      class="component-content"
-                      class:has-controls={selectedComponent?.id === component.id ||
-                        hoveredComponent?.id === component.id}
-                    >
-                      <ComponentRenderer
-                        {component}
-                        {currentBreakpoint}
-                        {colorTheme}
-                        {siteContext}
-                        {user}
-                        onUpdate={(newConfig) => handleComponentConfigUpdate(component, newConfig)}
-                        isEditable={isContentEditable}
-                        onSelectComponent={handleSelectChildComponent}
-                      />
-                    </div>
-                  </div>
-                {/each}
 
-                {#if pageComponents.length === 0}
-                  <div class="empty-canvas">
-                    <div class="empty-icon">📄</div>
-                    <h3>Add Page Content</h3>
-                    <p>Add components from the sidebar to build your page content.</p>
-                  </div>
-                {/if}
-              </div>
-            </div>
-          {:else}
-            <!-- Layout component (grayed out, not editable) -->
-            <div class="layout-component-wrapper" data-layout-component-type={layoutComponent.type}>
-              <div class="layout-overlay">
-                <span class="layout-badge"
-                  >Layout: {getComponentDisplayLabel(layoutComponent, components)}</span
-                >
-              </div>
-              <div class="layout-component-content">
-                <ComponentRenderer
-                  component={{
-                    ...layoutComponent,
-                    page_id: '',
-                    created_at: new Date(layoutComponent.created_at).getTime(),
-                    updated_at: new Date(layoutComponent.updated_at).getTime()
-                  }}
-                  {currentBreakpoint}
-                  {colorTheme}
-                  {siteContext}
-                  {user}
-                  isEditable={false}
-                />
-              </div>
-            </div>
-          {/if}
-        {/each}
+  <!-- Mobile Edit Mode: Show Tree View instead of canvas -->
+  {#if isMobileView && mobileEditMode}
+    <div class="mobile-tree-view">
+      <div class="tree-view-header">
+        <Layers size={18} />
+        <span>Component Tree</span>
+        <span class="tree-item-count">{sortedComponents.length} items</span>
+      </div>
+
+      {#if sortedComponents.length === 0}
+        <div class="tree-empty-state">
+          <div class="empty-icon">📦</div>
+          <p>No components yet</p>
+          <p class="hint">Add components from the sidebar</p>
+        </div>
       {:else}
-        <!-- Normal mode: render page components directly -->
-        {#each componentsWithChildren as component, index (component.id)}
-          <div
-            class="component-wrapper"
-            class:selected={selectedComponent?.id === component.id}
-            class:hovered={hoveredComponent?.id === component.id}
-            data-component-id={component.id}
-            on:click={(e) => handleComponentClick(component, e)}
-            on:mouseenter={() => handleComponentMouseEnter(component)}
-            on:mouseleave={handleComponentMouseLeave}
-            role="button"
-            tabindex="0"
-            on:keydown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                dispatch('selectComponent', component);
-              }
-            }}
-          >
-            {#if selectedComponent?.id === component.id || hoveredComponent?.id === component.id}
-              <div class="component-controls">
-                <div class="component-label">{getComponentDisplayLabel(component, components)}</div>
-                <div class="component-actions">
-                  {#if mode !== 'primitive'}
-                    <button
-                      class="btn-control"
-                      on:click|stopPropagation={() => moveUp(component)}
-                      disabled={index === 0}
-                      aria-label="Move up"
-                      title="Move up"
-                    >
-                      <MoveUp size={14} />
-                    </button>
-                    <button
-                      class="btn-control"
-                      on:click|stopPropagation={() => moveDown(component)}
-                      disabled={index === componentsWithChildren.length - 1}
-                      aria-label="Move down"
-                      title="Move down"
-                    >
-                      <MoveDown size={14} />
-                    </button>
-                  {/if}
+        <div class="tree-list" class:drag-active={touchDragActive || draggedTreeItem !== null}>
+          {#each rootComponents as component (component.id)}
+            {@const isExpanded = expandedNodes.has(component.id)}
+            {@const componentHasChildren = hasChildren(component.id)}
+            {@const isSelected = selectedComponent?.id === component.id}
+            {@const isDragOver = dragOverTreeItem?.id === component.id}
+            <div class="tree-node">
+              <div
+                class="tree-item"
+                class:selected={isSelected}
+                class:drag-over={isDragOver}
+                class:drag-over-before={isDragOver && dragOverPosition === 'before'}
+                class:drag-over-after={isDragOver && dragOverPosition === 'after'}
+                class:drag-over-inside={isDragOver && dragOverPosition === 'inside'}
+                class:dragging={draggedTreeItem?.id === component.id}
+                data-component-id={component.id}
+                draggable="true"
+                on:click={(e) => handleTreeItemClick(component, e)}
+                on:dragstart={(e) => handleTreeDragStart(e, component)}
+                on:dragover={(e) => handleTreeDragOver(e, component)}
+                on:dragleave={handleTreeDragLeave}
+                on:drop={(e) => handleTreeDrop(e, component)}
+                on:dragend={handleTreeDragEnd}
+                on:keydown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    dispatch('selectComponent', component);
+                  }
+                }}
+                role="treeitem"
+                tabindex="0"
+                aria-selected={isSelected}
+                aria-expanded={componentHasChildren ? isExpanded : undefined}
+              >
+                <div
+                  class="tree-item-drag-handle"
+                  on:touchstart={(e) => handleTouchDragStart(e, component)}
+                  role="button"
+                  tabindex="-1"
+                  aria-label="Drag to reorder"
+                >
+                  <GripVertical size={16} />
+                </div>
+
+                {#if componentHasChildren}
+                  <button
+                    class="tree-item-expand"
+                    on:click|stopPropagation={() => toggleExpanded(component.id)}
+                    aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                  >
+                    {#if isExpanded}
+                      <ChevronDown size={16} />
+                    {:else}
+                      <ChevronRight size={16} />
+                    {/if}
+                  </button>
+                {:else}
+                  <div class="tree-item-expand-placeholder"></div>
+                {/if}
+
+                <span class="tree-item-label">
+                  {getComponentDisplayLabel(component, components, true)}
+                </span>
+
+                <div class="tree-item-actions">
                   {#if canDeleteComponents}
                     <button
-                      class="btn-control"
-                      on:click|stopPropagation={() => dispatch('duplicateComponent', component)}
-                      aria-label="Duplicate"
-                      title="Duplicate"
-                    >
-                      <Copy size={14} />
-                    </button>
-                  {/if}
-                  {#if canDeleteComponents && !(mode === 'layout' && component.type === 'yield')}
-                    <button
-                      class="btn-control btn-danger"
+                      class="tree-action-btn delete"
                       on:click|stopPropagation={() => dispatch('deleteComponent', component.id)}
                       aria-label="Delete"
                       title="Delete"
@@ -636,61 +998,479 @@
                   {/if}
                 </div>
               </div>
-            {/if}
-            <div
-              class="component-content"
-              class:has-controls={selectedComponent?.id === component.id ||
-                hoveredComponent?.id === component.id}
-            >
-              <ComponentRenderer
-                {component}
-                {currentBreakpoint}
-                {colorTheme}
-                {siteContext}
-                {user}
-                onUpdate={(newConfig) => handleComponentConfigUpdate(component, newConfig)}
-                isEditable={isContentEditable}
-                onSelectComponent={handleSelectChildComponent}
-              />
-            </div>
-          </div>
-        {/each}
 
-        {#if pageComponents.length === 0}
-          <div class="empty-canvas">
-            {#if mode === 'component'}
-              <div class="empty-icon">📦</div>
-              <h3>Create Your Component</h3>
-              <p>
-                Choose a component type from the sidebar to start building your reusable component.
-              </p>
-              <div class="empty-hints">
-                <p class="hint">💡 <strong>Tip:</strong> Popular components include:</p>
-                <ul class="hint-list">
-                  <li><strong>Navigation Bar</strong> - Site header with logo and menu</li>
-                  <li><strong>Footer</strong> - Site footer with links and info</li>
-                  <li><strong>Hero</strong> - Large banner section</li>
-                  <li><strong>Features</strong> - Showcase product features</li>
-                </ul>
-              </div>
-            {:else if mode === 'layout'}
-              <div class="empty-icon">🎨</div>
-              <h3>Build Your Layout</h3>
-              <p>Add components from the sidebar to create your layout structure.</p>
-              <p class="hint">
-                💡 <strong>Tip:</strong> Use the <strong>Yield</strong> component to define where page
-                content should appear.
-              </p>
-            {:else}
-              <div class="empty-icon">📄</div>
-              <h3>Start Building</h3>
-              <p>Add components from the sidebar to get started.</p>
-            {/if}
-          </div>
-        {/if}
+              <!-- Render children recursively if expanded -->
+              {#if componentHasChildren && isExpanded}
+                <div class="tree-children">
+                  {#each getChildren(component.id) as child (child.id)}
+                    {@const childIsExpanded = expandedNodes.has(child.id)}
+                    {@const childHasChildren = hasChildren(child.id)}
+                    {@const childIsSelected = selectedComponent?.id === child.id}
+                    {@const childIsDragOver = dragOverTreeItem?.id === child.id}
+                    <div class="tree-node">
+                      <div
+                        class="tree-item"
+                        class:selected={childIsSelected}
+                        class:drag-over={childIsDragOver}
+                        class:drag-over-before={childIsDragOver && dragOverPosition === 'before'}
+                        class:drag-over-after={childIsDragOver && dragOverPosition === 'after'}
+                        class:drag-over-inside={childIsDragOver && dragOverPosition === 'inside'}
+                        class:dragging={draggedTreeItem?.id === child.id}
+                        data-component-id={child.id}
+                        draggable="true"
+                        on:click={(e) => handleTreeItemClick(child, e)}
+                        on:dragstart={(e) => handleTreeDragStart(e, child)}
+                        on:dragover={(e) => handleTreeDragOver(e, child)}
+                        on:dragleave={handleTreeDragLeave}
+                        on:drop={(e) => handleTreeDrop(e, child)}
+                        on:dragend={handleTreeDragEnd}
+                        on:keydown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            dispatch('selectComponent', child);
+                          }
+                        }}
+                        role="treeitem"
+                        tabindex="0"
+                        aria-selected={childIsSelected}
+                        aria-expanded={childHasChildren ? childIsExpanded : undefined}
+                      >
+                        <div
+                          class="tree-item-drag-handle"
+                          on:touchstart={(e) => handleTouchDragStart(e, child)}
+                          role="button"
+                          tabindex="-1"
+                          aria-label="Drag to reorder"
+                        >
+                          <GripVertical size={16} />
+                        </div>
+
+                        {#if childHasChildren}
+                          <button
+                            class="tree-item-expand"
+                            on:click|stopPropagation={() => toggleExpanded(child.id)}
+                            aria-label={childIsExpanded ? 'Collapse' : 'Expand'}
+                          >
+                            {#if childIsExpanded}
+                              <ChevronDown size={16} />
+                            {:else}
+                              <ChevronRight size={16} />
+                            {/if}
+                          </button>
+                        {:else}
+                          <div class="tree-item-expand-placeholder"></div>
+                        {/if}
+
+                        <span class="tree-item-label">
+                          {getComponentDisplayLabel(child, components, true)}
+                        </span>
+
+                        <div class="tree-item-actions">
+                          {#if canDeleteComponents}
+                            <button
+                              class="tree-action-btn delete"
+                              on:click|stopPropagation={() => dispatch('deleteComponent', child.id)}
+                              aria-label="Delete"
+                              title="Delete"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          {/if}
+                        </div>
+                      </div>
+
+                      <!-- Third level children (grandchildren) -->
+                      {#if childHasChildren && childIsExpanded}
+                        <div class="tree-children">
+                          {#each getChildren(child.id) as grandchild (grandchild.id)}
+                            {@const grandchildIsSelected = selectedComponent?.id === grandchild.id}
+                            {@const grandchildIsDragOver = dragOverTreeItem?.id === grandchild.id}
+                            <div class="tree-node">
+                              <div
+                                class="tree-item"
+                                class:selected={grandchildIsSelected}
+                                class:drag-over={grandchildIsDragOver}
+                                class:drag-over-before={grandchildIsDragOver &&
+                                  dragOverPosition === 'before'}
+                                class:drag-over-after={grandchildIsDragOver &&
+                                  dragOverPosition === 'after'}
+                                class:drag-over-inside={grandchildIsDragOver &&
+                                  dragOverPosition === 'inside'}
+                                class:dragging={draggedTreeItem?.id === grandchild.id}
+                                data-component-id={grandchild.id}
+                                draggable="true"
+                                on:click={(e) => handleTreeItemClick(grandchild, e)}
+                                on:dragstart={(e) => handleTreeDragStart(e, grandchild)}
+                                on:dragover={(e) => handleTreeDragOver(e, grandchild)}
+                                on:dragleave={handleTreeDragLeave}
+                                on:drop={(e) => handleTreeDrop(e, grandchild)}
+                                on:dragend={handleTreeDragEnd}
+                                on:keydown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    dispatch('selectComponent', grandchild);
+                                  }
+                                }}
+                                role="treeitem"
+                                tabindex="0"
+                                aria-selected={grandchildIsSelected}
+                              >
+                                <div
+                                  class="tree-item-drag-handle"
+                                  on:touchstart={(e) => handleTouchDragStart(e, grandchild)}
+                                  role="button"
+                                  tabindex="-1"
+                                  aria-label="Drag to reorder"
+                                >
+                                  <GripVertical size={16} />
+                                </div>
+                                <div class="tree-item-expand-placeholder"></div>
+                                <span class="tree-item-label">
+                                  {getComponentDisplayLabel(grandchild, components, true)}
+                                </span>
+                                <div class="tree-item-actions">
+                                  {#if canDeleteComponents}
+                                    <button
+                                      class="tree-action-btn delete"
+                                      on:click|stopPropagation={() =>
+                                        dispatch('deleteComponent', grandchild.id)}
+                                      aria-label="Delete"
+                                      title="Delete"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  {/if}
+                                </div>
+                              </div>
+                            </div>
+                          {/each}
+                        </div>
+                      {/if}
+                    </div>
+                  {/each}
+                </div>
+              {/if}
+            </div>
+          {/each}
+        </div>
       {/if}
     </div>
-  </div>
+  {:else}
+    <!-- Scaled viewport wrapper for viewing larger breakpoints on mobile -->
+    <div
+      class="canvas-viewport-wrapper"
+      class:scaled={needsScaling}
+      style={needsScaling ? `--viewport-scale: ${viewportScale};` : ''}
+    >
+      <div
+        class="canvas-viewport"
+        class:fit-content={mode === 'component' || mode === 'primitive' || mode === 'layout'}
+        class:scaled-viewport={needsScaling}
+        style="width: {canvasWidth}; {needsScaling
+          ? ''
+          : 'max-width: 100%;'} background-color: {themeColors.background};"
+      >
+        <div
+          class="canvas-content"
+          class:mobile-edit-mode={mobileEditMode}
+          style="{themeStyles}; {componentThemeOverrides}; {pagePropertiesStyle}"
+          data-mobile-edit-mode={mobileEditMode ? 'on' : 'off'}
+        >
+          {#if showLayoutContext}
+            <!-- Page mode with layout: render layout components with page content in yield area -->
+            {#each sortedLayoutComponents as layoutComponent, _layoutIndex (layoutComponent.id)}
+              {#if layoutComponent.type === 'yield'}
+                <!-- Yield area: render page components here (editable) -->
+                <div class="layout-yield-area" data-layout-component-type="yield">
+                  <div class="yield-label">
+                    <span class="yield-icon">📄</span>
+                    <span>Page Content Area</span>
+                  </div>
+                  <div class="yield-content">
+                    {#each componentsWithChildren as component, index (component.id)}
+                      <div
+                        class="component-wrapper"
+                        class:selected={selectedComponent?.id === component.id}
+                        class:hovered={hoveredComponent?.id === component.id}
+                        data-component-id={component.id}
+                        on:click={(e) => handleComponentClick(component, e)}
+                        on:mouseenter={() => handleComponentMouseEnter(component)}
+                        on:mouseleave={handleComponentMouseLeave}
+                        role="button"
+                        tabindex="0"
+                        on:keydown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            dispatch('selectComponent', component);
+                          }
+                        }}
+                      >
+                        {#if showEditControls && (selectedComponent?.id === component.id || hoveredComponent?.id === component.id)}
+                          <div class="component-controls">
+                            <div class="component-label">
+                              {getComponentDisplayLabel(component, components)}
+                            </div>
+                            <div class="component-actions">
+                              {#if mode !== 'primitive'}
+                                <button
+                                  class="btn-control"
+                                  on:click|stopPropagation={() => moveUp(component)}
+                                  disabled={index === 0}
+                                  aria-label="Move up"
+                                  title="Move up"
+                                >
+                                  <MoveUp size={14} />
+                                </button>
+                                <button
+                                  class="btn-control"
+                                  on:click|stopPropagation={() => moveDown(component)}
+                                  disabled={index === componentsWithChildren.length - 1}
+                                  aria-label="Move down"
+                                  title="Move down"
+                                >
+                                  <MoveDown size={14} />
+                                </button>
+                              {/if}
+                              {#if canDeleteComponents}
+                                <button
+                                  class="btn-control"
+                                  on:click|stopPropagation={() =>
+                                    dispatch('duplicateComponent', component)}
+                                  aria-label="Duplicate"
+                                  title="Duplicate"
+                                >
+                                  <Copy size={14} />
+                                </button>
+                              {/if}
+                              {#if canDeleteComponents}
+                                <button
+                                  class="btn-control btn-danger"
+                                  on:click|stopPropagation={() =>
+                                    dispatch('deleteComponent', component.id)}
+                                  aria-label="Delete"
+                                  title="Delete"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              {/if}
+                            </div>
+                          </div>
+                        {/if}
+                        <div
+                          class="component-content"
+                          class:has-controls={showEditControls &&
+                            (selectedComponent?.id === component.id ||
+                              hoveredComponent?.id === component.id)}
+                        >
+                          <ComponentRenderer
+                            {component}
+                            {currentBreakpoint}
+                            {colorTheme}
+                            {siteContext}
+                            {user}
+                            onUpdate={(newConfig) =>
+                              handleComponentConfigUpdate(component, newConfig)}
+                            isEditable={isContentEditable}
+                            onSelectComponent={handleSelectChildComponent}
+                          />
+                        </div>
+                      </div>
+                    {/each}
+
+                    {#if pageComponents.length === 0}
+                      <div class="empty-canvas">
+                        <div class="empty-icon">📄</div>
+                        <h3>Add Page Content</h3>
+                        <p>Add components from the sidebar to build your page content.</p>
+                      </div>
+                    {/if}
+                  </div>
+                </div>
+              {:else}
+                <!-- Layout component (grayed out, not editable) -->
+                <div
+                  class="layout-component-wrapper"
+                  data-layout-component-type={layoutComponent.type}
+                >
+                  <div class="layout-overlay">
+                    <span class="layout-badge"
+                      >Layout: {getComponentDisplayLabel(layoutComponent, components)}</span
+                    >
+                  </div>
+                  <div class="layout-component-content">
+                    <ComponentRenderer
+                      component={{
+                        ...layoutComponent,
+                        page_id: '',
+                        created_at: new Date(layoutComponent.created_at).getTime(),
+                        updated_at: new Date(layoutComponent.updated_at).getTime()
+                      }}
+                      {currentBreakpoint}
+                      {colorTheme}
+                      {siteContext}
+                      {user}
+                      isEditable={false}
+                    />
+                  </div>
+                </div>
+              {/if}
+            {/each}
+          {:else}
+            <!-- Normal mode: render page components directly -->
+            {#each componentsWithChildren as component, index (component.id)}
+              <div
+                class="component-wrapper"
+                class:selected={selectedComponent?.id === component.id}
+                class:hovered={hoveredComponent?.id === component.id}
+                data-component-id={component.id}
+                on:click={(e) => handleComponentClick(component, e)}
+                on:mouseenter={() => handleComponentMouseEnter(component)}
+                on:mouseleave={handleComponentMouseLeave}
+                role="button"
+                tabindex="0"
+                on:keydown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    dispatch('selectComponent', component);
+                  }
+                }}
+              >
+                {#if showEditControls && (selectedComponent?.id === component.id || hoveredComponent?.id === component.id)}
+                  <div class="component-controls">
+                    <div class="component-label">
+                      {getComponentDisplayLabel(component, components)}
+                    </div>
+                    <div class="component-actions">
+                      {#if mode !== 'primitive'}
+                        <button
+                          class="btn-control"
+                          on:click|stopPropagation={() => moveUp(component)}
+                          disabled={index === 0}
+                          aria-label="Move up"
+                          title="Move up"
+                        >
+                          <MoveUp size={14} />
+                        </button>
+                        <button
+                          class="btn-control"
+                          on:click|stopPropagation={() => moveDown(component)}
+                          disabled={index === componentsWithChildren.length - 1}
+                          aria-label="Move down"
+                          title="Move down"
+                        >
+                          <MoveDown size={14} />
+                        </button>
+                      {/if}
+                      {#if canDeleteComponents}
+                        <button
+                          class="btn-control"
+                          on:click|stopPropagation={() => dispatch('duplicateComponent', component)}
+                          aria-label="Duplicate"
+                          title="Duplicate"
+                        >
+                          <Copy size={14} />
+                        </button>
+                      {/if}
+                      {#if canDeleteComponents && !(mode === 'layout' && component.type === 'yield')}
+                        <button
+                          class="btn-control btn-danger"
+                          on:click|stopPropagation={() => dispatch('deleteComponent', component.id)}
+                          aria-label="Delete"
+                          title="Delete"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      {/if}
+                    </div>
+                  </div>
+                {/if}
+                <div
+                  class="component-content"
+                  class:has-controls={showEditControls &&
+                    (selectedComponent?.id === component.id ||
+                      hoveredComponent?.id === component.id)}
+                >
+                  <ComponentRenderer
+                    {component}
+                    {currentBreakpoint}
+                    {colorTheme}
+                    {siteContext}
+                    {user}
+                    onUpdate={(newConfig) => handleComponentConfigUpdate(component, newConfig)}
+                    isEditable={isContentEditable}
+                    onSelectComponent={handleSelectChildComponent}
+                  />
+                </div>
+              </div>
+            {/each}
+
+            {#if pageComponents.length === 0}
+              <div class="empty-canvas">
+                {#if mode === 'component'}
+                  <div class="empty-icon">📦</div>
+                  <h3>Create Your Component</h3>
+                  <p>
+                    Choose a component type from the sidebar to start building your reusable
+                    component.
+                  </p>
+                  <div class="empty-hints">
+                    <p class="hint">💡 <strong>Tip:</strong> Popular components include:</p>
+                    <ul class="hint-list">
+                      <li><strong>Navigation Bar</strong> - Site header with logo and menu</li>
+                      <li><strong>Footer</strong> - Site footer with links and info</li>
+                      <li><strong>Hero</strong> - Large banner section</li>
+                      <li><strong>Features</strong> - Showcase product features</li>
+                    </ul>
+                  </div>
+                {:else if mode === 'layout'}
+                  <div class="empty-icon">🎨</div>
+                  <h3>Build Your Layout</h3>
+                  <p>Add components from the sidebar to create your layout structure.</p>
+                  <p class="hint">
+                    💡 <strong>Tip:</strong> Use the <strong>Yield</strong> component to define where
+                    page content should appear.
+                  </p>
+                {:else}
+                  <div class="empty-icon">📄</div>
+                  <h3>Start Building</h3>
+                  <p>Add components from the sidebar to get started.</p>
+                {/if}
+              </div>
+            {/if}
+          {/if}
+        </div>
+      </div>
+
+      <!-- Scale indicator when viewing larger breakpoints on mobile -->
+      {#if needsScaling}
+        <div class="scale-indicator">
+          <span class="scale-label">
+            {currentBreakpoint === 'desktop' ? '💻' : '📱'}
+            {Math.round(viewportScale * 100)}% scale
+          </span>
+        </div>
+      {/if}
+    </div>
+  {/if}
+
+  <!-- Mobile Edit Mode Toggle FAB -->
+  {#if isMobileView}
+    <button
+      class="mobile-edit-toggle"
+      class:active={mobileEditMode}
+      on:click={toggleMobileEditMode}
+      aria-label={mobileEditMode ? 'Switch to preview mode' : 'Switch to edit mode'}
+      title={mobileEditMode ? 'Preview mode (hide controls)' : 'Edit mode (show controls)'}
+    >
+      {#if mobileEditMode}
+        <Eye size={20} />
+        <span class="toggle-label">Preview</span>
+      {:else}
+        <Pencil size={20} />
+        <span class="toggle-label">Edit</span>
+      {/if}
+    </button>
+  {/if}
 </div>
 
 <style>
@@ -711,6 +1491,24 @@
     align-items: flex-start; /* Keep aligned to top to prevent clipping */
   }
 
+  /* Viewport wrapper for scaling on mobile */
+  .canvas-viewport-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Scaled viewport wrapper - transforms the viewport to fit on mobile */
+  .canvas-viewport-wrapper.scaled {
+    transform: scale(var(--viewport-scale, 1));
+    transform-origin: top left;
+    /* Adjust container to account for scaling */
+    width: calc(100% / var(--viewport-scale, 1));
+    margin-bottom: calc((var(--viewport-scale, 1) - 1) * -50%);
+  }
+
   .canvas-viewport {
     background: var(--color-bg-primary, white);
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -725,12 +1523,39 @@
     flex-shrink: 1; /* Allow shrinking if needed */
   }
 
+  /* Scaled viewport removes max-width constraint to show actual size */
+  .canvas-viewport.scaled-viewport {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  }
+
   /* Component/Primitive/Layout mode: scale to fit content, no scrollbars */
   .canvas-viewport.fit-content {
     overflow: visible; /* No scrollbars - content scales to fit */
     height: auto; /* Let content determine height */
     max-height: none; /* Remove height constraint */
     flex-shrink: 0; /* Don't shrink - let it grow to fit content */
+  }
+
+  /* Scale indicator for mobile zoomed-out view */
+  .scale-indicator {
+    position: absolute;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 0.375rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    z-index: 50;
+    pointer-events: none;
+  }
+
+  .scale-label {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
   }
 
   /* Style the scrollbar to be more visible */
@@ -844,16 +1669,23 @@
     padding: 0.25rem 0.5rem;
     font-size: 0.75rem;
     z-index: 10;
+    gap: 0.5rem;
   }
 
   .component-label {
     font-weight: 600;
     text-transform: capitalize;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    flex: 1;
   }
 
   .component-actions {
     display: flex;
     gap: 0.25rem;
+    flex-shrink: 0;
   }
 
   .btn-control {
@@ -956,14 +1788,99 @@
     color: var(--color-text-primary);
   }
 
-  @media (max-width: 768px) {
+  /* Mobile responsive styles */
+  @media (max-width: 767px) {
     .builder-canvas {
-      padding: 1rem;
+      padding: 0.5rem;
+      padding-left: 0;
+      padding-right: 0;
+      overflow: auto; /* Enable scrolling on mobile */
+      -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+      position: relative; /* For scale indicator positioning */
     }
 
-    .canvas-viewport {
+    /* Viewport wrapper on mobile - ensure proper centering */
+    .canvas-viewport-wrapper {
+      padding: 0;
+      margin: 0;
+    }
+
+    /* When viewing mobile breakpoint on mobile - full width */
+    .canvas-viewport:not(.scaled-viewport) {
       border-radius: 0;
       box-shadow: none;
+      max-height: none; /* Allow full height on mobile */
+      width: 100% !important; /* Override breakpoint width on mobile */
+      margin: 0;
+    }
+
+    /* When viewing scaled (tablet/desktop) on mobile - keep original width */
+    .canvas-viewport.scaled-viewport {
+      border-radius: 6px;
+      max-height: none;
+      margin: 0 auto;
+      /* Width set by inline style to show actual breakpoint width */
+    }
+
+    .canvas-content {
+      min-height: auto;
+    }
+
+    /* Mobile component controls - compact and touch-friendly */
+    .component-controls {
+      padding: 0.25rem 0.5rem;
+      gap: 0.25rem;
+      min-height: 36px;
+      font-size: 0.6875rem;
+    }
+
+    /* Component label - truncate with ellipsis on mobile */
+    .component-label {
+      max-width: 100px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Compact action buttons on mobile */
+    .component-actions {
+      gap: 0.125rem;
+      flex-shrink: 0;
+    }
+
+    .btn-control {
+      width: 28px;
+      height: 28px;
+      min-width: 28px;
+      min-height: 28px;
+    }
+
+    /* Ensure content has space for controls on mobile */
+    .component-content.has-controls {
+      padding-top: 36px;
+    }
+
+    .empty-canvas {
+      min-height: 250px;
+      padding: 1.5rem 1rem;
+    }
+
+    .empty-canvas h3 {
+      font-size: 1.25rem;
+    }
+
+    .empty-canvas > p {
+      font-size: 0.875rem;
+    }
+
+    .empty-hints {
+      padding: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    /* Viewport wrapper on mobile needs overflow visible for scaling */
+    .canvas-viewport-wrapper.scaled {
+      overflow: visible;
     }
   }
 
@@ -1336,5 +2253,404 @@
 
   .yield-content {
     padding: 1.5rem 1rem;
+  }
+
+  /* Mobile Edit Mode Toggle FAB */
+  .mobile-edit-toggle {
+    position: fixed;
+    bottom: 5rem;
+    right: 1rem;
+    z-index: 9997;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    border: none;
+    border-radius: 2rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+    transition: all 0.2s ease;
+    touch-action: manipulation;
+  }
+
+  .mobile-edit-toggle:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+  }
+
+  .mobile-edit-toggle:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 12px rgba(59, 130, 246, 0.4);
+  }
+
+  /* Active state: Edit mode is ON, showing Preview button */
+  .mobile-edit-toggle.active {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+  }
+
+  .mobile-edit-toggle.active:hover {
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+  }
+
+  .toggle-label {
+    white-space: nowrap;
+  }
+
+  /* Hide toggle on desktop - only show on mobile */
+  @media (min-width: 768px) {
+    .mobile-edit-toggle {
+      display: none;
+    }
+  }
+
+  /* Adjust position for smaller screens */
+  @media (max-width: 375px) {
+    .mobile-edit-toggle {
+      bottom: 4rem;
+      right: 0.75rem;
+      padding: 0.625rem 0.875rem;
+      font-size: 0.8125rem;
+    }
+  }
+
+  /* ==================== Mobile Tree View Styles ==================== */
+  .mobile-tree-view {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-bg-primary, white);
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    margin: 0.5rem;
+    max-height: calc(100vh - 180px);
+  }
+
+  .tree-view-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    font-weight: 600;
+    font-size: 0.9375rem;
+  }
+
+  .tree-item-count {
+    margin-left: auto;
+    font-size: 0.75rem;
+    opacity: 0.8;
+    font-weight: 400;
+  }
+
+  .tree-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    text-align: center;
+    color: var(--color-text-secondary, #6b7280);
+  }
+
+  .tree-empty-state .empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+  }
+
+  .tree-empty-state p {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  .tree-empty-state .hint {
+    font-size: 0.875rem;
+    opacity: 0.7;
+    margin-top: 0.5rem;
+  }
+
+  .tree-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+    transition: background 0.2s ease;
+  }
+
+  .tree-list.drag-active {
+    background: rgba(59, 130, 246, 0.03);
+    border-radius: 8px;
+  }
+
+  .tree-node {
+    margin-bottom: 2px;
+    transition: margin 0.15s ease;
+  }
+
+  /* Add spacing between items during drag for better drop target visibility */
+  .tree-list.drag-active .tree-node {
+    margin-bottom: 6px;
+  }
+
+  .tree-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.625rem 0.5rem;
+    background: var(--color-bg-secondary, #f9fafb);
+    border: 1px solid var(--color-border, #e5e7eb);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    touch-action: manipulation;
+    user-select: none;
+  }
+
+  .tree-item:hover {
+    background: var(--color-bg-tertiary, #f3f4f6);
+    border-color: var(--color-primary, #3b82f6);
+  }
+
+  .tree-item.selected {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  }
+
+  .tree-item.dragging {
+    opacity: 0.4;
+    transform: scale(0.95);
+    background: var(--color-bg-tertiary, #e5e7eb);
+  }
+
+  /* Drop indicator line - appears before or after the item */
+  .tree-item.drag-over-before,
+  .tree-item.drag-over-after {
+    position: relative;
+  }
+
+  .tree-item.drag-over-before::before,
+  .tree-item.drag-over-after::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+    border-radius: 2px;
+    z-index: 10;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+    animation: dropIndicatorPulse 1s ease-in-out infinite;
+  }
+
+  .tree-item.drag-over-before::before {
+    top: -6px;
+  }
+
+  .tree-item.drag-over-after::after {
+    bottom: -6px;
+  }
+
+  /* Circle indicator at start of line */
+  .tree-item.drag-over-before::after,
+  .tree-item.drag-over-after::before {
+    content: '';
+    position: absolute;
+    left: -4px;
+    width: 10px;
+    height: 10px;
+    background: #3b82f6;
+    border: 2px solid white;
+    border-radius: 50%;
+    z-index: 11;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .tree-item.drag-over-before::after {
+    top: -10px;
+  }
+
+  .tree-item.drag-over-after::before {
+    bottom: -10px;
+  }
+
+  @keyframes dropIndicatorPulse {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scaleX(0.98);
+    }
+  }
+
+  /* Add spacing to make room for the indicator */
+  .tree-item.drag-over-before {
+    margin-top: 10px;
+  }
+
+  .tree-item.drag-over-after {
+    margin-bottom: 10px;
+  }
+
+  .tree-item.drag-over-inside {
+    background: rgba(59, 130, 246, 0.2);
+    border: 2px dashed #3b82f6;
+    box-shadow: inset 0 0 12px rgba(59, 130, 246, 0.15);
+  }
+
+  .tree-item-drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    color: var(--color-text-secondary, #9ca3af);
+    cursor: grab;
+    flex-shrink: 0;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+    touch-action: none; /* Important: allows touch drag without browser interference */
+    -webkit-touch-callout: none;
+  }
+
+  .tree-item-drag-handle:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--color-text-primary, #374151);
+  }
+
+  .tree-item-drag-handle:active {
+    cursor: grabbing;
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+  }
+
+  .tree-item-expand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    color: var(--color-text-secondary, #9ca3af);
+    cursor: pointer;
+    border-radius: 4px;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+  }
+
+  .tree-item-expand:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--color-text-primary, #374151);
+  }
+
+  .tree-item-expand-placeholder {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+
+  .tree-item-label {
+    flex: 1;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-primary, #374151);
+    text-transform: capitalize;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  .tree-item-actions {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+
+  .tree-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    background: white;
+    border: 1px solid var(--color-border, #e5e7eb);
+    border-radius: 4px;
+    color: var(--color-text-secondary, #6b7280);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .tree-action-btn:hover:not(:disabled) {
+    background: var(--color-bg-tertiary, #f3f4f6);
+    color: var(--color-text-primary, #374151);
+    border-color: var(--color-text-secondary, #9ca3af);
+  }
+
+  .tree-action-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .tree-action-btn.delete:hover:not(:disabled) {
+    background: #fef2f2;
+    color: #ef4444;
+    border-color: #fecaca;
+  }
+
+  .tree-children {
+    margin-left: 1.5rem;
+    margin-top: 2px;
+    padding-left: 0.75rem;
+    border-left: 2px solid var(--color-border, #e5e7eb);
+  }
+
+  /* Adjust tree view for very small screens */
+  @media (max-width: 375px) {
+    .mobile-tree-view {
+      margin: 0.25rem;
+    }
+
+    .tree-view-header {
+      padding: 0.625rem 0.75rem;
+      font-size: 0.875rem;
+    }
+
+    .tree-item {
+      padding: 0.5rem 0.375rem;
+    }
+
+    .tree-item-label {
+      font-size: 0.8125rem;
+    }
+
+    .tree-action-btn {
+      width: 28px;
+      height: 28px;
+    }
+
+    .tree-item-drag-handle {
+      width: 24px;
+      height: 24px;
+    }
+
+    .tree-children {
+      margin-left: 1rem;
+      padding-left: 0.5rem;
+    }
   }
 </style>

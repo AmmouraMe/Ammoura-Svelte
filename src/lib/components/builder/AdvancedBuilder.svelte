@@ -246,10 +246,58 @@
 
   // UI state
   let showLeftSidebar = true;
+  let sidebarCollapsedForDrag = false; // Track if sidebar was collapsed due to component drag
   let showAIPanel = false;
   let showRevisionModal = false;
   let showThemePalette = false;
   let currentBreakpoint: 'mobile' | 'tablet' | 'desktop' = 'desktop';
+
+  // Mobile responsive state
+  let isMobileView = false;
+  let mobileActivePanel: 'canvas' | 'sidebar' | 'properties' | null = 'canvas';
+  let initialBreakpointSet = false;
+  // Mobile edit mode: when ON, show component controls; when OFF, show clean preview
+  let mobileEditMode = false;
+
+  // Detect mobile viewport on mount and resize
+  function checkMobileView(): void {
+    if (browser) {
+      const wasMobile = isMobileView;
+      isMobileView = window.innerWidth < 768;
+
+      // Set default breakpoint to mobile when on mobile device (only on first detection)
+      if (isMobileView && !initialBreakpointSet) {
+        currentBreakpoint = 'mobile';
+        initialBreakpointSet = true;
+      }
+
+      if (isMobileView && !wasMobile && showLeftSidebar) {
+        showLeftSidebar = false; // Hide sidebar when switching to mobile
+      }
+    }
+  }
+
+  // Toggle mobile panel
+  function toggleMobilePanel(panel: 'canvas' | 'sidebar' | 'properties'): void {
+    if (mobileActivePanel === panel) {
+      mobileActivePanel = 'canvas';
+      showLeftSidebar = false;
+    } else {
+      mobileActivePanel = panel;
+      showLeftSidebar = panel === 'sidebar' || panel === 'properties';
+    }
+  }
+
+  // Handle global drag end to restore sidebar if it was collapsed for dragging
+  function handleGlobalDragEnd(): void {
+    if (sidebarCollapsedForDrag) {
+      showLeftSidebar = true;
+      sidebarCollapsedForDrag = false;
+      if (isMobileView) {
+        mobileActivePanel = 'sidebar';
+      }
+    }
+  }
 
   // History state
   interface HistoryEntry {
@@ -491,6 +539,11 @@
 
   function handleSelectComponent(component: PageComponent | null) {
     selectedComponent = component;
+    // On mobile, automatically open the sidebar to properties panel when a component is selected
+    if (isMobileView && component !== null) {
+      mobileActivePanel = 'properties';
+      showLeftSidebar = true;
+    }
     // The left panel will auto-switch to properties tab when component is selected
   }
 
@@ -851,6 +904,9 @@
     // Mark as initialized so we don't reload components from props
     initialized = true;
 
+    // Check mobile view on mount
+    checkMobileView();
+
     // Initialize history
     addToHistory();
     hasUnsavedChanges = false;
@@ -895,9 +951,13 @@
   }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window
+  on:keydown={handleKeydown}
+  on:resize={checkMobileView}
+  on:dragend={handleGlobalDragEnd}
+/>
 
-<div class="advanced-builder">
+<div class="advanced-builder" class:mobile-view={isMobileView}>
   <BuilderToolbar
     {mode}
     {title}
@@ -914,6 +974,7 @@
     {canPublish}
     {isBuiltIn}
     {isViewingPublishedRevision}
+    {isMobileView}
     canUndo={historyIndex > 0}
     canRedo={historyIndex < history.length - 1}
     on:updateTitle={(e) => {
@@ -940,9 +1001,22 @@
       showAIPanel = !showAIPanel;
     }}
     on:viewHistory={handleViewHistory}
+    on:toggleSidebar={() => toggleMobilePanel('sidebar')}
   />
 
-  <div class="builder-content">
+  <div class="builder-content" class:mobile-sidebar-open={isMobileView && showLeftSidebar}>
+    <!-- Mobile overlay backdrop -->
+    {#if isMobileView && showLeftSidebar}
+      <button
+        class="mobile-overlay"
+        on:click={() => {
+          showLeftSidebar = false;
+          mobileActivePanel = 'canvas';
+        }}
+        aria-label="Close sidebar"
+      ></button>
+    {/if}
+
     <BuilderLeftPanel
       {mode}
       {pageComponents}
@@ -959,6 +1033,7 @@
       {colorTheme}
       {colorThemes}
       collapsed={!showLeftSidebar}
+      {isMobileView}
       on:addComponent={(e) => handleAddComponent(e.detail)}
       on:selectComponent={(e) => handleSelectComponent(e.detail)}
       on:selectWidget={(e) => handleSelectComponent(e.detail)}
@@ -979,6 +1054,34 @@
       }}
       on:toggle={() => {
         showLeftSidebar = !showLeftSidebar;
+        if (isMobileView) {
+          mobileActivePanel = showLeftSidebar ? 'sidebar' : 'canvas';
+        }
+      }}
+      on:close={() => {
+        showLeftSidebar = false;
+        if (isMobileView) {
+          mobileActivePanel = 'canvas';
+        }
+      }}
+      on:componentDragStart={() => {
+        if (showLeftSidebar) {
+          sidebarCollapsedForDrag = true;
+          showLeftSidebar = false;
+          if (isMobileView) {
+            mobileActivePanel = 'canvas';
+          }
+        }
+      }}
+      on:componentDragEnd={() => {
+        // This may not fire if the element is detached, so we use global dragend as backup
+        if (sidebarCollapsedForDrag) {
+          showLeftSidebar = true;
+          sidebarCollapsedForDrag = false;
+          if (isMobileView) {
+            mobileActivePanel = 'sidebar';
+          }
+        }
       }}
     />
 
@@ -998,6 +1101,11 @@
       {siteContext}
       {user}
       {pageProperties}
+      {isMobileView}
+      {mobileEditMode}
+      on:toggleMobileEditMode={() => {
+        mobileEditMode = !mobileEditMode;
+      }}
       on:selectComponent={(e) => handleSelectComponent(e.detail)}
       on:updateComponent={(e) => handleUpdateComponent(e.detail)}
       on:batchUpdateComponents={(e) => handleBatchUpdateComponents(e.detail)}
@@ -1062,6 +1170,7 @@
     height: 100vh;
     background: var(--color-bg-primary);
     color: var(--color-text-primary);
+    overflow: hidden;
   }
 
   .builder-content {
@@ -1072,9 +1181,33 @@
     min-height: 0;
   }
 
-  @media (max-width: 768px) {
+  /* Mobile overlay backdrop */
+  .mobile-overlay {
+    display: none;
+  }
+
+  /* Mobile responsive styles */
+  @media (max-width: 767px) {
+    .advanced-builder.mobile-view {
+      height: 100dvh; /* Use dynamic viewport height for mobile */
+    }
+
     .builder-content {
       flex-direction: column;
+    }
+
+    .builder-content.mobile-sidebar-open .mobile-overlay {
+      display: block;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 99;
+      border: none;
+      padding: 0;
+      cursor: pointer;
     }
   }
 </style>

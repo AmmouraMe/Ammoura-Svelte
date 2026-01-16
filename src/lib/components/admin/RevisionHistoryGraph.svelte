@@ -467,7 +467,7 @@
 
   .graph-wrapper {
     display: flex;
-    min-width: max-content;
+    /* Removed min-width: max-content to prevent overflow on mobile */
   }
 
   .graph-svg-container {
@@ -605,32 +605,82 @@
   }
 
   @media (max-width: 640px) {
+    .revision-graph-container {
+      /* Ensure container doesn't overflow */
+      max-width: 100%;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
     .graph-wrapper {
-      flex-direction: column;
+      /* Keep side-by-side layout on mobile so dots/lines stay on left */
+      flex-direction: row;
+      width: 100%;
     }
 
     .graph-svg-container {
-      border-right: none;
-      border-bottom: 1px solid var(--color-border-secondary, #334155);
-      overflow-x: auto;
+      /* Keep the graph on the left, just make it more compact */
+      flex-shrink: 0;
+      border-right: 1px solid var(--color-border-secondary, #334155);
+    }
+
+    .graph-details {
+      /* Prevent details from overflowing */
+      flex: 1;
+      min-width: 0; /* Allow text truncation */
+      max-width: 100%;
+      overflow: hidden;
     }
 
     .revision-row {
-      flex-wrap: wrap;
-      height: auto;
-      padding: 0.75rem;
-      gap: 0.5rem;
-    }
-
-    .revision-main {
-      width: 100%;
-      flex-direction: column;
-      align-items: flex-start;
+      /* MUST keep 40px height to align with SVG nodes */
+      height: 40px !important;
+      min-height: 40px !important;
+      max-height: 40px !important;
+      flex-wrap: nowrap;
+      padding: 0 0.375rem;
       gap: 0.25rem;
     }
 
+    .revision-main {
+      flex: 1;
+      min-width: 0;
+      flex-direction: row;
+      align-items: center;
+      gap: 0.375rem;
+    }
+
+    .revision-hash {
+      flex-shrink: 0;
+      font-size: 0.75rem;
+    }
+
+    .revision-message {
+      /* Truncate on mobile to save space */
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+      font-size: 0.75rem;
+    }
+
     .revision-meta {
-      width: 100%;
+      /* Hide meta on very small screens to save space */
+      display: none;
+    }
+  }
+
+  /* Show meta on slightly larger mobile screens */
+  @media (min-width: 400px) and (max-width: 640px) {
+    .revision-meta {
+      display: flex;
+      flex-shrink: 0;
+      font-size: 0.625rem;
+    }
+
+    .revision-author {
+      display: none;
     }
   }
 </style>

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onDestroy } from 'svelte';
   import {
     Plus,
     X,
@@ -48,6 +48,14 @@
   let activeCategory: string = 'all';
   let pageSettingsExpanded = true;
   let componentsExpanded = true;
+
+  // Touch drag state for mobile
+  let touchDragComponentType: string | null = null;
+  let touchDragGhost: HTMLElement | null = null;
+  let touchStartPos = { x: 0, y: 0 };
+  let touchCurrentPos = { x: 0, y: 0 };
+  let isTouchDragging = false;
+  const touchDragThreshold = 10;
 
   // Component library organized by category
   const componentLibrary = {
@@ -452,6 +460,132 @@
     };
     return defaults[type] || {};
   }
+
+  // ========== Touch Drag-and-Drop for Mobile ==========
+
+  function handleComponentTouchStart(event: TouchEvent, componentType: string): void {
+    if (event.touches.length !== 1) return;
+
+    const touch = event.touches[0];
+    touchStartPos = { x: touch.clientX, y: touch.clientY };
+    touchCurrentPos = { x: touch.clientX, y: touch.clientY };
+    touchDragComponentType = componentType;
+    isTouchDragging = false;
+  }
+
+  function handleComponentTouchMove(event: TouchEvent): void {
+    if (touchDragComponentType === null) return;
+    if (event.touches.length !== 1) return;
+
+    const touch = event.touches[0];
+    touchCurrentPos = { x: touch.clientX, y: touch.clientY };
+
+    // Check if we've moved enough to start dragging
+    const dx = touchCurrentPos.x - touchStartPos.x;
+    const dy = touchCurrentPos.y - touchStartPos.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (!isTouchDragging && distance > touchDragThreshold) {
+      isTouchDragging = true;
+      createTouchDragGhost(touchDragComponentType);
+    }
+
+    if (isTouchDragging) {
+      event.preventDefault(); // Prevent scrolling while dragging
+      updateTouchDragGhost();
+
+      // Dispatch event for drop zones to listen to
+      window.dispatchEvent(
+        new CustomEvent('touchComponentDragOver', {
+          detail: {
+            componentType: touchDragComponentType,
+            clientX: touch.clientX,
+            clientY: touch.clientY
+          }
+        })
+      );
+    }
+  }
+
+  function handleComponentTouchEnd(event: TouchEvent): void {
+    if (touchDragComponentType === null) return;
+
+    if (isTouchDragging) {
+      // Find the last touch position
+      const touch = event.changedTouches[0];
+
+      // Dispatch drop event for drop zones
+      window.dispatchEvent(
+        new CustomEvent('touchComponentDrop', {
+          detail: {
+            componentType: touchDragComponentType,
+            clientX: touch.clientX,
+            clientY: touch.clientY
+          }
+        })
+      );
+    }
+
+    // Clean up
+    cleanupTouchDrag();
+  }
+
+  function handleComponentTouchCancel(): void {
+    cleanupTouchDrag();
+  }
+
+  function createTouchDragGhost(componentType: string): void {
+    // Find the component name for display
+    let componentName = componentType;
+    for (const category of Object.values(componentLibrary)) {
+      const found = category.find((c) => c.type === componentType);
+      if (found) {
+        componentName = found.name;
+        break;
+      }
+    }
+
+    touchDragGhost = document.createElement('div');
+    touchDragGhost.className = 'touch-drag-ghost';
+    touchDragGhost.innerHTML = `➕ ${componentName}`;
+    touchDragGhost.style.cssText = `
+      position: fixed;
+      z-index: 10000;
+      padding: 10px 16px;
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+      pointer-events: none;
+      transform: translate(-50%, -100%);
+      white-space: nowrap;
+      border: 2px solid rgba(255,255,255,0.3);
+    `;
+    document.body.appendChild(touchDragGhost);
+    updateTouchDragGhost();
+  }
+
+  function updateTouchDragGhost(): void {
+    if (touchDragGhost) {
+      touchDragGhost.style.left = `${touchCurrentPos.x}px`;
+      touchDragGhost.style.top = `${touchCurrentPos.y - 30}px`;
+    }
+  }
+
+  function cleanupTouchDrag(): void {
+    if (touchDragGhost && touchDragGhost.parentNode) {
+      touchDragGhost.parentNode.removeChild(touchDragGhost);
+    }
+    touchDragGhost = null;
+    touchDragComponentType = null;
+    isTouchDragging = false;
+  }
+
+  onDestroy(() => {
+    cleanupTouchDrag();
+  });
 </script>
 
 <aside class="builder-sidebar">
@@ -619,7 +753,13 @@
                   e.dataTransfer.setData('component-type', componentItem.type);
                   e.dataTransfer.setData('text/plain', componentItem.name);
                 }
+                dispatch('componentDragStart');
               }}
+              on:dragend={() => dispatch('componentDragEnd')}
+              on:touchstart={(e) => handleComponentTouchStart(e, componentItem.type)}
+              on:touchmove={handleComponentTouchMove}
+              on:touchend={handleComponentTouchEnd}
+              on:touchcancel={handleComponentTouchCancel}
             >
               <div class="component-icon">
                 <svelte:component this={componentItem.icon} size={20} />
@@ -1046,6 +1186,43 @@
 
     .btn-close {
       display: block;
+    }
+  }
+
+  /* Touch-friendly styles for mobile */
+  @media (hover: none) and (pointer: coarse) {
+    .component-item {
+      min-height: 64px;
+      padding: 0.875rem 1rem;
+      touch-action: none; /* Enable custom touch handling */
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .component-item:active {
+      background: var(--color-bg-secondary);
+      transform: scale(0.98);
+    }
+
+    .component-icon {
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+    }
+
+    .component-name {
+      font-size: 1rem;
+    }
+
+    .component-description {
+      font-size: 0.8125rem;
+    }
+
+    .category-btn {
+      min-height: 44px;
+      padding: 0.75rem;
     }
   }
 </style>
