@@ -8,10 +8,15 @@ export const load: PageServerLoad = async ({ platform, locals }) => {
   const siteId = locals.siteId;
 
   try {
-    const layouts = await getLayouts(db, siteId);
+    const allLayouts = await getLayouts(db, siteId);
+
+    // Separate built-in layouts from custom layouts
+    const builtInLayouts = allLayouts.filter((layout) => layout.is_builtin);
+    const layouts = allLayouts.filter((layout) => !layout.is_builtin);
 
     return {
-      layouts
+      layouts,
+      builtInLayouts
     };
   } catch (err) {
     console.error('Failed to load layouts:', err);

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import { Settings, LayoutGrid, SlidersHorizontal, ChevronLeft, X } from 'lucide-svelte';
+  import { LayoutGrid, SlidersHorizontal, ChevronLeft, X } from 'lucide-svelte';
   import type {
     PageComponent,
     Component,
@@ -11,7 +11,7 @@
   import BuilderPropertiesPanel from './BuilderPropertiesPanel.svelte';
 
   type BuilderMode = 'page' | 'layout' | 'component' | 'primitive';
-  type LeftPanelTab = 'settings' | 'components' | 'properties';
+  type LeftPanelTab = 'components' | 'properties';
 
   export let mode: BuilderMode = 'page';
   export let pageComponents: PageComponent[] = [];
@@ -69,7 +69,6 @@
 
   // Build tabs list - exclude components tab in primitive mode
   $: tabs = [
-    { id: 'settings' as LeftPanelTab, label: 'Settings', icon: Settings },
     ...(canAddComponents
       ? [{ id: 'components' as LeftPanelTab, label: 'Components', icon: LayoutGrid }]
       : []),
@@ -119,49 +118,7 @@
     </div>
 
     <div class="panel-content">
-      {#if activeTab === 'settings'}
-        <div class="settings-panel">
-          <div class="settings-content">
-            <div class="setting-group">
-              <label for="entity-title" class="setting-label">Title</label>
-              <input
-                id="entity-title"
-                type="text"
-                class="setting-input"
-                class:readonly={isBuiltIn}
-                value={title}
-                readonly={isBuiltIn}
-                on:input={(e) => !isBuiltIn && dispatch('updateTitle', e.currentTarget.value)}
-                placeholder="{entityLabel} title"
-                title={isBuiltIn ? 'Built-in component names cannot be changed' : ''}
-              />
-            </div>
-            {#if mode === 'page'}
-              <div class="setting-group">
-                <label for="entity-slug" class="setting-label">URL Slug</label>
-                <input
-                  id="entity-slug"
-                  type="text"
-                  class="setting-input"
-                  value={slug}
-                  on:input={(e) => dispatch('updateSlug', e.currentTarget.value)}
-                  placeholder="/page-url"
-                />
-              </div>
-            {/if}
-            <button
-              class="btn-properties"
-              on:click={() => {
-                dispatch('showPageProperties');
-                activeTab = 'properties';
-              }}
-            >
-              <Settings size={16} />
-              <span>{entityLabel} Properties</span>
-            </button>
-          </div>
-        </div>
-      {:else if activeTab === 'components'}
+      {#if activeTab === 'components'}
         <div class="components-wrapper">
           <BuilderSidebar
             {mode}
@@ -172,6 +129,7 @@
             {currentComponentId}
             {isBuiltIn}
             showPageSettings={false}
+            showComponentsHeader={false}
             on:addComponent
             on:selectComponent
             on:componentDragStart
@@ -198,11 +156,18 @@
               {entityLabel}
               {components}
               {isContentEditable}
+              {title}
+              {slug}
+              {mode}
+              {isBuiltIn}
+              showHeader={false}
               on:selectComponent
               on:selectWidget
               on:updateComponent
               on:deleteComponent
               on:updatePageProperties
+              on:updateTitle
+              on:updateSlug
               on:close={() => {
                 dispatch('deselectComponent');
               }}
@@ -343,80 +308,6 @@
     flex-direction: column;
     min-height: 0;
     overflow: hidden;
-  }
-
-  .settings-panel {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    overflow-y: auto;
-  }
-
-  .settings-content {
-    padding: 1rem;
-  }
-
-  .setting-group {
-    margin-bottom: 1rem;
-  }
-
-  .setting-group:last-child {
-    margin-bottom: 0;
-  }
-
-  .setting-label {
-    display: block;
-    margin-bottom: 0.375rem;
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--color-text-secondary);
-  }
-
-  .setting-input {
-    width: 100%;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--color-border-secondary);
-    border-radius: 4px;
-    background: var(--color-bg-primary);
-    color: var(--color-text-primary);
-    font-size: 0.875rem;
-    transition: all 0.2s;
-    box-sizing: border-box;
-  }
-
-  .setting-input:focus {
-    outline: none;
-    border-color: var(--color-primary);
-  }
-
-  .setting-input.readonly {
-    opacity: 0.7;
-    cursor: not-allowed;
-    background: var(--color-bg-tertiary);
-  }
-
-  .btn-properties {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    width: 100%;
-    margin-top: 1rem;
-    padding: 0.625rem 1rem;
-    background: var(--color-primary);
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .btn-properties:hover {
-    background: var(--color-primary-dark);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
 
   .components-wrapper {

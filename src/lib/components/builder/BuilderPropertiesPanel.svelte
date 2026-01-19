@@ -60,6 +60,14 @@
   export let colorThemes: ColorThemeDefinition[] = [];
   // Whether content editing is allowed (false in layout mode - only structure editing allowed)
   export let isContentEditable = true;
+  // Whether to show the panel header (hidden when embedded in BuilderLeftPanel)
+  export let showHeader = true;
+
+  // Title and slug for page/layout/component settings
+  export let title = '';
+  export let slug = '';
+  export let mode: 'page' | 'layout' | 'component' | 'primitive' = 'page';
+  export let isBuiltIn = false;
 
   // Compute theme colors from colorThemes array (database-loaded themes) or fallback to static lookup
   $: currentThemeData = colorThemes.find((t) => t.id === colorTheme);
@@ -398,16 +406,18 @@
 </script>
 
 <aside class="builder-properties-panel">
-  <div class="panel-header">
-    <h3>Properties</h3>
-    <button
-      class="btn-close"
-      on:click={() => dispatch('close')}
-      aria-label="Close properties panel"
-    >
-      <X size={18} />
-    </button>
-  </div>
+  {#if showHeader}
+    <div class="panel-header">
+      <h3>Properties</h3>
+      <button
+        class="btn-close"
+        on:click={() => dispatch('close')}
+        aria-label="Close properties panel"
+      >
+        <X size={18} />
+      </button>
+    </div>
+  {/if}
 
   <div class="panel-content">
     <!-- Page Component -->
@@ -462,7 +472,37 @@
 
             <div class="tab-content">
               {#if pageActiveTab === 'content'}
-                {#if entityLabel === 'Page'}
+                <!-- Title and Slug Settings -->
+                <div class="property-section">
+                  <h4>{entityLabel} Settings</h4>
+                  <div class="property-field">
+                    <label for="entity-title">Title</label>
+                    <input
+                      id="entity-title"
+                      type="text"
+                      class:readonly={isBuiltIn}
+                      value={title}
+                      readonly={isBuiltIn}
+                      on:input={(e) => !isBuiltIn && dispatch('updateTitle', e.currentTarget.value)}
+                      placeholder="{entityLabel} title"
+                      title={isBuiltIn ? 'Built-in component names cannot be changed' : ''}
+                    />
+                  </div>
+                  {#if mode === 'page'}
+                    <div class="property-field">
+                      <label for="entity-slug">URL Slug</label>
+                      <input
+                        id="entity-slug"
+                        type="text"
+                        value={slug}
+                        on:input={(e) => dispatch('updateSlug', e.currentTarget.value)}
+                        placeholder="/page-url"
+                      />
+                    </div>
+                  {/if}
+                </div>
+
+                {#if mode === 'page'}
                   <div class="property-section">
                     <h4>Title Display</h4>
                     <ToggleSwitch
@@ -477,7 +517,7 @@
                       }}
                     />
                   </div>
-                {:else}
+                {:else if mode === 'layout'}
                   <div class="property-section">
                     <p class="help-text">No content settings available for layouts.</p>
                   </div>
@@ -1293,6 +1333,12 @@
   .property-field input[type='text']:focus {
     outline: none;
     border-color: var(--color-primary);
+  }
+
+  .property-field input[type='text'].readonly {
+    opacity: 0.7;
+    cursor: not-allowed;
+    background: var(--color-bg-tertiary);
   }
 
   .property-field small {

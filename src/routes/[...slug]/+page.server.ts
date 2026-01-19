@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { getDB } from '$lib/server/db/connection';
 import * as pagesDb from '$lib/server/db/pages';
-import { getPublishedRevision } from '$lib/server/db/revisions';
+import { getPublishedRevision, getMostRecentDraftRevision } from '$lib/server/db/revisions';
 import { getLayout, getLayoutComponents, getDefaultLayout } from '$lib/server/db/layouts';
 import { resolveComponentRefs, getComponent } from '$lib/server/db/components';
 import type { PageServerLoad } from './$types';
@@ -57,10 +57,22 @@ export const load: PageServerLoad = async ({
       }
     }
 
-    // Fetch components from published revision (Builder content)
-    const publishedRevision = await getPublishedRevision(db, siteId, page.id);
-    const rawComponents = publishedRevision?.components || [];
-    const pageProperties = publishedRevision?.pageProperties;
+    // Fetch revision content - use draft for preview, published otherwise
+    let revision;
+    if (isPreview && locals.isAdmin) {
+      // For admin preview, try to get the most recent draft revision
+      revision = await getMostRecentDraftRevision(db, siteId, page.id);
+      // Fall back to published if no draft exists
+      if (!revision) {
+        revision = await getPublishedRevision(db, siteId, page.id);
+      }
+    } else {
+      // For public viewing, always use published revision
+      revision = await getPublishedRevision(db, siteId, page.id);
+    }
+
+    const rawComponents = revision?.components || [];
+    const pageProperties = revision?.pageProperties;
 
     // Resolve component_ref types to actual component types for frontend rendering
     const components = await resolveComponentRefs(db, siteId, rawComponents);
@@ -152,13 +164,17 @@ export const load: PageServerLoad = async ({
       }
     }
 
+    // Use the revision's title if available - this ensures draft preview shows draft title
+    // and published page shows published title, even if the pages.title has been updated
+    const pageWithRevisionTitle = revision?.title ? { ...page, title: revision.title } : page;
+
     return {
-      page,
+      page: pageWithRevisionTitle,
       components,
       layout,
       layoutComponents,
       colorTheme: page.colorTheme || null,
-      isPreview: isPreview && page.status === 'draft',
+      isPreview: isPreview && locals.isAdmin,
       isAdmin: locals.isAdmin || false,
       currentUser: locals.currentUser || null,
       // Page properties for title display override

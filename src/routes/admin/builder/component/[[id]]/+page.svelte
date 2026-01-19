@@ -260,7 +260,10 @@
         if (!options?.silent) {
           toastStore.success('Draft saved successfully!');
         }
-        await invalidateAll();
+
+        // Don't call invalidateAll() for draft saves - the local state is already correct
+        // and calling it would cause the component name to revert to the DB value
+        // (since draft names are stored in the revision, not the component record)
 
         // Return the new revision ID so the builder can update its state
         return { revisionId };
@@ -279,8 +282,9 @@
     }
   ): Promise<void> {
     if (data.isNewComponent) {
-      // For new components, onSave should have been called first
-      toastStore.info('Component created!');
+      // For new components, we need to save first to create the component
+      await handleSave(saveData, { silent: true });
+      toastStore.success('Component created and published!');
       return;
     }
 
@@ -333,7 +337,8 @@
   }
 
   // Convert component to page-compatible format for AdvancedBuilder
-  const pageFormatted = data.component
+  // Use reactive statement so it updates when data.component changes after invalidateAll()
+  $: pageFormatted = data.component
     ? {
         id: String(data.component.id),
         site_id: data.component.site_id,

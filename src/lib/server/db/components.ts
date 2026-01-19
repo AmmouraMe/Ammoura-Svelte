@@ -60,6 +60,13 @@ export async function getComponents(db: D1Database, siteId: string): Promise<Com
 /**
  * Get all components for a site with children count
  * Useful for filtering out empty components in the builder sidebar
+ *
+ * Children can be stored in two places:
+ * 1. component_widgets table (legacy)
+ * 2. config.children array (new architecture)
+ *
+ * This function checks both and returns the maximum count to ensure
+ * components with children are not incorrectly filtered out.
  */
 export async function getComponentsWithChildrenCount(
   db: D1Database,
@@ -77,14 +84,26 @@ export async function getComponentsWithChildrenCount(
       .bind(siteId)
       .all();
 
-    const components = (result.results || []).map((component) => ({
-      ...component,
-      config:
-        typeof component.config === 'string' ? JSON.parse(component.config) : component.config,
-      is_global: Boolean(component.is_global),
-      is_primitive: Boolean(component.is_primitive),
-      children_count: Number(component.children_count) || 0
-    })) as ComponentWithChildrenCount[];
+    const components = (result.results || []).map((component) => {
+      const config =
+        typeof component.config === 'string' ? JSON.parse(component.config) : component.config;
+
+      // Count children from config.children (new architecture)
+      const configChildren = Array.isArray(config?.children) ? config.children.length : 0;
+
+      // Use the maximum of widget table count and config children count
+      // This ensures components using either architecture are counted correctly
+      const widgetCount = Number(component.children_count) || 0;
+      const effectiveChildrenCount = Math.max(widgetCount, configChildren);
+
+      return {
+        ...component,
+        config,
+        is_global: Boolean(component.is_global),
+        is_primitive: Boolean(component.is_primitive),
+        children_count: effectiveChildrenCount
+      };
+    }) as ComponentWithChildrenCount[];
 
     return components;
   } catch (error) {

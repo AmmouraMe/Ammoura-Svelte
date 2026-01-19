@@ -32,7 +32,6 @@
 
   export let mode: BuilderMode = 'page';
   export let title: string;
-  export let slug: string;
   export let currentBreakpoint: 'mobile' | 'tablet' | 'desktop';
   export let colorTheme: string;
   export let colorThemes: ColorThemeDefinition[] = [];
@@ -46,8 +45,6 @@
   export let canPublish = true;
   export let isViewingPublishedRevision = true;
   export let userName: string | undefined = undefined;
-  // Built-in components cannot have their name changed
-  export let isBuiltIn = false;
   // Mobile view state
   export let isMobileView = false;
 
@@ -155,38 +152,13 @@
       </button>
     {/if}
 
-    <!-- Title - shown on mobile in toolbar -->
-    <div class="page-info" class:mobile-visible={isMobileView}>
+    <!-- Title display - shows current revision name -->
+    <div class="page-info">
       <span class="title-display" {title}>{title || 'Untitled'}</span>
       {#if hasUnsavedChanges}
         <span class="unsaved-indicator" title="Unsaved changes">•</span>
       {/if}
     </div>
-
-    <!-- Desktop: Show full inputs -->
-    {#if !isMobileView}
-      <div class="page-info desktop-only">
-        <input
-          type="text"
-          class="title-input"
-          class:readonly={isBuiltIn}
-          value={title}
-          readonly={isBuiltIn}
-          on:input={(e) => !isBuiltIn && dispatch('updateTitle', e.currentTarget.value)}
-          placeholder="Page title"
-          title={isBuiltIn ? 'Built-in component names cannot be changed' : ''}
-        />
-        {#if mode === 'page'}
-          <input
-            type="text"
-            class="slug-input"
-            value={slug}
-            on:input={(e) => dispatch('updateSlug', e.currentTarget.value)}
-            placeholder="/page-url"
-          />
-        {/if}
-      </div>
-    {/if}
   </div>
 
   <div class="toolbar-center" class:hidden={isMobileView}>
@@ -653,26 +625,14 @@
     flex-shrink: 0;
   }
 
-  /* Page info - desktop inputs hidden by default */
+  /* Page info - title display */
   .page-info {
-    display: none;
-  }
-
-  .page-info.desktop-only {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    min-width: 150px;
-    max-width: 200px;
-  }
-
-  /* Mobile title display */
-  .page-info.mobile-visible {
     display: flex;
     align-items: center;
     gap: 0.25rem;
     min-width: 0;
     flex: 1;
+    max-width: 250px;
   }
 
   .title-display {
@@ -682,7 +642,6 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 150px;
   }
 
   .unsaved-indicator {
@@ -690,47 +649,6 @@
     font-size: 1.25rem;
     line-height: 1;
     flex-shrink: 0;
-  }
-
-  .title-input,
-  .slug-input {
-    width: 100%;
-    padding: 0.375rem 0.5rem;
-    border: 1px solid var(--color-border-secondary);
-    border-radius: 4px;
-    background: var(--color-bg-secondary);
-    color: var(--color-text-primary);
-    font-size: 0.875rem;
-    transition: border-color 0.2s;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    box-sizing: border-box;
-  }
-
-  .title-input {
-    font-weight: 600;
-  }
-
-  .slug-input {
-    font-size: 0.75rem;
-    color: var(--color-text-secondary);
-  }
-
-  .title-input:focus,
-  .slug-input:focus {
-    outline: none;
-    border-color: var(--color-primary);
-  }
-
-  .title-input.readonly {
-    opacity: 0.7;
-    cursor: not-allowed;
-    background: var(--color-bg-tertiary);
-  }
-
-  .title-input.readonly:focus {
-    border-color: var(--color-border-secondary);
   }
 
   .breakpoint-switcher {

@@ -167,9 +167,20 @@
     </a>
   </div>
 
-  <!-- Custom Components Section -->
-  <section class="components-section">
-    <h2 class="section-title">Your Components</h2>
+  <!-- Your Components Section -->
+  <section class="components-section custom-section">
+    <div class="section-header">
+      <h2>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <rect x="3" y="3" width="7" height="7" stroke-width="2"></rect>
+          <rect x="14" y="3" width="7" height="7" stroke-width="2"></rect>
+          <rect x="14" y="14" width="7" height="7" stroke-width="2"></rect>
+          <rect x="3" y="14" width="7" height="7" stroke-width="2"></rect>
+        </svg>
+        Your Components
+      </h2>
+      <p class="section-description">Reusable components you've created for your site.</p>
+    </div>
     {#if data.components.length === 0}
       <div class="empty-state">
         <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -287,14 +298,18 @@
   <!-- Built-in Components Section - Organized by Category -->
   {#if data.builtInComponents && data.builtInComponents.length > 0}
     <section class="components-section builtin-section">
-      <div class="builtin-header">
-        <h2 class="section-title">
+      <div class="section-header">
+        <h2>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <rect x="3" y="3" width="7" height="7" stroke-width="2"></rect>
+            <rect x="14" y="3" width="7" height="7" stroke-width="2"></rect>
+            <rect x="14" y="14" width="7" height="7" stroke-width="2"></rect>
+            <rect x="3" y="14" width="7" height="7" stroke-width="2"></rect>
+          </svg>
           Built-in Components
-          <span class="section-badge">Templates</span>
         </h2>
-        <p class="builtin-description">
-          These are the same components available in the Pages and Layouts builder. Use them as
-          starting points or customize them for your site.
+        <p class="section-description">
+          System components that come with your site. These can be customized but not deleted.
         </p>
       </div>
 
@@ -433,116 +448,104 @@
 </div>
 
 <style>
+  /* Mobile-first styles */
   .components-page {
-    padding: 2rem;
     width: 100%;
   }
 
   .page-header {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 2rem;
+    flex-direction: column;
     gap: 1rem;
+    margin-bottom: 1.5rem;
   }
 
   .page-header h1 {
-    margin: 0 0 0.5rem 0;
-    font-size: 2rem;
     color: var(--color-text-primary);
+    font-size: 1.5rem;
+    margin: 0 0 0.5rem 0;
+    transition: color var(--transition-normal);
   }
 
   .page-description {
+    color: var(--color-text-secondary);
     margin: 0;
-    color: var(--color-text-secondary);
-  }
-
-  .components-section {
-    margin-bottom: 3rem;
-  }
-
-  .components-section:last-child {
-    margin-bottom: 0;
-  }
-
-  .section-title {
-    font-size: 1.5rem;
-    margin: 0 0 1.5rem 0;
-    color: var(--color-text-primary);
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .section-badge {
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    background: var(--color-bg-tertiary);
-    color: var(--color-text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .builtin-section {
-    padding-top: 2rem;
-    border-top: 2px solid var(--color-border-secondary);
-  }
-
-  .builtin-card {
-    background: var(--color-bg-secondary);
-    border-color: var(--color-border-primary);
+    font-size: 0.875rem;
+    transition: color var(--transition-normal);
   }
 
   .btn {
-    display: inline-flex;
+    display: flex;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
-    padding: 0.625rem 1rem;
-    border-radius: 6px;
-    font-weight: 500;
-    text-decoration: none;
+    padding: 0.75rem 1.25rem;
+    background: var(--color-primary);
+    color: var(--color-text-inverse);
     border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 0.9375rem;
+    text-decoration: none;
     cursor: pointer;
-    transition: all 0.2s;
+    width: 100%;
+    transition:
+      background-color var(--transition-normal),
+      transform var(--transition-normal);
+  }
+
+  .btn:hover {
+    background: var(--color-primary-hover);
+    transform: translateY(-2px);
   }
 
   .btn-primary {
     background: var(--color-primary);
-    color: white;
+    color: var(--color-text-inverse);
   }
 
   .btn-primary:hover {
-    background: var(--color-primary-dark);
+    background: var(--color-primary-hover);
   }
 
   .btn-secondary {
     background: var(--color-bg-secondary);
     color: var(--color-text-primary);
     border: 1px solid var(--color-border-secondary);
+    width: auto;
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
   }
 
   .btn-secondary:hover {
     background: var(--color-bg-tertiary);
+    transform: none;
   }
 
   .btn-danger {
     background: var(--color-error);
     color: white;
+    width: auto;
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
   }
 
   .btn-danger:hover {
     background: var(--color-error-dark);
+    transform: none;
   }
 
   .btn-warning {
     background: #f59e0b;
     color: white;
+    width: auto;
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
   }
 
   .btn-warning:hover {
     background: #d97706;
+    transform: none;
   }
 
   .btn:disabled {
@@ -550,31 +553,89 @@
     cursor: not-allowed;
   }
 
-  .empty-state {
-    text-align: center;
-    padding: 4rem 2rem;
+  /* Section styles */
+  .components-section {
+    margin-bottom: 2rem;
+  }
+
+  .components-section:last-child {
+    margin-bottom: 0;
+  }
+
+  .section-header {
+    margin-bottom: 1rem;
+  }
+
+  .section-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--color-text-primary);
+    font-size: 1.25rem;
+    margin: 0 0 0.25rem 0;
+    transition: color var(--transition-normal);
+  }
+
+  .section-header h2 svg {
     color: var(--color-text-secondary);
   }
 
+  .section-description {
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+    margin: 0;
+    transition: color var(--transition-normal);
+  }
+
+  .builtin-section {
+    margin-bottom: 2.5rem;
+  }
+
+  .builtin-section .section-header h2 svg {
+    color: var(--color-primary);
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    background: var(--color-bg-primary);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
   .empty-state svg {
+    color: var(--color-text-tertiary);
     margin-bottom: 1rem;
     opacity: 0.5;
+    width: 48px;
+    height: 48px;
   }
 
   .empty-state h3 {
+    color: var(--color-text-primary);
     margin: 0 0 0.5rem 0;
     font-size: 1.25rem;
-    color: var(--color-text-primary);
+    transition: color var(--transition-normal);
   }
 
   .empty-state p {
+    color: var(--color-text-secondary);
     margin: 0 0 1.5rem 0;
+    font-size: 0.875rem;
+    transition: color var(--transition-normal);
   }
 
+  .empty-state .btn {
+    display: inline-flex;
+    width: auto;
+  }
+
+  /* Grid layout */
   .components-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: 1fr;
+    gap: 1rem;
   }
 
   .component-card {
@@ -585,7 +646,14 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    min-height: 200px;
+    transition:
+      background-color var(--transition-normal),
+      border-color var(--transition-normal),
+      box-shadow var(--transition-normal);
+  }
+
+  .component-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   }
 
   .component-header {
@@ -609,9 +677,9 @@
 
   .component-actions {
     display: flex;
-    gap: 0.75rem;
+    gap: 0.5rem;
     flex-wrap: wrap;
-    padding-top: 0.5rem;
+    padding-top: 0.75rem;
     border-top: 1px solid var(--color-border-secondary);
     margin-top: auto;
   }
@@ -620,34 +688,9 @@
     display: contents;
   }
 
-  @media (max-width: 768px) {
-    .components-page {
-      padding: 1rem;
-    }
-
-    .page-header {
-      flex-direction: column;
-    }
-
-    .components-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-
   /* Category organization styles */
-  .builtin-header {
-    margin-bottom: 2rem;
-  }
-
-  .builtin-description {
-    margin: 0.5rem 0 0 0;
-    color: var(--color-text-secondary);
-    font-size: 0.9375rem;
-    max-width: 600px;
-  }
-
   .category-section {
-    margin-bottom: 2.5rem;
+    margin-bottom: 2rem;
   }
 
   .category-section:last-child {
@@ -658,7 +701,7 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    font-size: 1.125rem;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--color-text-primary);
     margin: 0 0 1rem 0;
@@ -673,5 +716,76 @@
     border-radius: 6px;
     font-size: 14px;
     color: white;
+  }
+
+  /* Tablet and up */
+  @media (min-width: 768px) {
+    .page-header {
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+
+    .page-header h1 {
+      font-size: 2rem;
+    }
+
+    .page-description {
+      font-size: 1rem;
+    }
+
+    .btn-primary {
+      width: auto;
+      padding: 0.875rem 1.5rem;
+      font-size: 1rem;
+    }
+
+    .section-header h2 {
+      font-size: 1.5rem;
+    }
+
+    .section-description {
+      font-size: 1rem;
+    }
+
+    .empty-state {
+      padding: 4rem 2rem;
+    }
+
+    .empty-state svg {
+      width: 64px;
+      height: 64px;
+    }
+
+    .empty-state h3 {
+      font-size: 1.5rem;
+    }
+
+    .empty-state p {
+      font-size: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .components-grid {
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .component-card {
+      padding: 1.5rem;
+    }
+
+    .component-header h3 {
+      font-size: 1.25rem;
+    }
+
+    .component-actions {
+      gap: 0.75rem;
+    }
+
+    .category-title {
+      font-size: 1.125rem;
+    }
   }
 </style>

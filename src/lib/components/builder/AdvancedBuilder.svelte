@@ -153,8 +153,10 @@
   // This handles the case where invalidateAll() updates initialComponents
   $: if (needsComponentSync && initialComponents) {
     pageComponents = JSON.parse(JSON.stringify(initialComponents));
-    // Also sync title and slug from page prop
-    if (page) {
+    // Also sync title and slug from page prop, BUT only if we didn't just save
+    // After saving a draft, internalRevisionId is set - in that case, keep our local state
+    // as the draft name is stored in the revision, not the component record
+    if (page && !internalRevisionId) {
       title = page.title || title;
       slug = page.slug || slug;
     }
@@ -961,7 +963,6 @@
   <BuilderToolbar
     {mode}
     {title}
-    {slug}
     {currentBreakpoint}
     {colorTheme}
     {colorThemes}
@@ -972,7 +973,6 @@
     {lastSavedAt}
     {userName}
     {canPublish}
-    {isBuiltIn}
     {isViewingPublishedRevision}
     {isMobileView}
     canUndo={historyIndex > 0}

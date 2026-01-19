@@ -210,6 +210,61 @@ describe('Component Database Functions', () => {
 
       expect(components[0].children_count).toBe(0);
     });
+
+    it('should count children from config.children when widget table count is 0', async () => {
+      const mockResults = [
+        {
+          id: 1,
+          site_id: '1',
+          name: 'Custom Component',
+          description: 'A component with inline children',
+          type: 'composite',
+          config: JSON.stringify({
+            children: [
+              { id: 'child-1', type: 'text', config: {}, position: 0 },
+              { id: 'child-2', type: 'button', config: {}, position: 1 }
+            ]
+          }),
+          is_global: 0,
+          is_primitive: 0,
+          children_count: 0, // Legacy widget table count is 0
+          created_at: '2024-01-01',
+          updated_at: '2024-01-01'
+        }
+      ];
+
+      mockDb.all.mockResolvedValue({ results: mockResults });
+
+      const components = await getComponentsWithChildrenCount(mockDb as unknown as D1Database, '1');
+
+      expect(components[0].children_count).toBe(2); // Should use config.children count
+    });
+
+    it('should use max of widget table count and config.children count', async () => {
+      const mockResults = [
+        {
+          id: 1,
+          site_id: '1',
+          name: 'Mixed Component',
+          description: 'A component with both sources',
+          type: 'container',
+          config: JSON.stringify({
+            children: [{ id: 'child-1', type: 'text', config: {}, position: 0 }]
+          }),
+          is_global: 0,
+          is_primitive: 0,
+          children_count: 5, // Legacy has more
+          created_at: '2024-01-01',
+          updated_at: '2024-01-01'
+        }
+      ];
+
+      mockDb.all.mockResolvedValue({ results: mockResults });
+
+      const components = await getComponentsWithChildrenCount(mockDb as unknown as D1Database, '1');
+
+      expect(components[0].children_count).toBe(5); // Should use the larger value
+    });
   });
 
   describe('getComponentsByType', () => {

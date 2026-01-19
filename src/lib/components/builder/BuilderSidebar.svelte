@@ -37,6 +37,8 @@
   export let isBuiltIn = false;
   // Whether to show the page settings section (hidden when embedded in BuilderLeftPanel)
   export let showPageSettings = true;
+  // Whether to show the components section header (hidden when embedded in BuilderLeftPanel)
+  export let showComponentsHeader = true;
 
   // Entity labels based on mode
   $: entityLabel = mode === 'page' ? 'Page' : mode === 'layout' ? 'Layout' : 'Component';
@@ -122,6 +124,8 @@
   ];
 
   // Built-in component types that shouldn't appear in the custom components list
+  // This set is used to filter out GLOBAL components with these types
+  // (site-specific custom components can have these types and should still be shown)
   // Note: navbar, footer, hero, features are NOT in this list - they are editable built-in components from database
   const builtInTypes = new Set([
     'container',
@@ -144,7 +148,8 @@
   // 1. Current component being edited (prevent circular references)
   // 2. Empty custom components (those with no children) - but allow navbar/footer/hero/features which store children in config
   // 3. Global primitive components (they're already in the built-in library)
-  // 4. Components with built-in types (container, etc.) - but NOT navbar/footer/hero/features which are editable
+  // 4. GLOBAL components with built-in types (container, etc.) - but NOT site-specific custom components
+  //    Site-specific custom components can have any type and should still be shown
   $: availableComponents = components.filter(
     (c) =>
       c.id !== currentComponentId &&
@@ -155,7 +160,9 @@
         c.type === 'hero' ||
         c.type === 'features') &&
       !c.is_primitive &&
-      !builtInTypes.has(c.type)
+      // Only filter out built-in types for GLOBAL components
+      // Site-specific custom components can have these types and should still be shown
+      (!c.is_global || !builtInTypes.has(c.type))
   );
 
   // Reactive filtered components based on search and category
@@ -656,22 +663,24 @@
   {/if}
 
   <div class="components-section">
-    <div class="sidebar-header">
-      <button
-        class="section-header-inline"
-        on:click={() => {
-          componentsExpanded = !componentsExpanded;
-        }}
-      >
-        <h3>Components</h3>
-        <div class="chevron" class:expanded={componentsExpanded}>
-          <ChevronDown size={16} />
-        </div>
-      </button>
-      <button class="btn-close" on:click={() => dispatch('close')} aria-label="Close sidebar">
-        <X size={18} />
-      </button>
-    </div>
+    {#if showComponentsHeader}
+      <div class="sidebar-header">
+        <button
+          class="section-header-inline"
+          on:click={() => {
+            componentsExpanded = !componentsExpanded;
+          }}
+        >
+          <h3>Components</h3>
+          <div class="chevron" class:expanded={componentsExpanded}>
+            <ChevronDown size={16} />
+          </div>
+        </button>
+        <button class="btn-close" on:click={() => dispatch('close')} aria-label="Close sidebar">
+          <X size={18} />
+        </button>
+      </div>
+    {/if}
 
     {#if componentsExpanded}
       <div class="search-box">

@@ -30,6 +30,7 @@ describe('layouts database operations', () => {
     description: 'Default layout',
     slug: 'main',
     is_default: true,
+    is_builtin: false,
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z'
   };

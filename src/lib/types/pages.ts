@@ -90,6 +90,7 @@ export interface Layout {
   description?: string;
   slug: string;
   is_default: boolean;
+  is_builtin: boolean;
   created_at: string;
   updated_at: string;
 }
