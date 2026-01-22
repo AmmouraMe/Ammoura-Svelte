@@ -31,6 +31,7 @@
     resolveThemeColor
   } from '$lib/utils/editor/colorThemes';
   import { getComponentDisplayLabel, getDefaultConfig } from '$lib/utils/editor/componentDefaults';
+  import { createAutoScroll } from '$lib/utils/dragAutoScroll';
 
   type BuilderMode = 'page' | 'layout' | 'component' | 'primitive';
 
@@ -521,6 +522,60 @@
   let touchDragActive = false;
   let touchDragThreshold = 10; // Pixels before drag starts
   let treeListElement: HTMLElement | null = null;
+  let viewportElement: HTMLElement | null = null;
+
+  // Function to get the scrollable container for auto-scroll
+  // Different containers are scrollable in different modes:
+  // - Mobile edit mode: the tree-list or mobile-tree-view scrolls
+  // - Mobile preview mode: the canvas-viewport scrolls (the actual content container)
+  // - Desktop: the canvas-viewport scrolls
+  function getScrollableContainer(): HTMLElement | null {
+    if (isMobileView) {
+      if (mobileEditMode) {
+        // In edit mode, the tree-list is the scrollable element
+        if (canvasElement) {
+          // First try the tree-list (scrollable list of components)
+          const treeList = canvasElement.querySelector('.tree-list') as HTMLElement | null;
+          if (treeList) {
+            console.log('[DEBUG] getScrollableContainer: returning tree-list', {
+              scrollHeight: treeList.scrollHeight,
+              clientHeight: treeList.clientHeight,
+              maxScroll: treeList.scrollHeight - treeList.clientHeight
+            });
+            return treeList;
+          }
+          // Fallback to mobile-tree-view container
+          const treeView = canvasElement.querySelector('.mobile-tree-view') as HTMLElement | null;
+          if (treeView) {
+            console.log('[DEBUG] getScrollableContainer: returning mobile-tree-view', {
+              scrollHeight: treeView.scrollHeight,
+              clientHeight: treeView.clientHeight,
+              maxScroll: treeView.scrollHeight - treeView.clientHeight
+            });
+            return treeView;
+          }
+        }
+        // Last fallback - if tree view hasn't rendered yet, return null
+        // This prevents scrolling a non-scrollable container
+        console.log('[DEBUG] getScrollableContainer: returning null (no tree view found)');
+        return null;
+      }
+      // In preview mode, the viewport element is scrollable (not the outer canvas)
+      console.log('[DEBUG] getScrollableContainer: returning viewportElement (preview mode)');
+      return viewportElement;
+    }
+    // On desktop, the viewport element is scrollable
+    return viewportElement;
+  }
+
+  // Auto-scroll controller for touch drag operations
+  // Uses 80px edge threshold and accounts for cancel pill at bottom on mobile
+  const touchDragAutoScroll = createAutoScroll({
+    edgeThreshold: 80,
+    maxScrollSpeed: 15,
+    cancelZoneHeight: 60,
+    getScrollContainer: getScrollableContainer
+  });
 
   // Store refs to tree item elements for hit testing
   function getTreeItemElements(): HTMLElement[] {
@@ -682,6 +737,9 @@
       // Update ghost position
       updateTouchDragGhost(touchCurrentY);
 
+      // Update auto-scroll based on touch position
+      touchDragAutoScroll.update(touchCurrentY);
+
       // Clear previous indicators
       clearTouchDropIndicators();
 
@@ -697,6 +755,9 @@
 
   // Handle touch end
   function handleTouchDragEnd(_event: TouchEvent): void {
+    // Stop auto-scroll when drag ends
+    touchDragAutoScroll.stop();
+
     if (touchDragActive && touchDragItem && dragOverTreeItem && dragOverPosition) {
       // Perform the drop
       performTreeDrop(touchDragItem, dragOverTreeItem, dragOverPosition);
@@ -788,6 +849,14 @@
     }
   }
 
+  // Auto-scroll controller for sidebar component drags (separate from tree drag auto-scroll)
+  const sidebarDragAutoScroll = createAutoScroll({
+    edgeThreshold: 80,
+    maxScrollSpeed: 15,
+    cancelZoneHeight: 60,
+    getScrollContainer: getScrollableContainer
+  });
+
   // Track drop indicator position for root-level touch drops
   let rootDropIndicatorIndex: number | null = null;
   let _rootDropIndicatorY: number | null = null;
@@ -801,6 +870,11 @@
 
     const { componentType, clientX, clientY } = event.detail;
     sidebarDragComponentType = componentType;
+
+    // Update auto-scroll based on touch Y position (works even when touch is outside canvas)
+    console.log('[DEBUG] handleTouchDragOverCanvas: clientY =', clientY, 'isMobileView =', isMobileView, 'mobileEditMode =', mobileEditMode);
+    sidebarDragAutoScroll.update(clientY);
+
     const rect = canvasElement.getBoundingClientRect();
 
     // Check if touch is inside the canvas
@@ -920,6 +994,8 @@
 
   // Clean up sidebar drag state
   function cleanupSidebarDrop(): void {
+    // Stop auto-scroll when sidebar drag ends
+    sidebarDragAutoScroll.stop();
     rootDropIndicatorIndex = null;
     _rootDropIndicatorY = null;
     sidebarDragComponentType = null;
@@ -973,6 +1049,9 @@
       handleTouchDropOnCanvas as unknown as (e: Event) => void
     );
     removeTouchDragGhost();
+    // Clean up auto-scroll controllers
+    touchDragAutoScroll.stop();
+    sidebarDragAutoScroll.stop();
   });
 </script>
 
@@ -1374,6 +1453,7 @@
         class="canvas-viewport"
         class:fit-content={mode === 'component' || mode === 'primitive' || mode === 'layout'}
         class:scaled-viewport={needsScaling}
+        bind:this={viewportElement}
         style="width: {canvasWidth}; {needsScaling
           ? ''
           : 'max-width: 100%;'} background-color: {themeColors.background};"
@@ -1721,6 +1801,11 @@
     align-items: flex-start; /* Keep aligned to top to prevent clipping */
   }
 
+  /* In fit-content mode, wrapper should NOT stretch - let content determine height */
+  .builder-canvas.fit-content-mode .canvas-viewport-wrapper {
+    flex: 0 0 auto; /* Don't grow or shrink, size to content */
+  }
+
   /* Viewport wrapper for scaling on mobile */
   .canvas-viewport-wrapper {
     display: flex;
@@ -1728,6 +1813,8 @@
     align-items: center;
     width: 100%;
     max-width: 100%;
+    flex: 1; /* Fill available space like mobile-tree-view */
+    min-height: 0; /* Allow proper flex shrinking */
   }
 
   /* Scaled viewport wrapper - transforms the viewport to fit on mobile */
@@ -2024,31 +2111,37 @@
       padding: 0.5rem;
       padding-left: 0;
       padding-right: 0;
-      overflow: auto; /* Enable scrolling on mobile */
-      -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+      overflow: hidden; /* Don't scroll on outer container - let children scroll */
       position: relative; /* For scale indicator positioning */
+      /* flex: 1 and min-height: 0 are inherited - critical for flex layout */
     }
 
-    /* Viewport wrapper on mobile - ensure proper centering */
+    /* Viewport wrapper on mobile - fill available space */
     .canvas-viewport-wrapper {
       padding: 0;
       margin: 0;
+      min-height: 0; /* Allow shrinking in flex context */
+      /* Inherit flex: 1 from base styles to fill available space */
     }
 
-    /* When viewing mobile breakpoint on mobile - full width */
+    /* When viewing mobile breakpoint on mobile - full width, scrollable */
     .canvas-viewport:not(.scaled-viewport) {
       border-radius: 0;
       box-shadow: none;
-      max-height: none; /* Allow full height on mobile */
       width: 100% !important; /* Override breakpoint width on mobile */
       margin: 0;
+      /* Keep height constraints from base styles for proper scrolling */
+      /* height: 100% and max-height are inherited */
+      overflow-y: auto; /* Vertical scrolling for content */
+      -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
     }
 
     /* When viewing scaled (tablet/desktop) on mobile - keep original width */
     .canvas-viewport.scaled-viewport {
       border-radius: 6px;
-      max-height: none;
       margin: 0 auto;
+      overflow-y: auto; /* Enable scrolling inside scaled viewport */
+      -webkit-overflow-scrolling: touch;
       /* Width set by inline style to show actual breakpoint width */
     }
 
@@ -2108,9 +2201,9 @@
       margin-top: 1.5rem;
     }
 
-    /* Viewport wrapper on mobile needs overflow visible for scaling */
+    /* Viewport wrapper on mobile needs overflow visible for scaling transform */
     .canvas-viewport-wrapper.scaled {
-      overflow: visible;
+      overflow: visible; /* Allow scaled content to overflow visually */
     }
   }
 

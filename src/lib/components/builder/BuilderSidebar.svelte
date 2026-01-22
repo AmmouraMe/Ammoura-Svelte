@@ -60,6 +60,9 @@
   const touchDragThreshold = 10;
   let touchStartedOnHandle = false;
 
+  // Note: Auto-scroll for touch drag is handled by BuilderCanvas.svelte
+  // The sidebar dispatches touchComponentDragOver events which the canvas handles
+
   // Component library organized by category
   const componentLibrary = {
     containers: [
@@ -524,6 +527,7 @@
       updateTouchDragGhost();
 
       // Dispatch event for drop zones to listen to
+      // Auto-scroll is handled by BuilderCanvas when it receives this event
       window.dispatchEvent(
         new CustomEvent('touchComponentDragOver', {
           detail: {

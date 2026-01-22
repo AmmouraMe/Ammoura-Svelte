@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { WidgetConfig, PageComponent } from '$lib/types/pages';
   import { ChevronDown, User } from 'lucide-svelte';
+  import { fly } from 'svelte/transition';
+  import { quintOut } from 'svelte/easing';
   import FrontendComponentRenderer from '$lib/components/FrontendComponentRenderer.svelte';
   import {
     substituteTemplate,
@@ -146,6 +148,7 @@
         padding: {menuPadding.top}px {menuPadding.right}px {menuPadding.bottom}px {menuPadding.left}px;
       "
       role="menu"
+      transition:fly={{ y: -8, duration: 200, easing: quintOut }}
     >
       {#if children.length > 0}
         {#each children as child (child.id)}

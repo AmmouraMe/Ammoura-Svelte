@@ -1283,49 +1283,53 @@
     display: none;
   }
 
-  /* Touch drag cancel zone */
+  /* Touch drag cancel zone - floating pill at bottom center */
   .touch-drag-cancel-zone {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 80px;
-    background: linear-gradient(0deg, rgba(239, 68, 68, 0.95) 0%, rgba(239, 68, 68, 0.7) 100%);
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    height: auto;
+    padding: 0.75rem 1.5rem;
+    background: rgba(239, 68, 68, 0.95);
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 8px;
     z-index: 9999;
     color: white;
+    border-radius: 2rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     transition: all 0.2s ease;
     animation: cancelZoneSlideIn 0.2s ease-out;
   }
 
   @keyframes cancelZoneSlideIn {
     from {
-      transform: translateY(100%);
+      transform: translateX(-50%) translateY(100%);
       opacity: 0;
     }
     to {
-      transform: translateY(0);
+      transform: translateX(-50%) translateY(0);
       opacity: 1;
     }
   }
 
   .touch-drag-cancel-zone.hovered {
-    height: 100px;
-    background: linear-gradient(0deg, rgba(220, 38, 38, 1) 0%, rgba(185, 28, 28, 0.95) 100%);
+    padding: 1rem 2rem;
+    background: rgba(220, 38, 38, 1);
+    box-shadow: 0 6px 20px rgba(220, 38, 38, 0.5);
   }
 
   .touch-drag-cancel-zone .cancel-icon {
-    font-size: 24px;
+    font-size: 18px;
     font-weight: bold;
     line-height: 1;
   }
 
   .touch-drag-cancel-zone.hovered .cancel-icon {
-    font-size: 28px;
+    font-size: 20px;
     animation: pulse 0.5s ease-in-out infinite alternate;
   }
 
@@ -1340,9 +1344,10 @@
 
   .touch-drag-cancel-zone .cancel-text {
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    white-space: nowrap;
   }
 
   /* Mobile responsive styles */
