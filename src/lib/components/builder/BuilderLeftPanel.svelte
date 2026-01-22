@@ -25,6 +25,8 @@
   export let canAddComponents = true;
   // Mobile view state
   export let isMobileView = false;
+  // Track if dragging is in progress - keeps sidebar in DOM but hidden
+  export let isDraggingComponent = false;
 
   // Properties panel props
   export let selectedComponent: PageComponent | null = null;
@@ -84,14 +86,20 @@
   }
 </script>
 
-<aside class="builder-left-panel" class:collapsed class:mobile={isMobileView}>
-  {#if collapsed && !isMobileView}
+<aside
+  class="builder-left-panel"
+  class:collapsed
+  class:mobile={isMobileView}
+  class:dragging-hidden={isDraggingComponent}
+>
+  {#if collapsed && !isMobileView && !isDraggingComponent}
     <button type="button" class="collapsed-toggle" on:click={handleToggle} title="Expand panel">
       <LayoutGrid size={20} />
       <span class="collapsed-label">Panel</span>
     </button>
-  {:else if !collapsed}
-    <div class="panel-header">
+  {:else if !collapsed || isDraggingComponent}
+    <!-- When dragging, keep sidebar in DOM but visually hidden so touch listeners stay attached -->
+    <div class="panel-header" class:visually-hidden={isDraggingComponent}>
       <!-- Mobile close button -->
       {#if isMobileView}
         <button type="button" class="btn-mobile-close" on:click={handleClose} title="Close panel">
@@ -117,7 +125,7 @@
       </button>
     </div>
 
-    <div class="panel-content">
+    <div class="panel-content" class:visually-hidden={isDraggingComponent}>
       {#if activeTab === 'components'}
         <div class="components-wrapper">
           <BuilderSidebar
@@ -197,6 +205,21 @@
     flex-direction: column;
     overflow: hidden;
     transition: width 0.2s ease;
+  }
+
+  /* When dragging, hide panel visually but keep it in DOM for touch event listeners */
+  .builder-left-panel.dragging-hidden {
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+    left: -9999px;
+  }
+
+  /* Hide individual elements when dragging */
+  .visually-hidden {
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
   }
 
   .builder-left-panel.collapsed {

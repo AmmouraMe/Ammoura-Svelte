@@ -19,7 +19,8 @@
     LayoutComponent,
     ComponentConfig,
     ColorThemeDefinition,
-    Component
+    Component,
+    ComponentType
   } from '$lib/types/pages';
   import type { SiteContext, UserInfo } from '$lib/utils/templateSubstitution';
   import ComponentRenderer from '$lib/components/admin/ComponentRenderer.svelte';
@@ -29,7 +30,7 @@
     generateThemeStyles,
     resolveThemeColor
   } from '$lib/utils/editor/colorThemes';
-  import { getComponentDisplayLabel } from '$lib/utils/editor/componentDefaults';
+  import { getComponentDisplayLabel, getDefaultConfig } from '$lib/utils/editor/componentDefaults';
 
   type BuilderMode = 'page' | 'layout' | 'component' | 'primitive';
 
@@ -72,9 +73,20 @@
   export let isMobileView = false;
   // Mobile edit mode: when ON, show component controls; when OFF, show clean preview
   export let mobileEditMode = false;
+  // Track if touch dragging a component from sidebar
+  export let isTouchDragging = false;
 
-  // Computed: Should we show edit controls? Always on desktop, only when edit mode is on for mobile
-  $: showEditControls = !isMobileView || mobileEditMode;
+  // Computed: Should we show edit controls? Always on desktop, only when edit mode is on for mobile, OR when touch dragging
+  $: showEditControls = !isMobileView || mobileEditMode || isTouchDragging;
+
+  // Clean up drop indicators when touch dragging ends
+  $: if (!isTouchDragging) {
+    rootDropIndicatorIndex = null;
+    _rootDropIndicatorY = null;
+    sidebarDragComponentType = null;
+    dragOverTreeItem = null;
+    dragOverPosition = null;
+  }
 
   // Toggle mobile edit mode
   function toggleMobileEditMode(): void {
@@ -512,8 +524,18 @@
 
   // Store refs to tree item elements for hit testing
   function getTreeItemElements(): HTMLElement[] {
-    if (!treeListElement) return [];
-    return Array.from(treeListElement.querySelectorAll('.tree-item'));
+    // If we have a reference to the tree list, use it
+    if (treeListElement) {
+      return Array.from(treeListElement.querySelectorAll('.tree-item'));
+    }
+    // Otherwise, try to find tree items from the canvas element (for sidebar drags)
+    if (canvasElement) {
+      const treeList = canvasElement.querySelector('.tree-list');
+      if (treeList) {
+        return Array.from(treeList.querySelectorAll('.tree-item'));
+      }
+    }
+    return [];
   }
 
   // Find which tree item is under the touch point
@@ -766,15 +788,190 @@
     }
   }
 
+  // Track drop indicator position for root-level touch drops
+  let rootDropIndicatorIndex: number | null = null;
+  let _rootDropIndicatorY: number | null = null;
+
+  // Track sidebar component drag state for tree view
+  let sidebarDragComponentType: string | null = null;
+
+  // Handle touch drag over canvas for root-level drops OR tree view drops
+  function handleTouchDragOverCanvas(event: CustomEvent): void {
+    if (!canvasElement) return;
+
+    const { componentType, clientX, clientY } = event.detail;
+    sidebarDragComponentType = componentType;
+    const rect = canvasElement.getBoundingClientRect();
+
+    // Check if touch is inside the canvas
+    const isInsideCanvas =
+      clientX >= rect.left &&
+      clientX <= rect.right &&
+      clientY >= rect.top &&
+      clientY <= rect.bottom;
+
+    if (!isInsideCanvas) {
+      rootDropIndicatorIndex = null;
+      _rootDropIndicatorY = null;
+      clearTouchDropIndicators();
+      return;
+    }
+
+    // If mobile edit mode is on, use tree view drop zones
+    if (isMobileView && mobileEditMode) {
+      // Find which tree item is under the touch point
+      const target = findTreeItemAtPoint(clientY);
+      if (target) {
+        // Clear previous indicators first
+        clearTouchDropIndicators();
+        dragOverTreeItem = target.component;
+        dragOverPosition = target.position;
+        target.element.classList.add(`drag-over-${target.position}`);
+      } else {
+        // If no target found, indicate drop at end
+        clearTouchDropIndicators();
+        rootDropIndicatorIndex = sortedComponents.filter((c) => !c.parent_id).length;
+      }
+      return;
+    }
+
+    // Regular canvas mode - calculate where component would be inserted
+    const rootComponents = pageComponents.filter((c) => !c.parent_id);
+    const sortedRootComponents = [...rootComponents].sort((a, b) => a.position - b.position);
+
+    // Find the preview-content area that contains the components
+    const previewContent = canvasElement.querySelector('.preview-content');
+    if (!previewContent) {
+      rootDropIndicatorIndex = sortedRootComponents.length;
+      _rootDropIndicatorY = null;
+      return;
+    }
+
+    // Find position based on Y coordinate
+    let insertIndex = sortedRootComponents.length;
+    let indicatorY: number | null = null;
+
+    for (let i = 0; i < sortedRootComponents.length; i++) {
+      const componentEl = previewContent.querySelector(
+        `[data-component-id="${sortedRootComponents[i].id}"]`
+      );
+      if (componentEl) {
+        const compRect = componentEl.getBoundingClientRect();
+        const midY = compRect.top + compRect.height / 2;
+        if (clientY < midY) {
+          insertIndex = i;
+          indicatorY = compRect.top;
+          break;
+        }
+        // Update to be after this component
+        indicatorY = compRect.bottom;
+      }
+    }
+
+    rootDropIndicatorIndex = insertIndex;
+    _rootDropIndicatorY = indicatorY;
+  }
+
+  // Handle touch drop on canvas for root-level components OR tree view drops
+  function handleTouchDropOnCanvas(event: CustomEvent): void {
+    const { componentType } = event.detail;
+
+    if (!componentType) {
+      cleanupSidebarDrop();
+      return;
+    }
+
+    // Determine position for new component
+    let position = 0;
+    let parentId: string | undefined = undefined;
+
+    // If we have a tree item target (from drag over), use that position
+    if (dragOverTreeItem && dragOverPosition) {
+      if (dragOverPosition === 'inside') {
+        parentId = dragOverTreeItem.id;
+        position = getChildren(dragOverTreeItem.id).length;
+        expandedNodes.add(dragOverTreeItem.id);
+        expandedNodes = expandedNodes;
+      } else if (dragOverPosition === 'before') {
+        parentId = dragOverTreeItem.parent_id || undefined;
+        position = dragOverTreeItem.position;
+      } else {
+        parentId = dragOverTreeItem.parent_id || undefined;
+        position = dragOverTreeItem.position + 1;
+      }
+    } else if (rootDropIndicatorIndex !== null) {
+      // Use the calculated drop indicator position
+      position = rootDropIndicatorIndex;
+    } else {
+      // Default: add at the end of root components
+      const rootComps = pageComponents.filter((c) => !c.parent_id);
+      position = rootComps.length;
+    }
+
+    // Create and add the new component
+    const newComponent = createNewComponent(componentType, position);
+    if (parentId) {
+      newComponent.parent_id = parentId;
+    }
+
+    dispatch('addComponent', newComponent);
+    cleanupSidebarDrop();
+  }
+
+  // Clean up sidebar drag state
+  function cleanupSidebarDrop(): void {
+    rootDropIndicatorIndex = null;
+    _rootDropIndicatorY = null;
+    sidebarDragComponentType = null;
+    dragOverTreeItem = null;
+    dragOverPosition = null;
+    clearTouchDropIndicators();
+  }
+
+  // Create a new root-level component
+  function createNewComponent(componentType: string, position: number): PageComponent {
+    const typedComponentType = componentType as ComponentType;
+    const defaultConfig = getDefaultConfig(typedComponentType);
+
+    const newComponent: PageComponent = {
+      id: crypto.randomUUID(),
+      page_id: '', // Will be set by the handler
+      type: typedComponentType,
+      position,
+      config: defaultConfig,
+      created_at: Date.now(),
+      updated_at: Date.now()
+    };
+
+    return newComponent;
+  }
+
   // Set up global touch listeners
   onMount(() => {
     document.addEventListener('touchmove', onGlobalTouchMove, { passive: false });
     document.addEventListener('touchend', onGlobalTouchEnd);
+    // Listen for touch drag/drop events from sidebar
+    window.addEventListener(
+      'touchComponentDragOver',
+      handleTouchDragOverCanvas as unknown as (e: Event) => void
+    );
+    window.addEventListener(
+      'touchComponentDrop',
+      handleTouchDropOnCanvas as unknown as (e: Event) => void
+    );
   });
 
   onDestroy(() => {
     document.removeEventListener('touchmove', onGlobalTouchMove);
     document.removeEventListener('touchend', onGlobalTouchEnd);
+    window.removeEventListener(
+      'touchComponentDragOver',
+      handleTouchDragOverCanvas as unknown as (e: Event) => void
+    );
+    window.removeEventListener(
+      'touchComponentDrop',
+      handleTouchDropOnCanvas as unknown as (e: Event) => void
+    );
     removeTouchDragGhost();
   });
 </script>
@@ -915,13 +1112,24 @@
       </div>
 
       {#if sortedComponents.length === 0}
-        <div class="tree-empty-state">
-          <div class="empty-icon">📦</div>
-          <p>No components yet</p>
-          <p class="hint">Add components from the sidebar</p>
+        <div class="tree-empty-state" class:sidebar-drag-active={sidebarDragComponentType !== null}>
+          {#if sidebarDragComponentType}
+            <div class="empty-icon">📥</div>
+            <p>Drop component here</p>
+            <p class="hint">Release to add your first component</p>
+          {:else}
+            <div class="empty-icon">📦</div>
+            <p>No components yet</p>
+            <p class="hint">Add components from the sidebar</p>
+          {/if}
         </div>
       {:else}
-        <div class="tree-list" class:drag-active={touchDragActive || draggedTreeItem !== null}>
+        <div
+          class="tree-list"
+          class:drag-active={touchDragActive ||
+            draggedTreeItem !== null ||
+            sidebarDragComponentType !== null}
+        >
           {#each rootComponents as component (component.id)}
             {@const isExpanded = expandedNodes.has(component.id)}
             {@const componentHasChildren = hasChildren(component.id)}
@@ -1317,6 +1525,13 @@
             {/each}
           {:else}
             <!-- Normal mode: render page components directly -->
+            <!-- Drop indicator at the very beginning -->
+            {#if isTouchDragging && rootDropIndicatorIndex === 0 && componentsWithChildren.length > 0}
+              <div class="touch-drop-indicator">
+                <div class="drop-indicator-line"></div>
+                <span class="drop-indicator-label">Drop here</span>
+              </div>
+            {/if}
             {#each componentsWithChildren as component, index (component.id)}
               <div
                 class="component-wrapper"
@@ -1402,9 +1617,24 @@
                   />
                 </div>
               </div>
+              <!-- Drop indicator after this component -->
+              {#if isTouchDragging && rootDropIndicatorIndex === index + 1}
+                <div class="touch-drop-indicator">
+                  <div class="drop-indicator-line"></div>
+                  <span class="drop-indicator-label">Drop here</span>
+                </div>
+              {/if}
             {/each}
 
-            {#if pageComponents.length === 0}
+            <!-- Drop indicator at the end if no components -->
+            {#if isTouchDragging && rootDropIndicatorIndex === 0 && pageComponents.length === 0}
+              <div class="touch-drop-indicator">
+                <div class="drop-indicator-line"></div>
+                <span class="drop-indicator-label">Drop here to add</span>
+              </div>
+            {/if}
+
+            {#if pageComponents.length === 0 && !isTouchDragging}
               <div class="empty-canvas">
                 {#if mode === 'component'}
                   <div class="empty-icon">📦</div>
@@ -2357,6 +2587,33 @@
     padding: 3rem 1rem;
     text-align: center;
     color: var(--color-text-secondary, #6b7280);
+    transition: all 0.2s ease;
+    border: 2px dashed transparent;
+    border-radius: 12px;
+    margin: 0.5rem;
+  }
+
+  .tree-empty-state.sidebar-drag-active {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+  }
+
+  .tree-empty-state.sidebar-drag-active .empty-icon {
+    opacity: 1;
+    animation: bounceIn 0.3s ease;
+  }
+
+  @keyframes bounceIn {
+    0% {
+      transform: scale(0.8);
+    }
+    50% {
+      transform: scale(1.1);
+    }
+    100% {
+      transform: scale(1);
+    }
   }
 
   .tree-empty-state .empty-icon {
@@ -2652,5 +2909,45 @@
       margin-left: 1rem;
       padding-left: 0.5rem;
     }
+  }
+
+  /* Touch drop indicator for mobile drag and drop */
+  .touch-drop-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 0;
+    position: relative;
+    animation: dropIndicatorPulse 1s ease-in-out infinite;
+  }
+
+  @keyframes dropIndicatorPulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+
+  .drop-indicator-line {
+    flex: 1;
+    height: 3px;
+    background: linear-gradient(90deg, transparent 0%, #3b82f6 20%, #3b82f6 80%, transparent 100%);
+    border-radius: 2px;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+  }
+
+  .drop-indicator-label {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
   }
 </style>

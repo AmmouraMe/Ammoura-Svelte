@@ -21,6 +21,8 @@
   import ThemePalette from './ThemePalette.svelte';
   import { themeStore } from '$lib/stores/theme';
   import { builderContextStore } from '$lib/stores/builderContext';
+  import { getDefaultConfig } from '$lib/utils/editor/componentDefaults';
+  import type { ComponentType } from '$lib/types/pages';
 
   type BuilderMode = 'page' | 'layout' | 'component' | 'primitive';
 
@@ -87,6 +89,9 @@
   // Flag to track if we need to sync components on prop change
   let needsComponentSync = false;
 
+  // Flag to skip the next component sync (used after publishing to keep local state)
+  let skipNextSync = false;
+
   // Sync state when props change from external data refresh (e.g., after invalidateAll())
   // This handles the case where invalidateAll() is called after publishing/saving
   // Skip if we have an internally set revision ID (e.g., after saving a draft)
@@ -96,7 +101,11 @@
       isViewingPublishedRevision = currentRevisionIsPublished;
     }
     internalRevisionLoad = false; // Reset the flag
-    needsComponentSync = true;
+    // Only sync if we haven't just published (skipNextSync flag)
+    if (!skipNextSync) {
+      needsComponentSync = true;
+    }
+    skipNextSync = false;
   }
 
   // Computed property for the actual revision ID to use (internal takes priority)
@@ -248,7 +257,8 @@
 
   // UI state
   let showLeftSidebar = true;
-  let sidebarCollapsedForDrag = false; // Track if sidebar was collapsed due to component drag
+  let isTouchDraggingComponent = false; // Track if we're currently touch-dragging a component
+  let cancelZoneHovered = false; // Track if cancel zone is being hovered
   let showAIPanel = false;
   let showRevisionModal = false;
   let showThemePalette = false;
@@ -287,17 +297,6 @@
     } else {
       mobileActivePanel = panel;
       showLeftSidebar = panel === 'sidebar' || panel === 'properties';
-    }
-  }
-
-  // Handle global drag end to restore sidebar if it was collapsed for dragging
-  function handleGlobalDragEnd(): void {
-    if (sidebarCollapsedForDrag) {
-      showLeftSidebar = true;
-      sidebarCollapsedForDrag = false;
-      if (isMobileView) {
-        mobileActivePanel = 'sidebar';
-      }
     }
   }
 
@@ -633,6 +632,8 @@
         currentRevisionId: effectiveRevisionId,
         hasUnsavedChanges
       });
+      // Skip the next component sync from invalidateAll() - we just published our local state
+      skipNextSync = true;
       // After publishing, we're now viewing a published revision
       isViewingPublishedRevision = true;
       // Update lastSavedState to reflect the published content
@@ -902,6 +903,82 @@
 
   // Auto-save
   let autoSaveInterval: ReturnType<typeof setInterval>;
+
+  // Handle touch component drag events for cancel zone
+  function handleTouchDragOver(event: CustomEvent): void {
+    const { clientY } = event.detail;
+    // Check if over cancel zone (bottom 80px of screen when dragging)
+    const cancelZoneHeight = 80;
+    const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
+    cancelZoneHovered = clientY > windowHeight - cancelZoneHeight;
+
+    // Update ghost styling based on position
+    const ghost = document.querySelector('.touch-drag-ghost');
+    if (ghost) {
+      ghost.classList.toggle('over-cancel', cancelZoneHovered);
+      // Check if over a valid drop zone (canvas area)
+      const canvas = document.querySelector('.builder-canvas');
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect();
+        const overCanvas =
+          event.detail.clientX >= rect.left &&
+          event.detail.clientX <= rect.right &&
+          clientY >= rect.top &&
+          clientY <= rect.bottom &&
+          !cancelZoneHovered;
+        ghost.classList.toggle('over-canvas', overCanvas);
+      }
+    }
+  }
+
+  // Fallback UUID generator for mobile browsers that don't support crypto.randomUUID
+  function generateUUID(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+    // Fallback for older browsers
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+
+  function handleTouchDragEnd(event: Event): void {
+    // Handle the component drop
+    const customEvent = event as CustomEvent;
+    const detail = customEvent.detail;
+    const componentType = detail?.componentType;
+
+    if (componentType) {
+      try {
+        // Create new component at end of root components
+        const rootComps = pageComponents.filter((c) => !c.parent_id);
+        const position = rootComps.length;
+
+        const typedComponentType = componentType as ComponentType;
+        const defaultConfig = getDefaultConfig(typedComponentType);
+
+        const newComponent: PageComponent = {
+          id: generateUUID(),
+          page_id: page?.id || '',
+          type: typedComponentType,
+          position,
+          config: defaultConfig,
+          created_at: Date.now(),
+          updated_at: Date.now()
+        };
+
+        handleAddComponent(newComponent);
+      } catch (err) {
+        alert('ERROR: ' + (err instanceof Error ? err.message : String(err)));
+      }
+    }
+
+    isTouchDraggingComponent = false;
+    cancelZoneHovered = false;
+  }
+
   onMount(() => {
     // Mark as initialized so we don't reload components from props
     initialized = true;
@@ -931,8 +1008,20 @@
       }
     }, 30000); // Auto-save every 30 seconds
 
+    // Listen for touch drag events
+    window.addEventListener(
+      'touchComponentDragOver',
+      handleTouchDragOver as unknown as (e: Event) => void
+    );
+    window.addEventListener('touchComponentDrop', handleTouchDragEnd);
+
     return () => {
       clearInterval(autoSaveInterval);
+      window.removeEventListener(
+        'touchComponentDragOver',
+        handleTouchDragOver as unknown as (e: Event) => void
+      );
+      window.removeEventListener('touchComponentDrop', handleTouchDragEnd);
     };
   });
 
@@ -953,11 +1042,7 @@
   }
 </script>
 
-<svelte:window
-  on:keydown={handleKeydown}
-  on:resize={checkMobileView}
-  on:dragend={handleGlobalDragEnd}
-/>
+<svelte:window on:keydown={handleKeydown} on:resize={checkMobileView} />
 
 <div class="advanced-builder" class:mobile-view={isMobileView}>
   <BuilderToolbar
@@ -1005,8 +1090,8 @@
   />
 
   <div class="builder-content" class:mobile-sidebar-open={isMobileView && showLeftSidebar}>
-    <!-- Mobile overlay backdrop -->
-    {#if isMobileView && showLeftSidebar}
+    <!-- Mobile overlay backdrop (hide during touch drag) -->
+    {#if isMobileView && showLeftSidebar && !isTouchDraggingComponent}
       <button
         class="mobile-overlay"
         on:click={() => {
@@ -1034,6 +1119,7 @@
       {colorThemes}
       collapsed={!showLeftSidebar}
       {isMobileView}
+      isDraggingComponent={isTouchDraggingComponent}
       on:addComponent={(e) => handleAddComponent(e.detail)}
       on:selectComponent={(e) => handleSelectComponent(e.detail)}
       on:selectWidget={(e) => handleSelectComponent(e.detail)}
@@ -1065,23 +1151,17 @@
         }
       }}
       on:componentDragStart={() => {
-        if (showLeftSidebar) {
-          sidebarCollapsedForDrag = true;
-          showLeftSidebar = false;
-          if (isMobileView) {
-            mobileActivePanel = 'canvas';
-          }
+        // Set dragging state - sidebar will be visually hidden but kept in DOM
+        // This allows touch event listeners to stay attached on iOS
+        isTouchDraggingComponent = true;
+        // Auto-enable edit mode on mobile so user can see tree view with drop zones
+        if (isMobileView) {
+          mobileEditMode = true;
         }
       }}
       on:componentDragEnd={() => {
-        // This may not fire if the element is detached, so we use global dragend as backup
-        if (sidebarCollapsedForDrag) {
-          showLeftSidebar = true;
-          sidebarCollapsedForDrag = false;
-          if (isMobileView) {
-            mobileActivePanel = 'sidebar';
-          }
-        }
+        isTouchDraggingComponent = false;
+        cancelZoneHovered = false;
       }}
     />
 
@@ -1103,6 +1183,8 @@
       {pageProperties}
       {isMobileView}
       {mobileEditMode}
+      isTouchDragging={isTouchDraggingComponent}
+      on:addComponent={(e) => handleAddComponent(e.detail)}
       on:toggleMobileEditMode={() => {
         mobileEditMode = !mobileEditMode;
       }}
@@ -1160,6 +1242,21 @@
       colorTheme = activeColorTheme;
     }}
   />
+
+  <!-- Mobile touch drag cancel zone - appears at bottom when dragging -->
+  {#if isTouchDraggingComponent && isMobileView}
+    <div
+      class="touch-drag-cancel-zone"
+      class:hovered={cancelZoneHovered}
+      role="button"
+      aria-label="Cancel adding component"
+    >
+      <span class="cancel-icon">✕</span>
+      <span class="cancel-text"
+        >{cancelZoneHovered ? 'Release to cancel' : 'Drag here to cancel'}</span
+      >
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -1184,6 +1281,68 @@
   /* Mobile overlay backdrop */
   .mobile-overlay {
     display: none;
+  }
+
+  /* Touch drag cancel zone */
+  .touch-drag-cancel-zone {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background: linear-gradient(0deg, rgba(239, 68, 68, 0.95) 0%, rgba(239, 68, 68, 0.7) 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    z-index: 9999;
+    color: white;
+    transition: all 0.2s ease;
+    animation: cancelZoneSlideIn 0.2s ease-out;
+  }
+
+  @keyframes cancelZoneSlideIn {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .touch-drag-cancel-zone.hovered {
+    height: 100px;
+    background: linear-gradient(0deg, rgba(220, 38, 38, 1) 0%, rgba(185, 28, 28, 0.95) 100%);
+  }
+
+  .touch-drag-cancel-zone .cancel-icon {
+    font-size: 24px;
+    font-weight: bold;
+    line-height: 1;
+  }
+
+  .touch-drag-cancel-zone.hovered .cancel-icon {
+    font-size: 28px;
+    animation: pulse 0.5s ease-in-out infinite alternate;
+  }
+
+  @keyframes pulse {
+    from {
+      transform: scale(1);
+    }
+    to {
+      transform: scale(1.1);
+    }
+  }
+
+  .touch-drag-cancel-zone .cancel-text {
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 
   /* Mobile responsive styles */

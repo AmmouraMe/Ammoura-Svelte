@@ -13,7 +13,9 @@ import {
   buildLayoutRevisionTree,
   layoutToRevisionData,
   revisionDataToLayout,
-  ensureLayoutHasRevision
+  ensureLayoutHasRevision,
+  getOriginalLayoutRevision,
+  resetLayoutToOriginal
 } from './layout-revisions';
 
 // Mock the revisions-service module
@@ -286,6 +288,101 @@ describe('layout-revisions database operations', () => {
       );
 
       expect(result.id).toBe('rev2');
+    });
+  });
+
+  describe('getOriginalLayoutRevision', () => {
+    it('should return the first (oldest) revision for a layout', async () => {
+      const mockOriginalRevision = {
+        id: 'rev1',
+        site_id: siteId,
+        entity_type: 'layout',
+        entity_id: '1',
+        revision_hash: 'abc12345',
+        data: JSON.stringify({
+          name: 'Original Layout',
+          slug: 'original',
+          is_default: true,
+          widgets: [{ id: 'w1', type: 'yield', position: 0, config: {} }]
+        }),
+        created_at: 100
+      };
+
+      const mockFirst = vi.fn().mockResolvedValue(mockOriginalRevision);
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const localMockDb = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getOriginalLayoutRevision(localMockDb, siteId, layoutId);
+
+      expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('ORDER BY created_at ASC'));
+      expect(result).toBeTruthy();
+      expect(result!.data.name).toBe('Original Layout');
+    });
+
+    it('should return null when no revisions exist', async () => {
+      const mockFirst = vi.fn().mockResolvedValue(null);
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const localMockDb = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getOriginalLayoutRevision(localMockDb, siteId, layoutId);
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('resetLayoutToOriginal', () => {
+    it('should reset layout to original revision data', async () => {
+      const originalData = {
+        name: 'Original Layout',
+        description: 'Original description',
+        slug: 'original',
+        is_default: true,
+        widgets: [{ id: 'w1', type: 'yield', position: 0, config: { key: 'value' } }]
+      };
+
+      const mockOriginalRevision = {
+        id: 'rev1',
+        site_id: siteId,
+        entity_type: 'layout',
+        entity_id: '1',
+        revision_hash: 'abc12345',
+        data: JSON.stringify(originalData),
+        created_at: 100
+      };
+
+      const mockFirst = vi.fn().mockResolvedValue(mockOriginalRevision);
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBind = vi.fn().mockImplementation(() => ({ first: mockFirst, run: mockRun }));
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const localMockDb = { prepare: mockPrepare } as unknown as D1Database;
+
+      // Mock setCurrentRevision
+      (setCurrentRevision as Mock).mockResolvedValue(undefined);
+
+      const result = await resetLayoutToOriginal(localMockDb, siteId, layoutId);
+
+      expect(result).toBeTruthy();
+      expect(result!.name).toBe('Original Layout');
+      expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('UPDATE layouts'));
+      expect(mockPrepare).toHaveBeenCalledWith(
+        expect.stringContaining('DELETE FROM layout_widgets')
+      );
+      expect(mockPrepare).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO layout_widgets')
+      );
+    });
+
+    it('should return null when no original revision exists', async () => {
+      const mockFirst = vi.fn().mockResolvedValue(null);
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const localMockDb = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await resetLayoutToOriginal(localMockDb, siteId, layoutId);
+
+      expect(result).toBeNull();
     });
   });
 });

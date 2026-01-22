@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy } from 'svelte';
   import {
-    Plus,
+    GripVertical,
     X,
     Search,
     Layout,
@@ -58,6 +58,7 @@
   let touchCurrentPos = { x: 0, y: 0 };
   let isTouchDragging = false;
   const touchDragThreshold = 10;
+  let touchStartedOnHandle = false;
 
   // Component library organized by category
   const componentLibrary = {
@@ -470,18 +471,34 @@
 
   // ========== Touch Drag-and-Drop for Mobile ==========
 
-  function handleComponentTouchStart(event: TouchEvent, componentType: string): void {
+  function handleDragHandleTouchStart(event: TouchEvent, componentType: string): void {
     if (event.touches.length !== 1) return;
+
+    // On iOS, we should NOT call preventDefault on touchstart as it can cancel the touch sequence
+    // Instead, we'll call it on touchmove once we've determined it's a drag
+    event.stopPropagation();
 
     const touch = event.touches[0];
     touchStartPos = { x: touch.clientX, y: touch.clientY };
     touchCurrentPos = { x: touch.clientX, y: touch.clientY };
     touchDragComponentType = componentType;
     isTouchDragging = false;
+    touchStartedOnHandle = true;
+
+    // Add global touch listeners for iOS compatibility
+    // iOS doesn't bubble touch events well, so we listen globally
+    // Use capture phase to ensure we get the events
+    document.addEventListener('touchmove', handleGlobalTouchMove, {
+      passive: false,
+      capture: true
+    });
+    document.addEventListener('touchend', handleGlobalTouchEnd, { capture: true });
+    document.addEventListener('touchcancel', handleGlobalTouchCancel, { capture: true });
   }
 
-  function handleComponentTouchMove(event: TouchEvent): void {
-    if (touchDragComponentType === null) return;
+  function handleGlobalTouchMove(event: TouchEvent): void {
+    // Only process if touch started on drag handle
+    if (!touchStartedOnHandle || touchDragComponentType === null) return;
     if (event.touches.length !== 1) return;
 
     const touch = event.touches[0];
@@ -494,11 +511,16 @@
 
     if (!isTouchDragging && distance > touchDragThreshold) {
       isTouchDragging = true;
-      createTouchDragGhost(touchDragComponentType);
+      // Create and show ghost when threshold is passed
+      createTouchDragGhost(touchDragComponentType, false);
+      // Dispatch event to hide sidebar when drag starts
+      dispatch('componentDragStart');
     }
 
     if (isTouchDragging) {
-      event.preventDefault(); // Prevent scrolling while dragging
+      // Now we can prevent default since we know it's a drag
+      event.preventDefault();
+      event.stopPropagation();
       updateTouchDragGhost();
 
       // Dispatch event for drop zones to listen to
@@ -514,62 +536,182 @@
     }
   }
 
-  function handleComponentTouchEnd(event: TouchEvent): void {
-    if (touchDragComponentType === null) return;
+  function handleGlobalTouchEnd(event: TouchEvent): void {
+    if (!touchStartedOnHandle || touchDragComponentType === null) {
+      removeGlobalTouchListeners();
+      touchStartedOnHandle = false;
+      return;
+    }
 
     if (isTouchDragging) {
       // Find the last touch position
       const touch = event.changedTouches[0];
 
-      // Dispatch drop event for drop zones
-      window.dispatchEvent(
-        new CustomEvent('touchComponentDrop', {
-          detail: {
-            componentType: touchDragComponentType,
-            clientX: touch.clientX,
-            clientY: touch.clientY
-          }
-        })
-      );
+      // Check if dropped on cancel zone (bottom 80px of screen)
+      const cancelZoneHeight = 80;
+      const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
+      const isOnCancelZone = touch.clientY > windowHeight - cancelZoneHeight;
+
+      if (!isOnCancelZone) {
+        // Dispatch drop event for drop zones (only if not cancelled)
+        window.dispatchEvent(
+          new CustomEvent('touchComponentDrop', {
+            detail: {
+              componentType: touchDragComponentType,
+              clientX: touch.clientX,
+              clientY: touch.clientY
+            }
+          })
+        );
+      }
+
+      // Dispatch event to restore sidebar
+      dispatch('componentDragEnd');
     }
 
     // Clean up
+    removeGlobalTouchListeners();
     cleanupTouchDrag();
+  }
+
+  function handleGlobalTouchCancel(): void {
+    if (isTouchDragging) {
+      dispatch('componentDragEnd');
+    }
+    removeGlobalTouchListeners();
+    cleanupTouchDrag();
+  }
+
+  function removeGlobalTouchListeners(): void {
+    document.removeEventListener('touchmove', handleGlobalTouchMove, {
+      capture: true
+    });
+    document.removeEventListener('touchend', handleGlobalTouchEnd, {
+      capture: true
+    });
+    document.removeEventListener('touchcancel', handleGlobalTouchCancel, {
+      capture: true
+    });
+  }
+
+  // Legacy handlers for non-iOS browsers (kept for compatibility)
+  function handleComponentTouchMove(event: TouchEvent): void {
+    handleGlobalTouchMove(event);
+  }
+
+  function handleComponentTouchEnd(event: TouchEvent): void {
+    handleGlobalTouchEnd(event);
   }
 
   function handleComponentTouchCancel(): void {
-    cleanupTouchDrag();
+    handleGlobalTouchCancel();
   }
 
-  function createTouchDragGhost(componentType: string): void {
+  function createTouchDragGhost(componentType: string, _initiallyHidden = false): void {
+    // Clean up any existing ghost first
+    if (touchDragGhost && touchDragGhost.parentNode) {
+      touchDragGhost.parentNode.removeChild(touchDragGhost);
+    }
+
     // Find the component name for display
     let componentName = componentType;
+    let componentIcon = '📦';
     for (const category of Object.values(componentLibrary)) {
       const found = category.find((c) => c.type === componentType);
       if (found) {
         componentName = found.name;
+        // Map component types to emojis for the ghost
+        const iconMap: Record<string, string> = {
+          container: '📦',
+          columns: '▦',
+          spacer: '↕',
+          divider: '—',
+          heading: '🔤',
+          text: '📝',
+          button: '🔘',
+          image: '🖼️',
+          icon: '⭐',
+          dropdown: '▼',
+          cta: '📣',
+          pricing: '💰',
+          single_product: '🛒',
+          product_list: '🛍️',
+          theme_toggle: '🌓'
+        };
+        componentIcon = iconMap[componentType] || '📦';
         break;
       }
     }
 
+    // Check for custom components
+    if (componentType.startsWith('component:')) {
+      componentIcon = '🧩';
+    }
+
     touchDragGhost = document.createElement('div');
     touchDragGhost.className = 'touch-drag-ghost';
-    touchDragGhost.innerHTML = `➕ ${componentName}`;
+    touchDragGhost.innerHTML = `
+      <div class="ghost-content">
+        <span class="ghost-icon">${componentIcon}</span>
+        <span class="ghost-name">${componentName}</span>
+      </div>
+      <div class="ghost-hint">Drop on canvas or drag here to cancel</div>
+    `;
     touchDragGhost.style.cssText = `
       position: fixed;
       z-index: 10000;
-      padding: 10px 16px;
+      padding: 12px 16px;
       background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
       color: white;
-      border-radius: 8px;
+      border-radius: 12px;
       font-size: 14px;
       font-weight: 600;
-      box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+      box-shadow: 0 12px 32px rgba(59, 130, 246, 0.5), 0 0 0 3px rgba(255,255,255,0.2);
       pointer-events: none;
       transform: translate(-50%, -100%);
       white-space: nowrap;
-      border: 2px solid rgba(255,255,255,0.3);
+      border: 2px solid rgba(255,255,255,0.4);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
     `;
+
+    // Add styles for inner elements
+    const style = document.createElement('style');
+    style.id = 'touch-drag-ghost-styles';
+    if (!document.getElementById('touch-drag-ghost-styles')) {
+      style.textContent = `
+        @keyframes ghostAppear {
+          from { opacity: 0; transform: translate(-50%, -80%) scale(0.8); }
+          to { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+        }
+        .touch-drag-ghost .ghost-content {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 15px;
+        }
+        .touch-drag-ghost .ghost-icon {
+          font-size: 18px;
+        }
+        .touch-drag-ghost .ghost-hint {
+          font-size: 10px;
+          opacity: 0.8;
+          font-weight: 400;
+        }
+        .touch-drag-ghost.over-cancel {
+          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+          box-shadow: 0 12px 32px rgba(239, 68, 68, 0.5), 0 0 0 3px rgba(255,255,255,0.2) !important;
+        }
+        .touch-drag-ghost.over-canvas {
+          background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+          box-shadow: 0 12px 32px rgba(34, 197, 94, 0.5), 0 0 0 3px rgba(255,255,255,0.2) !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
     document.body.appendChild(touchDragGhost);
     updateTouchDragGhost();
   }
@@ -588,9 +730,11 @@
     touchDragGhost = null;
     touchDragComponentType = null;
     isTouchDragging = false;
+    touchStartedOnHandle = false;
   }
 
   onDestroy(() => {
+    removeGlobalTouchListeners();
     cleanupTouchDrag();
   });
 </script>
@@ -752,35 +896,46 @@
           </div>
         {:else}
           {#each filteredComponents as componentItem}
-            <button
+            <div
               class="component-item"
-              draggable="true"
-              on:click={() => addComponent(componentItem.type)}
-              on:dragstart={(e) => {
-                if (e.dataTransfer) {
-                  e.dataTransfer.effectAllowed = 'copy';
-                  e.dataTransfer.setData('component-type', componentItem.type);
-                  e.dataTransfer.setData('text/plain', componentItem.name);
-                }
-                dispatch('componentDragStart');
-              }}
-              on:dragend={() => dispatch('componentDragEnd')}
-              on:touchstart={(e) => handleComponentTouchStart(e, componentItem.type)}
+              role="listitem"
               on:touchmove={handleComponentTouchMove}
               on:touchend={handleComponentTouchEnd}
               on:touchcancel={handleComponentTouchCancel}
             >
-              <div class="component-icon">
-                <svelte:component this={componentItem.icon} size={20} />
+              <button
+                class="component-item-content"
+                on:click={() => addComponent(componentItem.type)}
+              >
+                <div class="component-icon">
+                  <svelte:component this={componentItem.icon} size={20} />
+                </div>
+                <div class="component-info">
+                  <div class="component-name">{componentItem.name}</div>
+                  <div class="component-description">{componentItem.description}</div>
+                </div>
+              </button>
+              <!-- Mobile drag handle (right side) -->
+              <div
+                class="component-drag-handle"
+                role="button"
+                tabindex="-1"
+                aria-label="Drag {componentItem.name} to canvas"
+                draggable="true"
+                on:dragstart={(e) => {
+                  if (e.dataTransfer) {
+                    e.dataTransfer.effectAllowed = 'copy';
+                    e.dataTransfer.setData('component-type', componentItem.type);
+                    e.dataTransfer.setData('text/plain', componentItem.name);
+                  }
+                  dispatch('componentDragStart');
+                }}
+                on:dragend={() => dispatch('componentDragEnd')}
+                on:touchstart={(e) => handleDragHandleTouchStart(e, componentItem.type)}
+              >
+                <GripVertical size={18} />
               </div>
-              <div class="component-info">
-                <div class="component-name">{componentItem.name}</div>
-                <div class="component-description">{componentItem.description}</div>
-              </div>
-              <div class="component-add">
-                <Plus size={16} />
-              </div>
-            </button>
+            </div>
           {/each}
         {/if}
       </div>
@@ -1135,21 +1290,58 @@
   .component-item {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0;
     width: 100%;
-    padding: 0.75rem;
     background: var(--color-bg-secondary);
     border: 1px solid var(--color-border-secondary);
     border-radius: 6px;
     margin-bottom: 0.5rem;
-    cursor: pointer;
     transition: all 0.2s;
-    text-align: left;
+    overflow: hidden;
   }
 
   .component-item:hover {
     background: var(--color-bg-tertiary);
     border-color: var(--color-primary);
+  }
+
+  .component-drag-handle {
+    display: none; /* Hidden on desktop, shown on mobile */
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    min-width: 44px;
+    height: 100%;
+    min-height: 60px;
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-secondary);
+    cursor: grab;
+    border-left: 1px solid var(--color-border-secondary);
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .component-drag-handle:active {
+    cursor: grabbing;
+    background: var(--color-primary);
+    color: white;
+  }
+
+  .component-item-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+    padding: 0.75rem;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .component-item-content:hover {
+    background: rgba(0, 0, 0, 0.03);
   }
 
   .component-icon {
@@ -1161,10 +1353,12 @@
     background: var(--color-bg-primary);
     border-radius: 6px;
     color: var(--color-primary);
+    flex-shrink: 0;
   }
 
   .component-info {
     flex: 1;
+    min-width: 0;
   }
 
   .component-name {
@@ -1177,10 +1371,9 @@
   .component-description {
     font-size: 0.75rem;
     color: var(--color-text-secondary);
-  }
-
-  .component-add {
-    color: var(--color-text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   @media (max-width: 768px) {
@@ -1202,17 +1395,25 @@
   @media (hover: none) and (pointer: coarse) {
     .component-item {
       min-height: 64px;
-      padding: 0.875rem 1rem;
-      touch-action: none; /* Enable custom touch handling */
+      /* Allow vertical scrolling - drag only on handle */
+      touch-action: pan-y;
       -webkit-user-select: none;
       user-select: none;
       -webkit-touch-callout: none;
       -webkit-tap-highlight-color: transparent;
     }
 
-    .component-item:active {
-      background: var(--color-bg-secondary);
-      transform: scale(0.98);
+    .component-drag-handle {
+      display: flex;
+      touch-action: none; /* Disable touch actions on drag handle */
+    }
+
+    .component-item-content {
+      padding: 0.875rem 1rem;
+    }
+
+    .component-item-content:active {
+      background: rgba(0, 0, 0, 0.05);
     }
 
     .component-icon {
