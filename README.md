@@ -16,37 +16,48 @@ and SEO. It has detailed documentation to assist developers in understanding and
 extending the platform. It has features for AI assistance in content creation
 and customer support. It will comply with relevant data protection regulations.
 
-## 🚀 Features
+## 🚀 Stack & Features
 
 - **SvelteKit** - Modern web framework with TypeScript support
 - **Cloudflare Pages** - Edge deployment for global performance
 - **Cloudflare D1** - Serverless SQL database with multi-tenant support
 - **TypeScript** - Type-safe development
 - **Multi-Tenant Architecture** - Support for multiple stores/sites
-- **Multi-Provider SSO** - OAuth 2.0 authentication with Google, LinkedIn,
-  Apple, Facebook, GitHub, X (Twitter), and Microsoft
-- **PKCE Security** - Enhanced OAuth security with Proof Key for Code Exchange
-- **Account Linking** - Automatic linking of provider accounts with same email
-- **Responsive Design** - Mobile-first approach
-- **Modern Tooling** - ESLint, Prettier, and Vitest configured
+- **Multi-Provider SSO** - OAuth 2.0 authentication with Google, Facebook,
+  GitHub, etc.
+- **Responsive Design** - Mobile-first and responsive design for all features
 
-## 📦 Getting Started
+## 📦 Contributing Code / Local Dev Setup
 
 ### Prerequisites
 
 - Node.js 18+
 - npm
 
-### Installation
+### Quick Setup
 
 ```bash
-# Install dependencies
+# Fork the repository on your local system
+git clone https://github.com/starspacegroup/hermes.git
+
+# Change to the project directory
+cd hermes
+
+# Install npm packages
 npm install
 
-# Start development server
+# Create D1 database
+wrangler d1 create hermes-db
+# Update wrangler.toml with the database_id from output of above command
+
+# Setup database (migrate + seed for local dev)
+npm run db:setup:local
+
+# Run local dev server
 npm run dev
 
-# Open http://localhost:4236
+# Open local instance
+open http://localhost:4236/
 ```
 
 ## 🛠️ Available Scripts
@@ -57,14 +68,6 @@ npm run dev
 - `npm run preview` - Preview production build locally (auto-migrates and seeds)
 - `npm test` - Run tests with Vitest
 - `npm run test:coverage` - Run tests with coverage report
-
-### Build & Deploy
-
-- `npm run build` - Build for production
-- `npm run deploy` - Deploy to Cloudflare (auto-migrates database)
-- `npm run check` - Type check with svelte-check
-- `npm run lint` - Run ESLint
-- `npm run format` - Format code with Prettier
 
 ### Database Management
 
@@ -77,50 +80,14 @@ npm run dev
 See [docs/DATABASE_MANAGEMENT.md](docs/DATABASE_MANAGEMENT.md) for detailed
 database management guide.
 
-## 🏗️ Project Structure
-
-```
-src/
-├── routes/          # SvelteKit routes
-│   ├── +layout.svelte
-│   └── +page.svelte
-├── lib/             # Shared components and utilities
-│   ├── server/      # Server-side code
-│   │   └── db/      # Database layer (multi-tenant)
-│   ├── stores/      # Svelte stores
-│   ├── types/       # TypeScript types
-│   └── utils/       # Utility functions
-├── hooks.server.ts  # Server hooks (multi-tenant context)
-├── app.html         # HTML template
-├── app.css          # Global styles
-└── app.d.ts         # Type definitions
-migrations/          # D1 database migrations
-docs/                # Documentation
-```
-
 ## 🗄️ Database
 
 The platform uses Cloudflare D1 for data persistence with full multi-tenant
 support. Database migrations and seeding are automated:
 
-- **Development**: Auto-migrates and seeds when running `npm run dev`
+- **Development**: Easily reset database: `npm run db:reset:local`
 - **Preview**: Auto-migrates and seeds when running `npm run preview`
 - **Production**: Auto-migrates when deploying (seeding is blocked for safety)
-
-### Quick Setup
-
-```bash
-# Create D1 database
-wrangler d1 create hermes-db
-
-# Update wrangler.toml with the database_id from above
-
-# Setup database (migrate + seed for local dev)
-npm run db:setup:local
-
-# Or just run dev (database setup is automatic)
-npm run dev
-```
 
 ### Database Scripts
 
@@ -129,6 +96,7 @@ npm run dev
 npm run db:migrate:local    # Run migrations only
 npm run db:seed:local       # Seed with sample data
 npm run db:setup:local      # Both migrate and seed
+npm run db:reset:local      # Dangerously reset and seed
 
 # Production
 npm run db:migrate          # Run migrations only (no seed)
@@ -140,10 +108,9 @@ database management guide.
 
 ## 🌐 Deployment
 
-The project is configured for deployment on Cloudflare Pages:
+The project is configured for automatic deployment on Cloudflare Pages:
 
-1. **Automatic Deployment**: Connect your repository to Cloudflare Pages
-2. **Manual Deployment**: Run `npm run deploy` with Wrangler CLI
+**Automatic Deployment**: Connect your repository to Cloudflare Pages
 
 ### Build Configuration
 
@@ -218,16 +185,7 @@ All code must pass:
 - `npm run check` - TypeScript type checking
 - `npm run test:coverage` - Test coverage ≥80%
 
-### For Developers
+### For Developers Using Copilot:
 
 See [docs/GITHUB_COPILOT_SETUP.md](docs/GITHUB_COPILOT_SETUP.md) for complete
 Copilot configuration details.
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes following
-   [GitHub Copilot Guidelines](docs/GITHUB_COPILOT_SETUP.md)
-4. Run `npm run prepare` to verify quality gates
-5. Submit a pull request
