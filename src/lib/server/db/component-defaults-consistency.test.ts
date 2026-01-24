@@ -110,7 +110,7 @@ describe('Built-in Component Defaults Consistency', () => {
       expect(siteNameHeading.config.heading).toBe('${site.name}');
     });
 
-    it('should have Products, Pricing, Login, Dropdown, and Cart buttons in nav-links-container', () => {
+    it('should have Products, Pricing, Login, Dropdown, Cart buttons and Theme Toggle in nav-links-container', () => {
       const config = getDefaultConfig('navbar');
       const mainContainer = (
         config.children as Array<{
@@ -120,12 +120,13 @@ describe('Built-in Component Defaults Consistency', () => {
       const navLinksContainer = mainContainer.config.children[1];
       const navItems = navLinksContainer.config.children;
 
-      expect(navItems.length).toBe(5);
+      expect(navItems.length).toBe(6);
       expect(navItems[0].id).toBe('products-link');
       expect(navItems[1].id).toBe('pricing-link');
       expect(navItems[2].id).toBe('login-button');
       expect(navItems[3].id).toBe('user-dropdown');
       expect(navItems[4].id).toBe('cart-button');
+      expect(navItems[5].id).toBe('theme-toggle');
     });
 
     it('should have static position config by default (not sticky)', () => {

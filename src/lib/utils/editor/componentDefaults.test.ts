@@ -258,6 +258,32 @@ describe('Component Defaults', () => {
       expect((config.children as Array<{ id: string }>)[0].id).toBe('main-container');
     });
 
+    it('should include theme toggle in navbar nav-links-container', () => {
+      const config = getDefaultConfig('navbar');
+      // Navigate to the nav-links-container children
+      const mainContainer = (
+        config.children as Array<{
+          id: string;
+          config: {
+            children: Array<{
+              id: string;
+              type: string;
+              config: { children?: Array<{ id: string; type: string }> };
+            }>;
+          };
+        }>
+      )[0];
+      const navLinksContainer = mainContainer.config.children.find(
+        (c) => c.id === 'nav-links-container'
+      );
+      expect(navLinksContainer).toBeDefined();
+
+      // Find the theme toggle in nav-links-container children
+      const themeToggle = navLinksContainer?.config.children?.find((c) => c.id === 'theme-toggle');
+      expect(themeToggle).toBeDefined();
+      expect(themeToggle?.type).toBe('theme_toggle');
+    });
+
     it('should return default config for footer component', () => {
       const config = getDefaultConfig('footer');
       expect(config.backgroundColor).toBe('transparent');

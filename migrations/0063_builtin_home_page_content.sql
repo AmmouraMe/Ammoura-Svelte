@@ -91,7 +91,7 @@ VALUES (
                     "fullWidth": { "desktop": false, "tablet": false, "mobile": false },
                     "buttonAlign": "center",
                     "borderRadius": 999,
-                    "backgroundColor": "theme:surface",
+                    "backgroundColor": "transparent",
                     "textColor": "theme:text",
                     "borderColor": "theme:border",
                     "padding": { "desktop": { "top": 8, "right": 20, "bottom": 8, "left": 20 } },

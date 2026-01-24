@@ -112,10 +112,11 @@
   $: socialLinks = config.socialLinks || [];
 
   // Styling - footerBackground is for the outer footer wrapper
-  $: footerBackground = config.footerBackground || '#f9fafb';
-  $: textColor = config.footerTextColor || '#374151';
+  // FOUC Prevention: Use CSS variable fallbacks that adapt to light/dark themes automatically
+  $: footerBackground = config.footerBackground || 'var(--theme-surface)';
+  $: textColor = config.footerTextColor || 'var(--theme-text)';
   $: hoverColor = config.footerHoverColor || 'var(--color-primary)';
-  $: borderColor = config.footerBorderColor || '#e5e7eb';
+  $: borderColor = config.footerBorderColor || 'var(--theme-border)';
   $: footerShadow = config.footerShadow ?? false;
 
   // Layout options

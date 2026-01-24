@@ -323,6 +323,19 @@
   // Check if we need a position wrapper
   $: needsPositionWrapper = positionType && positionType !== 'static';
 
+  // Helper to check if a color value is effectively transparent
+  function isTransparentColor(color: string): boolean {
+    if (!color) return true;
+    const lower = color.toLowerCase().trim();
+    return (
+      lower === 'transparent' ||
+      lower === 'rgba(0, 0, 0, 0)' ||
+      lower === 'rgba(0,0,0,0)' ||
+      lower === 'hsla(0, 0%, 0%, 0)' ||
+      lower === 'hsla(0,0%,0%,0)'
+    );
+  }
+
   // Advanced styling properties
   // Box Shadow
   function buildBoxShadow(shadow: ShadowConfig | ShadowConfig[] | undefined): string {
@@ -465,9 +478,11 @@
   $: componentBackgroundColor = rawBackgroundColor
     ? resolveThemeColor(rawBackgroundColor, colorTheme, 'transparent', true)
     : '';
-  $: backgroundColorStyle = componentBackgroundColor
-    ? `background-color: ${componentBackgroundColor};`
-    : '';
+  // Don't add background-color when it's transparent (let CSS/parent handle it)
+  $: backgroundColorStyle =
+    componentBackgroundColor && !isTransparentColor(componentBackgroundColor)
+      ? `background-color: ${componentBackgroundColor};`
+      : '';
 
   // Background image support
   $: backgroundImageStyle = config.backgroundImage
@@ -493,7 +508,7 @@
 
   // Generate inline theme styles for CSS variables (same as admin builder)
   $: themeColors = getThemeColors(colorTheme);
-  $: themeStyles = generateThemeStyles(themeColors);
+  $: _themeStyles = generateThemeStyles(themeColors);
 </script>
 
 {#if isVisible}
@@ -503,7 +518,6 @@
       class="frontend-container frontend-responsive-container {type}-container"
       id={config.anchorName || undefined}
       style="
-        {themeStyles}
         {responsiveVars}
         {positionStyle}
         background: {containerBackground};
@@ -545,7 +559,6 @@
       class="frontend-container frontend-responsive-container"
       id={config.anchorName || undefined}
       style="
-        {themeStyles}
         {responsiveVars}
         {positionStyle}
         background: {containerBackground};

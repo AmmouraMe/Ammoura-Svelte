@@ -2,6 +2,7 @@
   import PageWithLayout from '$lib/components/PageWithLayout.svelte';
   import { browser } from '$app/environment';
   import { page as pageStore } from '$app/stores';
+  import { themeStore } from '$lib/stores/theme';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -16,21 +17,20 @@
   $: systemLightThemeId = $pageStore.data.systemLightThemeId || 'vibrant';
   $: systemDarkThemeId = $pageStore.data.systemDarkThemeId || 'midnight';
 
-  // Get the current applied theme (light or dark) from the document
-  const getCurrentTheme = (): 'light' | 'dark' => {
+  // Get the system's preferred color scheme
+  function getSystemTheme(): 'light' | 'dark' {
     if (!browser) return 'light';
-    const theme = document.documentElement.getAttribute('data-theme');
-    return theme === 'dark' ? 'dark' : 'light';
-  };
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
 
-  // If no colorTheme is specified, use the site's current theme
+  // Derive the applied theme mode from the theme preference (reactive to theme store changes)
+  // When preference is 'system', use the OS preference
+  $: appliedThemeMode =
+    $themeStore === 'system' ? getSystemTheme() : ($themeStore as 'light' | 'dark');
+
+  // If no colorTheme is specified, use the site's current theme (reactive)
   $: colorTheme =
-    data.colorTheme ||
-    (browser
-      ? getCurrentTheme() === 'dark'
-        ? systemDarkThemeId
-        : systemLightThemeId
-      : systemLightThemeId);
+    data.colorTheme || (appliedThemeMode === 'dark' ? systemDarkThemeId : systemLightThemeId);
 </script>
 
 <svelte:head>

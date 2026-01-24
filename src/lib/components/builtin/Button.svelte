@@ -58,10 +58,26 @@
     }
   }
 
+  // Helper to check if a color value is effectively transparent
+  function isTransparent(color: string): boolean {
+    if (!color) return true;
+    const lower = color.toLowerCase().trim();
+    return (
+      lower === 'transparent' ||
+      lower === 'rgba(0, 0, 0, 0)' ||
+      lower === 'rgba(0,0,0,0)' ||
+      lower === 'hsla(0, 0%, 0%, 0)' ||
+      lower === 'hsla(0,0%,0%,0)'
+    );
+  }
+
   // Build inline style string for custom styles
   $: customStyle = (() => {
     const styles: string[] = [];
-    if (customBgColor) styles.push(`background-color: ${customBgColor}`);
+    // Don't add background-color when it's transparent (let CSS handle it)
+    if (customBgColor && !isTransparent(customBgColor)) {
+      styles.push(`background-color: ${customBgColor}`);
+    }
     if (customTextColor) styles.push(`color: ${customTextColor}`);
     if (customBorderColor) styles.push(`border: 1px solid ${customBorderColor}`);
     if (customBorderRadius !== undefined) styles.push(`border-radius: ${customBorderRadius}px`);
@@ -75,7 +91,9 @@
   })();
 
   // Check if we have custom styles (to override variant styling)
-  $: hasCustomStyles = customBgColor || customTextColor || customBorderColor;
+  // Transparent backgrounds don't count as custom styles
+  $: hasCustomStyles =
+    (customBgColor && !isTransparent(customBgColor)) || customTextColor || customBorderColor;
 </script>
 
 <div class="button-widget" id={config.anchorName || undefined} style="text-align: {alignment}">

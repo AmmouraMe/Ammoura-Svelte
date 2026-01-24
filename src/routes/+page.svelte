@@ -2,6 +2,7 @@
   import ProductCard from '../lib/components/ProductCard.svelte';
   import FrontendComponentRenderer from '$lib/components/FrontendComponentRenderer.svelte';
   import { themeRefToCssVar } from '$lib/utils/editor/colorThemes';
+  import { themeStore } from '$lib/stores/theme';
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
   import type { PageData } from './$types';
@@ -27,22 +28,27 @@
   }
 
   let heroVisible = false;
-  let colorTheme = data.colorTheme || systemLightTheme;
 
-  // Get the current applied theme (light or dark) from the document
-  const getCurrentTheme = (): 'light' | 'dark' => {
+  // Get the system's preferred color scheme
+  function getSystemTheme(): 'light' | 'dark' {
     if (!browser) return 'light';
-    const theme = document.documentElement.getAttribute('data-theme');
-    return theme === 'dark' ? 'dark' : 'light';
-  };
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  // Derive the applied theme mode from the theme preference (reactive to theme store changes)
+  // When preference is 'system', use the OS preference
+  $: appliedThemeMode =
+    $themeStore === 'system' ? getSystemTheme() : ($themeStore as 'light' | 'dark');
+
+  // The active color theme ID that matches the current light/dark mode (reactive)
+  // If page has a specific colorTheme set, use that; otherwise use system theme
+  $: colorTheme = data.colorTheme
+    ? data.colorTheme
+    : appliedThemeMode === 'dark'
+      ? systemDarkTheme
+      : systemLightTheme;
 
   onMount(() => {
-    // Set colorTheme based on current mode after theme is initialized
-    if (!data.colorTheme) {
-      const currentMode = getCurrentTheme();
-      colorTheme = currentMode === 'dark' ? systemDarkTheme : systemLightTheme;
-    }
-
     setTimeout(() => {
       heroVisible = true;
     }, 100);

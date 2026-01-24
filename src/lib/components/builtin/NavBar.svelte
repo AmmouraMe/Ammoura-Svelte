@@ -119,18 +119,19 @@
   $: accountMenuItems = config.accountMenuItems || [];
 
   // Styling - navbarBackground is for the outer nav wrapper, containerBackground is for the Container
+  // FOUC Prevention: Use CSS variable fallbacks that adapt to light/dark themes automatically
   $: navbarBackground = config.navbarBackground || 'transparent';
-  $: textColor = config.navbarTextColor || '#000000';
+  $: textColor = config.navbarTextColor || 'var(--theme-text)';
   $: hoverColor = config.navbarHoverColor || 'var(--color-primary)';
-  $: borderColor = config.navbarBorderColor || '#e5e7eb';
+  $: borderColor = config.navbarBorderColor || 'var(--theme-border)';
   $: navbarShadow = config.navbarShadow ?? false;
   $: sticky = config.sticky ?? false;
   $: navbarHeight = config.navbarHeight || 0;
 
-  // Dropdown styling
-  $: dropdownBackground = config.dropdownBackground || '#ffffff';
-  $: dropdownTextColor = config.dropdownTextColor || '#000000';
-  $: dropdownHoverBackground = config.dropdownHoverBackground || '#f3f4f6';
+  // Dropdown styling - uses CSS variables for automatic theme adaptation
+  $: dropdownBackground = config.dropdownBackground || 'var(--theme-surface)';
+  $: dropdownTextColor = config.dropdownTextColor || 'var(--theme-text)';
+  $: dropdownHoverBackground = config.dropdownHoverBackground || 'var(--theme-background)';
 
   // Mobile
   $: mobileBreakpoint = config.mobileBreakpoint || 768;

@@ -4,6 +4,7 @@
   import { toastStore } from '$lib/stores/toast';
   import Button from '$lib/components/Button.svelte';
   import Avatar from '$lib/components/Avatar.svelte';
+  import UserThemePreferences from '$lib/components/UserThemePreferences.svelte';
   import type { PageData, ActionData } from './$types';
   import { invalidateAll } from '$app/navigation';
 
@@ -260,6 +261,11 @@
         </div>
       </form>
     </section>
+
+    <!-- Theme Preferences Section -->
+    <section class="profile-section theme-section">
+      <UserThemePreferences />
+    </section>
   </div>
 </div>
 
@@ -491,6 +497,11 @@
       grid-column: 1 / -1;
     }
 
+    /* Theme section spans full width */
+    .profile-section.theme-section {
+      grid-column: 1 / -1;
+    }
+
     .profile-section {
       padding: var(--spacing-lg);
     }
@@ -534,6 +545,12 @@
     .profile-section:nth-child(3) {
       grid-column: 2 / 3;
       grid-row: 2 / 3;
+    }
+
+    /* Theme section spans full width */
+    .profile-section.theme-section {
+      grid-column: 1 / -1;
+      grid-row: auto;
     }
 
     .details-grid {

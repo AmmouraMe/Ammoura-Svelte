@@ -151,6 +151,27 @@
 
   onMount(() => {
     themeStore.initTheme();
+
+    // Remove the no-transitions class and add hydration-complete after hydration settles
+    // We wait until document.fonts.ready to ensure all fonts are loaded,
+    // then use a delay to account for Svelte reactive updates settling
+    // and any layout shifts that may occur during hydration.
+    // The hydration-complete class makes the page visible (it was opacity:0 during hydration)
+    // This prevents FOUC and visible layout shifts during initial render.
+    const enableTransitions = (): void => {
+      document.documentElement.classList.remove('no-transitions');
+      document.documentElement.classList.add('hydration-complete');
+    };
+
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => {
+        // Delay to ensure layout has settled after hydration
+        setTimeout(enableTransitions, 300);
+      });
+    } else {
+      // Fallback for browsers without document.fonts
+      setTimeout(enableTransitions, 800);
+    }
   });
 
   // Reactively sync auth state with server data

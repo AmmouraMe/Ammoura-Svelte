@@ -85,7 +85,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                     fullWidth: { desktop: false, tablet: false, mobile: false },
                     buttonAlign: 'center',
                     borderRadius: 999,
-                    backgroundColor: 'theme:surface',
+                    backgroundColor: 'transparent',
                     textColor: 'theme:text',
                     borderColor: 'theme:border',
                     padding: { desktop: { top: 8, right: 20, bottom: 8, left: 20 } },
@@ -255,7 +255,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                           variant: 'secondary',
                           size: 'large',
                           fullWidth: { desktop: false, tablet: false, mobile: true },
-                          backgroundColor: 'theme:surface',
+                          backgroundColor: 'transparent',
                           textColor: 'theme:text',
                           borderColor: 'theme:border',
                           borderRadius: 8,
@@ -2063,6 +2063,17 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                           size: 'medium',
                           fullWidth: { desktop: false, tablet: false, mobile: true },
                           icon: 'ShoppingCart'
+                        }
+                      },
+                      {
+                        id: 'theme-toggle',
+                        type: 'theme_toggle',
+                        position: 5,
+                        config: {
+                          backgroundColor: 'transparent',
+                          size: 'medium',
+                          toggleVariant: 'icon',
+                          alignment: 'center'
                         }
                       }
                     ]
