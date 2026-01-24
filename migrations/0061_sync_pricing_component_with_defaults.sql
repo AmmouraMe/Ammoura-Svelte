@@ -128,7 +128,7 @@ SET
             "config": {
               "heading": "Hermes eCommerce Pricing",
               "level": 2,
-              "textColor": "#ffffff",
+              "textColor": "theme:text",
               "alignment": "center",
               "fontSize": {
                 "desktop": 48,
@@ -145,7 +145,7 @@ SET
             "config": {
               "text": "Zero monthly fees. We win when you win.",
               "alignment": "center",
-              "color": "#94a3b8",
+              "color": "theme:textSecondary",
               "fontSize": {
                 "desktop": 20,
                 "tablet": 18,
@@ -161,7 +161,7 @@ SET
             "config": {
               "text": "Every store gets full access — we only earn a small % per sale.",
               "alignment": "center",
-              "color": "#64748b",
+              "color": "theme:textSecondary",
               "fontSize": {
                 "desktop": 16,
                 "tablet": 15,
@@ -237,10 +237,10 @@ SET
                   "left": 20
                 }
               },
-              "containerBackground": "rgba(30, 41, 59, 0.6)",
+              "containerBackground": "theme:surface",
               "containerBorderRadius": 16,
               "containerBorderWidth": 1,
-              "containerBorderColor": "rgba(71, 85, 105, 0.5)",
+              "containerBorderColor": "theme:border",
               "containerDisplay": {
                 "desktop": "flex",
                 "tablet": "flex",
@@ -300,7 +300,7 @@ SET
                         "config": {
                           "heading": "Pay-as-You-Grow",
                           "level": 3,
-                          "textColor": "#ffffff",
+                          "textColor": "theme:text",
                           "alignment": "center",
                           "fontSize": {
                             "desktop": 24,
@@ -317,7 +317,7 @@ SET
                         "config": {
                           "text": "All features included, always.",
                           "alignment": "center",
-                          "color": "#94a3b8",
+                          "color": "theme:textSecondary",
                           "fontSize": {
                             "desktop": 15,
                             "tablet": 14,
@@ -355,7 +355,7 @@ SET
                         "position": 0,
                         "config": {
                           "text": "✓ Unlimited products",
-                          "color": "#e2e8f0",
+                          "color": "theme:text",
                           "fontSize": {
                             "desktop": 15,
                             "tablet": 14,
@@ -369,7 +369,7 @@ SET
                               "left": 0
                             }
                           },
-                          "borderBottom": "1px solid rgba(71, 85, 105, 0.3)"
+                          "borderBottom": "1px solid theme:border"
                         }
                       },
                       {
@@ -378,7 +378,7 @@ SET
                         "position": 1,
                         "config": {
                           "text": "✓ Free custom domain (optional)",
-                          "color": "#e2e8f0",
+                          "color": "theme:text",
                           "fontSize": {
                             "desktop": 15,
                             "tablet": 14,
@@ -392,7 +392,7 @@ SET
                               "left": 0
                             }
                           },
-                          "borderBottom": "1px solid rgba(71, 85, 105, 0.3)"
+                          "borderBottom": "1px solid theme:border"
                         }
                       },
                       {
@@ -401,7 +401,7 @@ SET
                         "position": 2,
                         "config": {
                           "text": "✓ AI-powered builder (voice + text)",
-                          "color": "#e2e8f0",
+                          "color": "theme:text",
                           "fontSize": {
                             "desktop": 15,
                             "tablet": 14,
@@ -415,7 +415,7 @@ SET
                               "left": 0
                             }
                           },
-                          "borderBottom": "1px solid rgba(71, 85, 105, 0.3)"
+                          "borderBottom": "1px solid theme:border"
                         }
                       },
                       {
@@ -424,7 +424,7 @@ SET
                         "position": 3,
                         "config": {
                           "text": "✓ Real-time analytics",
-                          "color": "#e2e8f0",
+                          "color": "theme:text",
                           "fontSize": {
                             "desktop": 15,
                             "tablet": 14,
@@ -438,7 +438,7 @@ SET
                               "left": 0
                             }
                           },
-                          "borderBottom": "1px solid rgba(71, 85, 105, 0.3)"
+                          "borderBottom": "1px solid theme:border"
                         }
                       },
                       {
@@ -447,7 +447,7 @@ SET
                         "position": 4,
                         "config": {
                           "text": "✓ Secure checkout (credit card/crypto)",
-                          "color": "#e2e8f0",
+                          "color": "theme:text",
                           "fontSize": {
                             "desktop": 15,
                             "tablet": 14,
@@ -461,7 +461,7 @@ SET
                               "left": 0
                             }
                           },
-                          "borderBottom": "1px solid rgba(71, 85, 105, 0.3)"
+                          "borderBottom": "1px solid theme:border"
                         }
                       },
                       {
@@ -470,7 +470,7 @@ SET
                         "position": 5,
                         "config": {
                           "text": "✓ AI product video generator",
-                          "color": "#e2e8f0",
+                          "color": "theme:text",
                           "fontSize": {
                             "desktop": 15,
                             "tablet": 14,
@@ -517,10 +517,10 @@ SET
                   "left": 20
                 }
               },
-              "containerBackground": "rgba(30, 41, 59, 0.6)",
+              "containerBackground": "theme:surface",
               "containerBorderRadius": 16,
               "containerBorderWidth": 1,
-              "containerBorderColor": "rgba(71, 85, 105, 0.5)",
+              "containerBorderColor": "theme:border",
               "containerDisplay": {
                 "desktop": "flex",
                 "tablet": "flex",
@@ -580,7 +580,7 @@ SET
                         "config": {
                           "heading": "Revenue Share",
                           "level": 3,
-                          "textColor": "#ffffff",
+                          "textColor": "theme:text",
                           "alignment": "center",
                           "fontSize": {
                             "desktop": 24,
@@ -597,7 +597,7 @@ SET
                         "config": {
                           "text": "Includes payment processor fees",
                           "alignment": "center",
-                          "color": "#94a3b8",
+                          "color": "theme:textSecondary",
                           "fontSize": {
                             "desktop": 15,
                             "tablet": 14,
@@ -660,7 +660,7 @@ SET
                               "position": 0,
                               "config": {
                                 "text": "MONTHLY SALES",
-                                "color": "#94a3b8",
+                                "color": "theme:textSecondary",
                                 "fontSize": {
                                   "desktop": 11,
                                   "tablet": 10,
@@ -676,7 +676,7 @@ SET
                               "position": 1,
                               "config": {
                                 "text": "FEE",
-                                "color": "#94a3b8",
+                                "color": "theme:textSecondary",
                                 "fontSize": {
                                   "desktop": 11,
                                   "tablet": 10,
@@ -714,10 +714,10 @@ SET
                               "left": 20
                             }
                           },
-                          "containerBackground": "rgba(30, 41, 59, 0.4)",
+                          "containerBackground": "theme:surface",
                           "containerBorderRadius": 12,
                           "containerBorderWidth": 1,
-                          "containerBorderColor": "rgba(71, 85, 105, 0.3)",
+                          "containerBorderColor": "theme:border",
                           "children": [
                             {
                               "id": "tier-1-info",
@@ -746,7 +746,7 @@ SET
                                     "position": 0,
                                     "config": {
                                       "text": "$0 – $1,000",
-                                      "color": "#ffffff",
+                                      "color": "theme:text",
                                       "fontSize": {
                                         "desktop": 16,
                                         "tablet": 15,
@@ -761,7 +761,7 @@ SET
                                     "position": 1,
                                     "config": {
                                       "text": "Perfect for getting started",
-                                      "color": "#94a3b8",
+                                      "color": "theme:textSecondary",
                                       "fontSize": {
                                         "desktop": 14,
                                         "tablet": 13,
@@ -778,7 +778,7 @@ SET
                               "position": 1,
                               "config": {
                                 "text": "8%",
-                                "color": "#a78bfa",
+                                "color": "theme:accent",
                                 "fontSize": {
                                   "desktop": 28,
                                   "tablet": 24,
@@ -815,10 +815,10 @@ SET
                               "left": 20
                             }
                           },
-                          "containerBackground": "rgba(30, 41, 59, 0.4)",
+                          "containerBackground": "theme:surface",
                           "containerBorderRadius": 12,
                           "containerBorderWidth": 1,
-                          "containerBorderColor": "rgba(71, 85, 105, 0.3)",
+                          "containerBorderColor": "theme:border",
                           "children": [
                             {
                               "id": "tier-2-info",
@@ -847,7 +847,7 @@ SET
                                     "position": 0,
                                     "config": {
                                       "text": "$1,001 – $5,000",
-                                      "color": "#ffffff",
+                                      "color": "theme:text",
                                       "fontSize": {
                                         "desktop": 16,
                                         "tablet": 15,
@@ -862,7 +862,7 @@ SET
                                     "position": 1,
                                     "config": {
                                       "text": "Growing your business",
-                                      "color": "#94a3b8",
+                                      "color": "theme:textSecondary",
                                       "fontSize": {
                                         "desktop": 14,
                                         "tablet": 13,
@@ -879,7 +879,7 @@ SET
                               "position": 1,
                               "config": {
                                 "text": "6%",
-                                "color": "#a78bfa",
+                                "color": "theme:accent",
                                 "fontSize": {
                                   "desktop": 28,
                                   "tablet": 24,
@@ -916,10 +916,10 @@ SET
                               "left": 20
                             }
                           },
-                          "containerBackground": "rgba(30, 41, 59, 0.4)",
+                          "containerBackground": "theme:surface",
                           "containerBorderRadius": 12,
                           "containerBorderWidth": 1,
-                          "containerBorderColor": "rgba(71, 85, 105, 0.3)",
+                          "containerBorderColor": "theme:border",
                           "children": [
                             {
                               "id": "tier-3-info",
@@ -948,7 +948,7 @@ SET
                                     "position": 0,
                                     "config": {
                                       "text": "$5,001 – $20,000",
-                                      "color": "#ffffff",
+                                      "color": "theme:text",
                                       "fontSize": {
                                         "desktop": 16,
                                         "tablet": 15,
@@ -963,7 +963,7 @@ SET
                                     "position": 1,
                                     "config": {
                                       "text": "Established sales",
-                                      "color": "#94a3b8",
+                                      "color": "theme:textSecondary",
                                       "fontSize": {
                                         "desktop": 14,
                                         "tablet": 13,
@@ -980,7 +980,7 @@ SET
                               "position": 1,
                               "config": {
                                 "text": "4%",
-                                "color": "#a78bfa",
+                                "color": "theme:accent",
                                 "fontSize": {
                                   "desktop": 28,
                                   "tablet": 24,
@@ -1017,10 +1017,10 @@ SET
                               "left": 20
                             }
                           },
-                          "containerBackground": "rgba(139, 92, 246, 0.15)",
+                          "containerBackground": "theme:surface",
                           "containerBorderRadius": 12,
                           "containerBorderWidth": 2,
-                          "containerBorderColor": "#8b5cf6",
+                          "containerBorderColor": "theme:accent",
                           "children": [
                             {
                               "id": "tier-4-info",
@@ -1049,7 +1049,7 @@ SET
                                     "position": 0,
                                     "config": {
                                       "text": "$20,001+",
-                                      "color": "#ffffff",
+                                      "color": "theme:text",
                                       "fontSize": {
                                         "desktop": 16,
                                         "tablet": 15,
@@ -1064,7 +1064,7 @@ SET
                                     "position": 1,
                                     "config": {
                                       "text": "High volume discounts",
-                                      "color": "#94a3b8",
+                                      "color": "theme:textSecondary",
                                       "fontSize": {
                                         "desktop": 14,
                                         "tablet": 13,
@@ -1081,7 +1081,7 @@ SET
                               "position": 1,
                               "config": {
                                 "text": "3%",
-                                "color": "#a78bfa",
+                                "color": "theme:accent",
                                 "fontSize": {
                                   "desktop": 28,
                                   "tablet": 24,
@@ -1147,8 +1147,8 @@ SET
                 "mobile": true
               },
               "borderRadius": 12,
-              "backgroundColor": "linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)",
-              "textColor": "#ffffff",
+              "backgroundColor": "theme:accent",
+              "textColor": "theme:text",
               "padding": {
                 "desktop": {
                   "top": 16,

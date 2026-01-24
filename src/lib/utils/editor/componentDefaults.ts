@@ -85,9 +85,9 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                     fullWidth: { desktop: false, tablet: false, mobile: false },
                     buttonAlign: 'center',
                     borderRadius: 999,
-                    backgroundColor: 'rgba(30, 41, 59, 0.8)',
-                    textColor: '#e2e8f0',
-                    borderColor: 'rgba(71, 85, 105, 0.5)',
+                    backgroundColor: 'theme:surface',
+                    textColor: 'theme:text',
+                    borderColor: 'theme:border',
                     padding: { desktop: { top: 8, right: 20, bottom: 8, left: 20 } },
                     fontSize: { desktop: 14, tablet: 13, mobile: 12 }
                   }
@@ -112,7 +112,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                           text: 'Create Your Own',
                           alignment: 'center',
                           fontSize: { desktop: 56, tablet: 42, mobile: 32 },
-                          textColor: '#ffffff',
+                          textColor: 'theme:text',
                           typography: {
                             fontWeight: 'bold',
                             lineHeight: 1.1
@@ -127,7 +127,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                           text: 'Online Store',
                           alignment: 'center',
                           fontSize: { desktop: 56, tablet: 42, mobile: 32 },
-                          textColor: '#a78bfa',
+                          textColor: 'theme:accent',
                           typography: {
                             fontWeight: 'bold',
                             lineHeight: 1.1
@@ -159,7 +159,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                           text: 'Everything you need to start selling products online.',
                           alignment: 'center',
                           fontSize: { desktop: 20, tablet: 18, mobile: 16 },
-                          textColor: '#94a3b8',
+                          textColor: 'theme:textSecondary',
                           typography: {
                             lineHeight: 1.6
                           }
@@ -185,7 +185,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                 text: 'Simple, beautiful,',
                                 alignment: 'center',
                                 fontSize: { desktop: 20, tablet: 18, mobile: 16 },
-                                textColor: '#a78bfa',
+                                textColor: 'theme:accent',
                                 typography: {
                                   fontStyle: 'italic',
                                   lineHeight: 1.6
@@ -200,7 +200,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                 text: 'and ready for your business.',
                                 alignment: 'center',
                                 fontSize: { desktop: 20, tablet: 18, mobile: 16 },
-                                textColor: '#94a3b8',
+                                textColor: 'theme:textSecondary',
                                 typography: {
                                   lineHeight: 1.6
                                 }
@@ -237,8 +237,8 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                           size: 'large',
                           fullWidth: { desktop: false, tablet: false, mobile: true },
                           backgroundColor: 'transparent',
-                          textColor: '#ffffff',
-                          borderColor: 'rgba(148, 163, 184, 0.4)',
+                          textColor: 'theme:text',
+                          borderColor: 'theme:border',
                           iconAfter: '→',
                           borderRadius: 8,
                           padding: { desktop: { top: 14, right: 28, bottom: 14, left: 28 } },
@@ -255,9 +255,9 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                           variant: 'secondary',
                           size: 'large',
                           fullWidth: { desktop: false, tablet: false, mobile: true },
-                          backgroundColor: 'rgba(30, 41, 59, 0.9)',
-                          textColor: '#ffffff',
-                          borderColor: 'rgba(71, 85, 105, 0.5)',
+                          backgroundColor: 'theme:surface',
+                          textColor: 'theme:text',
+                          borderColor: 'theme:border',
                           borderRadius: 8,
                           padding: { desktop: { top: 14, right: 28, bottom: 14, left: 28 } },
                           fontSize: { desktop: 16, tablet: 15, mobile: 14 }
@@ -309,7 +309,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                 text: 'Simple',
                                 alignment: 'center',
                                 fontSize: { desktop: 20, tablet: 18, mobile: 18 },
-                                textColor: '#a78bfa',
+                                textColor: 'theme:accent',
                                 typography: {
                                   fontWeight: 'bold'
                                 }
@@ -323,7 +323,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                 text: 'SETUP',
                                 alignment: 'center',
                                 fontSize: { desktop: 12, tablet: 11, mobile: 11 },
-                                textColor: '#64748b',
+                                textColor: 'theme:textSecondary',
                                 typography: {
                                   textTransform: 'uppercase',
                                   letterSpacing: 1.5
@@ -339,7 +339,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                         position: 1,
                         config: {
                           thickness: 1,
-                          dividerColor: '#334155',
+                          dividerColor: 'theme:border',
                           dividerStyle: 'solid',
                           dividerWidth: '1px',
                           dividerHeight: '40px',
@@ -368,7 +368,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                 text: 'Beautiful',
                                 alignment: 'center',
                                 fontSize: { desktop: 20, tablet: 18, mobile: 18 },
-                                textColor: '#a78bfa',
+                                textColor: 'theme:accent',
                                 typography: {
                                   fontWeight: 'bold'
                                 }
@@ -382,7 +382,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                 text: 'DESIGN',
                                 alignment: 'center',
                                 fontSize: { desktop: 12, tablet: 11, mobile: 11 },
-                                textColor: '#64748b',
+                                textColor: 'theme:textSecondary',
                                 typography: {
                                   textTransform: 'uppercase',
                                   letterSpacing: 1.5
@@ -398,7 +398,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                         position: 3,
                         config: {
                           thickness: 1,
-                          dividerColor: '#334155',
+                          dividerColor: 'theme:border',
                           dividerStyle: 'solid',
                           dividerWidth: '1px',
                           dividerHeight: '40px',
@@ -427,7 +427,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                 text: 'Your',
                                 alignment: 'center',
                                 fontSize: { desktop: 20, tablet: 18, mobile: 18 },
-                                textColor: '#a78bfa',
+                                textColor: 'theme:accent',
                                 typography: {
                                   fontWeight: 'bold'
                                 }
@@ -441,7 +441,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                 text: 'BRAND',
                                 alignment: 'center',
                                 fontSize: { desktop: 12, tablet: 11, mobile: 11 },
-                                textColor: '#64748b',
+                                textColor: 'theme:textSecondary',
                                 typography: {
                                   textTransform: 'uppercase',
                                   letterSpacing: 1.5
@@ -591,7 +591,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                           text: 'Everything You Need to Succeed',
                           alignment: 'center',
                           fontSize: { desktop: 48, tablet: 36, mobile: 28 },
-                          textColor: '#ffffff',
+                          textColor: 'theme:text',
                           typography: {
                             fontWeight: 'bold',
                             lineHeight: 1.2
@@ -606,7 +606,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                           text: 'All the tools to run your online business, right out of the box',
                           alignment: 'center',
                           fontSize: { desktop: 18, tablet: 16, mobile: 14 },
-                          textColor: '#94a3b8',
+                          textColor: 'theme:textSecondary',
                           typography: {
                             lineHeight: 1.6
                           }
@@ -637,7 +637,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                             tablet: { top: 24, right: 20, bottom: 24, left: 20 },
                             mobile: { top: 24, right: 16, bottom: 24, left: 16 }
                           },
-                          containerBackground: 'rgba(15, 23, 42, 0.6)',
+                          containerBackground: 'theme:surface',
                           containerBorderRadius: 12,
                           containerBorderWidth: 1,
                           containerBorderColor: 'theme:border',
@@ -666,7 +666,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                               config: {
                                 text: 'Easy Setup',
                                 fontSize: { desktop: 20, tablet: 18, mobile: 16 },
-                                textColor: '#ffffff',
+                                textColor: 'theme:text',
                                 typography: { fontWeight: '600' }
                               }
                             },
@@ -677,7 +677,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                               config: {
                                 text: 'Get your online store up and running in minutes, no technical skills needed',
                                 fontSize: { desktop: 15, tablet: 14, mobile: 14 },
-                                textColor: '#94a3b8',
+                                textColor: 'theme:textSecondary',
                                 typography: { lineHeight: 1.6 }
                               }
                             }
@@ -694,7 +694,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                             tablet: { top: 24, right: 20, bottom: 24, left: 20 },
                             mobile: { top: 24, right: 16, bottom: 24, left: 16 }
                           },
-                          containerBackground: 'rgba(15, 23, 42, 0.6)',
+                          containerBackground: 'theme:surface',
                           containerBorderRadius: 12,
                           containerBorderWidth: 1,
                           containerBorderColor: 'theme:border',
@@ -723,7 +723,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                               config: {
                                 text: 'Beautiful Design',
                                 fontSize: { desktop: 20, tablet: 18, mobile: 16 },
-                                textColor: '#ffffff',
+                                textColor: 'theme:text',
                                 typography: { fontWeight: '600' }
                               }
                             },
@@ -734,7 +734,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                               config: {
                                 text: 'Gorgeous, modern storefront that looks professional on any device',
                                 fontSize: { desktop: 15, tablet: 14, mobile: 14 },
-                                textColor: '#94a3b8',
+                                textColor: 'theme:textSecondary',
                                 typography: { lineHeight: 1.6 }
                               }
                             }
@@ -751,7 +751,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                             tablet: { top: 24, right: 20, bottom: 24, left: 20 },
                             mobile: { top: 24, right: 16, bottom: 24, left: 16 }
                           },
-                          containerBackground: 'rgba(15, 23, 42, 0.6)',
+                          containerBackground: 'theme:surface',
                           containerBorderRadius: 12,
                           containerBorderWidth: 1,
                           containerBorderColor: 'theme:border',
@@ -780,7 +780,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                               config: {
                                 text: 'Manage Products',
                                 fontSize: { desktop: 20, tablet: 18, mobile: 16 },
-                                textColor: '#ffffff',
+                                textColor: 'theme:text',
                                 typography: { fontWeight: '600' }
                               }
                             },
@@ -791,7 +791,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                               config: {
                                 text: 'Simple dashboard to add, edit, and organize your products effortlessly',
                                 fontSize: { desktop: 15, tablet: 14, mobile: 14 },
-                                textColor: '#94a3b8',
+                                textColor: 'theme:textSecondary',
                                 typography: { lineHeight: 1.6 }
                               }
                             }
@@ -808,7 +808,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                             tablet: { top: 24, right: 20, bottom: 24, left: 20 },
                             mobile: { top: 24, right: 16, bottom: 24, left: 16 }
                           },
-                          containerBackground: 'rgba(15, 23, 42, 0.6)',
+                          containerBackground: 'theme:surface',
                           containerBorderRadius: 12,
                           containerBorderWidth: 1,
                           containerBorderColor: 'theme:border',
@@ -837,7 +837,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                               config: {
                                 text: 'Accept Payments',
                                 fontSize: { desktop: 20, tablet: 18, mobile: 16 },
-                                textColor: '#ffffff',
+                                textColor: 'theme:text',
                                 typography: { fontWeight: '600' }
                               }
                             },
@@ -848,7 +848,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                               config: {
                                 text: 'Secure checkout ready to connect with your preferred payment processor',
                                 fontSize: { desktop: 15, tablet: 14, mobile: 14 },
-                                textColor: '#94a3b8',
+                                textColor: 'theme:textSecondary',
                                 typography: { lineHeight: 1.6 }
                               }
                             }
@@ -865,7 +865,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                             tablet: { top: 24, right: 20, bottom: 24, left: 20 },
                             mobile: { top: 24, right: 16, bottom: 24, left: 16 }
                           },
-                          containerBackground: 'rgba(15, 23, 42, 0.6)',
+                          containerBackground: 'theme:surface',
                           containerBorderRadius: 12,
                           containerBorderWidth: 1,
                           containerBorderColor: 'theme:border',
@@ -894,7 +894,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                               config: {
                                 text: 'Customize Everything',
                                 fontSize: { desktop: 20, tablet: 18, mobile: 16 },
-                                textColor: '#ffffff',
+                                textColor: 'theme:text',
                                 typography: { fontWeight: '600' }
                               }
                             },
@@ -905,7 +905,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                               config: {
                                 text: 'Make your store uniquely yours with flexible customization options',
                                 fontSize: { desktop: 15, tablet: 14, mobile: 14 },
-                                textColor: '#94a3b8',
+                                textColor: 'theme:textSecondary',
                                 typography: { lineHeight: 1.6 }
                               }
                             }
@@ -922,7 +922,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                             tablet: { top: 24, right: 20, bottom: 24, left: 20 },
                             mobile: { top: 24, right: 16, bottom: 24, left: 16 }
                           },
-                          containerBackground: 'rgba(15, 23, 42, 0.6)',
+                          containerBackground: 'theme:surface',
                           containerBorderRadius: 12,
                           containerBorderWidth: 1,
                           containerBorderColor: 'theme:border',
@@ -951,7 +951,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                               config: {
                                 text: 'Mobile Ready',
                                 fontSize: { desktop: 20, tablet: 18, mobile: 16 },
-                                textColor: '#ffffff',
+                                textColor: 'theme:text',
                                 typography: { fontWeight: '600' }
                               }
                             },
@@ -962,7 +962,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                               config: {
                                 text: 'Your customers can shop from anywhere, on any device',
                                 fontSize: { desktop: 15, tablet: 14, mobile: 14 },
-                                textColor: '#94a3b8',
+                                textColor: 'theme:textSecondary',
                                 typography: { lineHeight: 1.6 }
                               }
                             }
@@ -1040,7 +1040,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                   config: {
                     heading: 'Hermes eCommerce Pricing',
                     level: 2,
-                    textColor: '#ffffff',
+                    textColor: 'theme:text',
                     alignment: 'center',
                     fontSize: { desktop: 48, tablet: 40, mobile: 32 },
                     fontWeight: 800
@@ -1053,7 +1053,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                   config: {
                     text: 'Zero monthly fees. We win when you win.',
                     alignment: 'center',
-                    color: '#94a3b8',
+                    color: 'theme:textSecondary',
                     fontSize: { desktop: 20, tablet: 18, mobile: 16 },
                     fontWeight: 500
                   }
@@ -1065,7 +1065,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                   config: {
                     text: 'Every store gets full access — we only earn a small % per sale.',
                     alignment: 'center',
-                    color: '#64748b',
+                    color: 'theme:textSecondary',
                     fontSize: { desktop: 16, tablet: 15, mobile: 14 }
                   }
                 }
@@ -1099,10 +1099,10 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                       tablet: { top: 24, right: 24, bottom: 24, left: 24 },
                       mobile: { top: 24, right: 20, bottom: 24, left: 20 }
                     },
-                    containerBackground: 'rgba(30, 41, 59, 0.6)',
+                    containerBackground: 'theme:surface',
                     containerBorderRadius: 16,
                     containerBorderWidth: 1,
-                    containerBorderColor: 'rgba(71, 85, 105, 0.5)',
+                    containerBorderColor: 'theme:border',
                     containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
                     containerFlexDirection: {
                       desktop: 'column',
@@ -1147,7 +1147,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                               config: {
                                 heading: 'Pay-as-You-Grow',
                                 level: 3,
-                                textColor: '#ffffff',
+                                textColor: 'theme:text',
                                 alignment: 'center',
                                 fontSize: { desktop: 24, tablet: 22, mobile: 20 },
                                 fontWeight: 700
@@ -1160,7 +1160,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                               config: {
                                 text: 'All features included, always.',
                                 alignment: 'center',
-                                color: '#94a3b8',
+                                color: 'theme:textSecondary',
                                 fontSize: { desktop: 15, tablet: 14, mobile: 14 }
                               }
                             }
@@ -1191,12 +1191,12 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                               position: 0,
                               config: {
                                 text: '✓ Unlimited products',
-                                color: '#e2e8f0',
+                                color: 'theme:text',
                                 fontSize: { desktop: 15, tablet: 14, mobile: 14 },
                                 padding: {
                                   desktop: { top: 16, right: 0, bottom: 16, left: 0 }
                                 },
-                                borderBottom: '1px solid rgba(71, 85, 105, 0.3)'
+                                borderBottom: '1px solid theme:border'
                               }
                             },
                             {
@@ -1205,12 +1205,12 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                               position: 1,
                               config: {
                                 text: '✓ Free custom domain (optional)',
-                                color: '#e2e8f0',
+                                color: 'theme:text',
                                 fontSize: { desktop: 15, tablet: 14, mobile: 14 },
                                 padding: {
                                   desktop: { top: 16, right: 0, bottom: 16, left: 0 }
                                 },
-                                borderBottom: '1px solid rgba(71, 85, 105, 0.3)'
+                                borderBottom: '1px solid theme:border'
                               }
                             },
                             {
@@ -1219,12 +1219,12 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                               position: 2,
                               config: {
                                 text: '✓ AI-powered builder (voice + text)',
-                                color: '#e2e8f0',
+                                color: 'theme:text',
                                 fontSize: { desktop: 15, tablet: 14, mobile: 14 },
                                 padding: {
                                   desktop: { top: 16, right: 0, bottom: 16, left: 0 }
                                 },
-                                borderBottom: '1px solid rgba(71, 85, 105, 0.3)'
+                                borderBottom: '1px solid theme:border'
                               }
                             },
                             {
@@ -1233,12 +1233,12 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                               position: 3,
                               config: {
                                 text: '✓ Real-time analytics',
-                                color: '#e2e8f0',
+                                color: 'theme:text',
                                 fontSize: { desktop: 15, tablet: 14, mobile: 14 },
                                 padding: {
                                   desktop: { top: 16, right: 0, bottom: 16, left: 0 }
                                 },
-                                borderBottom: '1px solid rgba(71, 85, 105, 0.3)'
+                                borderBottom: '1px solid theme:border'
                               }
                             },
                             {
@@ -1247,12 +1247,12 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                               position: 4,
                               config: {
                                 text: '✓ Secure checkout (credit card/crypto)',
-                                color: '#e2e8f0',
+                                color: 'theme:text',
                                 fontSize: { desktop: 15, tablet: 14, mobile: 14 },
                                 padding: {
                                   desktop: { top: 16, right: 0, bottom: 16, left: 0 }
                                 },
-                                borderBottom: '1px solid rgba(71, 85, 105, 0.3)'
+                                borderBottom: '1px solid theme:border'
                               }
                             },
                             {
@@ -1261,7 +1261,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                               position: 5,
                               config: {
                                 text: '✓ AI product video generator',
-                                color: '#e2e8f0',
+                                color: 'theme:text',
                                 fontSize: { desktop: 15, tablet: 14, mobile: 14 },
                                 padding: {
                                   desktop: { top: 16, right: 0, bottom: 16, left: 0 }
@@ -1285,10 +1285,10 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                       tablet: { top: 24, right: 24, bottom: 24, left: 24 },
                       mobile: { top: 24, right: 20, bottom: 24, left: 20 }
                     },
-                    containerBackground: 'rgba(30, 41, 59, 0.6)',
+                    containerBackground: 'theme:surface',
                     containerBorderRadius: 16,
                     containerBorderWidth: 1,
-                    containerBorderColor: 'rgba(71, 85, 105, 0.5)',
+                    containerBorderColor: 'theme:border',
                     containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
                     containerFlexDirection: {
                       desktop: 'column',
@@ -1333,7 +1333,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                               config: {
                                 heading: 'Revenue Share',
                                 level: 3,
-                                textColor: '#ffffff',
+                                textColor: 'theme:text',
                                 alignment: 'center',
                                 fontSize: { desktop: 24, tablet: 22, mobile: 20 },
                                 fontWeight: 700
@@ -1346,7 +1346,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                               config: {
                                 text: 'Includes payment processor fees',
                                 alignment: 'center',
-                                color: '#94a3b8',
+                                color: 'theme:textSecondary',
                                 fontSize: { desktop: 15, tablet: 14, mobile: 14 }
                               }
                             }
@@ -1398,7 +1398,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                     position: 0,
                                     config: {
                                       text: 'MONTHLY SALES',
-                                      color: '#94a3b8',
+                                      color: 'theme:textSecondary',
                                       fontSize: { desktop: 11, tablet: 10, mobile: 10 },
                                       fontWeight: 600,
                                       letterSpacing: '0.05em'
@@ -1410,7 +1410,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                     position: 1,
                                     config: {
                                       text: 'FEE',
-                                      color: '#94a3b8',
+                                      color: 'theme:textSecondary',
                                       fontSize: { desktop: 11, tablet: 10, mobile: 10 },
                                       fontWeight: 600,
                                       letterSpacing: '0.05em'
@@ -1440,10 +1440,10 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                 containerPadding: {
                                   desktop: { top: 16, right: 20, bottom: 16, left: 20 }
                                 },
-                                containerBackground: 'rgba(30, 41, 59, 0.4)',
+                                containerBackground: 'theme:surface',
                                 containerBorderRadius: 12,
                                 containerBorderWidth: 1,
-                                containerBorderColor: 'rgba(71, 85, 105, 0.3)',
+                                containerBorderColor: 'theme:border',
                                 children: [
                                   {
                                     id: 'tier-1-info',
@@ -1468,7 +1468,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                           position: 0,
                                           config: {
                                             text: '$0 – $1,000',
-                                            color: '#ffffff',
+                                            color: 'theme:text',
                                             fontSize: { desktop: 16, tablet: 15, mobile: 14 },
                                             fontWeight: 600
                                           }
@@ -1479,7 +1479,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                           position: 1,
                                           config: {
                                             text: 'Perfect for getting started',
-                                            color: '#94a3b8',
+                                            color: 'theme:textSecondary',
                                             fontSize: { desktop: 14, tablet: 13, mobile: 12 }
                                           }
                                         }
@@ -1492,7 +1492,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                     position: 1,
                                     config: {
                                       text: '8%',
-                                      color: '#a78bfa',
+                                      color: 'theme:accent',
                                       fontSize: { desktop: 28, tablet: 24, mobile: 22 },
                                       fontWeight: 700
                                     }
@@ -1520,10 +1520,10 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                 containerPadding: {
                                   desktop: { top: 16, right: 20, bottom: 16, left: 20 }
                                 },
-                                containerBackground: 'rgba(30, 41, 59, 0.4)',
+                                containerBackground: 'theme:surface',
                                 containerBorderRadius: 12,
                                 containerBorderWidth: 1,
-                                containerBorderColor: 'rgba(71, 85, 105, 0.3)',
+                                containerBorderColor: 'theme:border',
                                 children: [
                                   {
                                     id: 'tier-2-info',
@@ -1548,7 +1548,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                           position: 0,
                                           config: {
                                             text: '$1,001 – $5,000',
-                                            color: '#ffffff',
+                                            color: 'theme:text',
                                             fontSize: { desktop: 16, tablet: 15, mobile: 14 },
                                             fontWeight: 600
                                           }
@@ -1559,7 +1559,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                           position: 1,
                                           config: {
                                             text: 'Growing your business',
-                                            color: '#94a3b8',
+                                            color: 'theme:textSecondary',
                                             fontSize: { desktop: 14, tablet: 13, mobile: 12 }
                                           }
                                         }
@@ -1572,7 +1572,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                     position: 1,
                                     config: {
                                       text: '6%',
-                                      color: '#a78bfa',
+                                      color: 'theme:accent',
                                       fontSize: { desktop: 28, tablet: 24, mobile: 22 },
                                       fontWeight: 700
                                     }
@@ -1600,10 +1600,10 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                 containerPadding: {
                                   desktop: { top: 16, right: 20, bottom: 16, left: 20 }
                                 },
-                                containerBackground: 'rgba(30, 41, 59, 0.4)',
+                                containerBackground: 'theme:surface',
                                 containerBorderRadius: 12,
                                 containerBorderWidth: 1,
-                                containerBorderColor: 'rgba(71, 85, 105, 0.3)',
+                                containerBorderColor: 'theme:border',
                                 children: [
                                   {
                                     id: 'tier-3-info',
@@ -1628,7 +1628,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                           position: 0,
                                           config: {
                                             text: '$5,001 – $20,000',
-                                            color: '#ffffff',
+                                            color: 'theme:text',
                                             fontSize: { desktop: 16, tablet: 15, mobile: 14 },
                                             fontWeight: 600
                                           }
@@ -1639,7 +1639,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                           position: 1,
                                           config: {
                                             text: 'Established sales',
-                                            color: '#94a3b8',
+                                            color: 'theme:textSecondary',
                                             fontSize: { desktop: 14, tablet: 13, mobile: 12 }
                                           }
                                         }
@@ -1652,7 +1652,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                     position: 1,
                                     config: {
                                       text: '4%',
-                                      color: '#a78bfa',
+                                      color: 'theme:accent',
                                       fontSize: { desktop: 28, tablet: 24, mobile: 22 },
                                       fontWeight: 700
                                     }
@@ -1681,10 +1681,10 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                 containerPadding: {
                                   desktop: { top: 16, right: 20, bottom: 16, left: 20 }
                                 },
-                                containerBackground: 'rgba(139, 92, 246, 0.15)',
+                                containerBackground: 'theme:surface',
                                 containerBorderRadius: 12,
                                 containerBorderWidth: 2,
-                                containerBorderColor: '#8b5cf6',
+                                containerBorderColor: 'theme:accent',
                                 children: [
                                   {
                                     id: 'tier-4-info',
@@ -1709,7 +1709,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                           position: 0,
                                           config: {
                                             text: '$20,001+',
-                                            color: '#ffffff',
+                                            color: 'theme:text',
                                             fontSize: { desktop: 16, tablet: 15, mobile: 14 },
                                             fontWeight: 600
                                           }
@@ -1720,7 +1720,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                           position: 1,
                                           config: {
                                             text: 'High volume discounts',
-                                            color: '#94a3b8',
+                                            color: 'theme:textSecondary',
                                             fontSize: { desktop: 14, tablet: 13, mobile: 12 }
                                           }
                                         }
@@ -1733,7 +1733,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                                     position: 1,
                                     config: {
                                       text: '3%',
-                                      color: '#a78bfa',
+                                      color: 'theme:accent',
                                       fontSize: { desktop: 28, tablet: 24, mobile: 22 },
                                       fontWeight: 700
                                     }
@@ -1775,8 +1775,8 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                     size: 'large',
                     fullWidth: { desktop: false, tablet: false, mobile: true },
                     borderRadius: 12,
-                    backgroundColor: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
-                    textColor: '#ffffff',
+                    backgroundColor: 'theme:primary',
+                    textColor: 'theme:background',
                     padding: {
                       desktop: { top: 16, right: 40, bottom: 16, left: 40 }
                     },
