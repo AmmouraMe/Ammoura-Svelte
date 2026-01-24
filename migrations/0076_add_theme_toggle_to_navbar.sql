@@ -113,7 +113,7 @@ SET
                 "type": "button",
                 "config": {
                   "label": "Profile",
-                  "url": "#",
+                  "url": "/user/profile",
                   "variant": "text",
                   "size": "medium",
                   "fullWidth": {"desktop": false, "tablet": false, "mobile": true}
