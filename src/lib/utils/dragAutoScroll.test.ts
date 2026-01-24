@@ -516,6 +516,77 @@ describe('createAutoScroll', () => {
       expect(autoScroll.getState().isActive).toBe(true);
       expect(autoScroll.getState().direction).toBe(-1); // Scrolling up
     });
+
+    it('does not activate when getScrollContainer returns null', () => {
+      // This tests the case where a custom getScrollContainer is provided
+      // but it returns null (e.g., element not rendered yet)
+      const getScrollContainer = vi.fn(() => null);
+
+      const autoScroll = createAutoScroll({
+        edgeThreshold: 80,
+        getScrollContainer
+      });
+
+      // Touch near edge - should normally trigger scrolling
+      autoScroll.update(40);
+
+      // But since container is null, auto-scroll should not activate
+      expect(autoScroll.getState().isActive).toBe(false);
+      expect(autoScroll.getState().direction).toBe(0);
+      expect(getScrollContainer).toHaveBeenCalled();
+    });
+
+    it('stops scrolling when getScrollContainer starts returning null', () => {
+      // Start with a valid container
+      const container = document.createElement('div');
+      container.getBoundingClientRect = vi.fn(() => ({
+        top: 0,
+        bottom: 400,
+        height: 400,
+        left: 0,
+        right: 300,
+        width: 300,
+        x: 0,
+        y: 0,
+        toJSON: () => ({})
+      }));
+      Object.defineProperty(container, 'scrollTop', {
+        value: 100,
+        writable: true,
+        configurable: true
+      });
+      Object.defineProperty(container, 'scrollHeight', {
+        value: 2000,
+        writable: true,
+        configurable: true
+      });
+      Object.defineProperty(container, 'clientHeight', {
+        value: 400,
+        writable: true,
+        configurable: true
+      });
+
+      // getScrollContainer will initially return container, then null
+      let returnNull = false;
+      const getScrollContainer = vi.fn(() => (returnNull ? null : container));
+
+      const autoScroll = createAutoScroll({
+        edgeThreshold: 80,
+        getScrollContainer
+      });
+
+      // Touch near top - should start scrolling
+      autoScroll.update(40);
+      expect(autoScroll.getState().isActive).toBe(true);
+
+      // Now make getScrollContainer return null
+      returnNull = true;
+
+      // Update again - should stop scrolling
+      autoScroll.update(40);
+      expect(autoScroll.getState().isActive).toBe(false);
+      expect(autoScroll.getState().direction).toBe(0);
+    });
   });
 
   describe('getState', () => {

@@ -536,32 +536,16 @@
         if (canvasElement) {
           // First try the tree-list (scrollable list of components)
           const treeList = canvasElement.querySelector('.tree-list') as HTMLElement | null;
-          if (treeList) {
-            console.log('[DEBUG] getScrollableContainer: returning tree-list', {
-              scrollHeight: treeList.scrollHeight,
-              clientHeight: treeList.clientHeight,
-              maxScroll: treeList.scrollHeight - treeList.clientHeight
-            });
-            return treeList;
-          }
+          if (treeList) return treeList;
           // Fallback to mobile-tree-view container
           const treeView = canvasElement.querySelector('.mobile-tree-view') as HTMLElement | null;
-          if (treeView) {
-            console.log('[DEBUG] getScrollableContainer: returning mobile-tree-view', {
-              scrollHeight: treeView.scrollHeight,
-              clientHeight: treeView.clientHeight,
-              maxScroll: treeView.scrollHeight - treeView.clientHeight
-            });
-            return treeView;
-          }
+          if (treeView) return treeView;
         }
         // Last fallback - if tree view hasn't rendered yet, return null
         // This prevents scrolling a non-scrollable container
-        console.log('[DEBUG] getScrollableContainer: returning null (no tree view found)');
         return null;
       }
       // In preview mode, the viewport element is scrollable (not the outer canvas)
-      console.log('[DEBUG] getScrollableContainer: returning viewportElement (preview mode)');
       return viewportElement;
     }
     // On desktop, the viewport element is scrollable
@@ -872,7 +856,6 @@
     sidebarDragComponentType = componentType;
 
     // Update auto-scroll based on touch Y position (works even when touch is outside canvas)
-    console.log('[DEBUG] handleTouchDragOverCanvas: clientY =', clientY, 'isMobileView =', isMobileView, 'mobileEditMode =', mobileEditMode);
     sidebarDragAutoScroll.update(clientY);
 
     const rect = canvasElement.getBoundingClientRect();
@@ -1461,6 +1444,9 @@
         <div
           class="canvas-content"
           class:mobile-edit-mode={mobileEditMode}
+          class:drag-active={sidebarDragComponentType !== null ||
+            draggedTreeItem !== null ||
+            isTouchDragging}
           style="{themeStyles}; {componentThemeOverrides}; {pagePropertiesStyle}"
           data-mobile-edit-mode={mobileEditMode ? 'on' : 'off'}
         >
@@ -1904,6 +1890,11 @@
     overflow: hidden; /* Prevent horizontal overflow */
     overflow-wrap: break-word; /* Allow text to wrap */
     word-wrap: break-word; /* Legacy support */
+  }
+
+  /* Add extra space at bottom during drag to clear browser UI and cancel zone */
+  .canvas-content.drag-active {
+    padding-bottom: 150px;
   }
 
   /* Fit-content mode: reduce min-height for component/primitive/layout editing */
@@ -2651,7 +2642,7 @@
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     overflow: hidden;
     margin: 0.5rem;
-    max-height: calc(100vh - 180px);
+    max-height: calc(100vh - 140px); /* Match canvas-viewport max-height for consistency */
   }
 
   .tree-view-header {
@@ -2737,6 +2728,8 @@
   .tree-list.drag-active {
     background: rgba(59, 130, 246, 0.03);
     border-radius: 8px;
+    /* Add extra space at bottom during drag to clear browser UI and cancel zone */
+    padding-bottom: 150px;
   }
 
   .tree-node {

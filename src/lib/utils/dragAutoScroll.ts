@@ -94,7 +94,7 @@ export function createAutoScroll(config: AutoScrollConfig = {}): {
    * When using a custom container, uses its bounding rect.
    * Otherwise uses the full window viewport.
    */
-  function getContainerBounds(): { top: number; bottom: number; height: number; } {
+  function getContainerBounds(): { top: number; bottom: number; height: number } {
     const scrollContainer = resolveScrollContainer();
     if (scrollContainer) {
       const rect = scrollContainer.getBoundingClientRect();
@@ -184,16 +184,6 @@ export function createAutoScroll(config: AutoScrollConfig = {}): {
         const currentScroll = getScrollTop();
         const maxScroll = getMaxScroll();
 
-        console.log('[DEBUG] scrollLoop:', {
-          direction: state.direction,
-          distanceFromEdge,
-          speed,
-          scrollAmount,
-          currentScroll,
-          maxScroll,
-          willScroll: state.direction === -1 ? currentScroll > 0 : currentScroll < maxScroll
-        });
-
         if (state.direction === -1 && currentScroll > 0) {
           performScroll(scrollAmount);
         } else if (state.direction === 1 && currentScroll < maxScroll) {
@@ -215,21 +205,27 @@ export function createAutoScroll(config: AutoScrollConfig = {}): {
     const { edgeThreshold, cancelZoneHeight } = mergedConfig;
     const viewportHeight = getViewportHeight();
 
+    // Only attempt auto-scroll if we have a getScrollContainer function defined
+    // AND it returns a valid container. This prevents falling back to window
+    // scrolling which doesn't work in fixed-height layouts like the builder.
     const scrollContainer = resolveScrollContainer();
-    console.log('[DEBUG] dragAutoScroll.update:', {
-      clientY,
-      viewportHeight,
-      edgeThreshold,
-      cancelZoneHeight,
-      hasScrollContainer: !!scrollContainer,
-      scrollContainerClass: scrollContainer?.className,
-      maxScroll: scrollContainer ? scrollContainer.scrollHeight - scrollContainer.clientHeight : 'N/A'
-    });
+    if (mergedConfig.getScrollContainer && !scrollContainer) {
+      // Container getter is defined but returned null - container not ready yet
+      // Don't start scrolling, wait for container to be available
+      if (state.isActive) {
+        state.direction = 0;
+        state.isActive = false;
+        if (state.animationFrameId !== null) {
+          cancelAnimationFrame(state.animationFrameId);
+          state.animationFrameId = null;
+        }
+      }
+      return;
+    }
 
     // Check if touch is in the cancel zone (always relative to screen bottom)
     const isInCancelZone = clientY > viewportHeight - cancelZoneHeight;
     if (isInCancelZone) {
-      console.log('[DEBUG] dragAutoScroll: in cancel zone, stopping');
       // In cancel zone - no scrolling
       if (state.isActive) {
         state.direction = 0;
@@ -249,15 +245,6 @@ export function createAutoScroll(config: AutoScrollConfig = {}): {
     const topZoneEnd = bounds.top + edgeThreshold;
     const bottomZoneStart = bounds.bottom - edgeThreshold;
 
-    console.log('[DEBUG] dragAutoScroll zones:', {
-      bounds,
-      topZoneEnd,
-      bottomZoneStart,
-      clientY,
-      inTopZone: clientY < topZoneEnd && clientY >= bounds.top,
-      inBottomZone: clientY > bottomZoneStart && clientY <= bounds.bottom
-    });
-
     // Determine scroll direction
     let newDirection: -1 | 0 | 1 = 0;
 
@@ -271,12 +258,10 @@ export function createAutoScroll(config: AutoScrollConfig = {}): {
 
     // Update state and start/stop animation as needed
     if (newDirection !== state.direction) {
-      console.log('[DEBUG] dragAutoScroll: direction changed from', state.direction, 'to', newDirection);
       state.direction = newDirection;
 
       if (newDirection !== 0 && !state.isActive) {
         // Start scrolling
-        console.log('[DEBUG] dragAutoScroll: starting scroll animation');
         state.isActive = true;
         state.animationFrameId = requestAnimationFrame(scrollLoop);
       } else if (newDirection === 0) {
