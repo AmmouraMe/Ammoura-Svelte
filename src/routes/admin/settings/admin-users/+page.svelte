@@ -1,6 +1,8 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { invalidateAll } from '$app/navigation';
+  import { confirmStore } from '$lib/stores/confirm';
+  import { toastStore } from '$lib/stores/toast';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -62,9 +64,15 @@
   }
 
   async function deleteUser(userId: string, userName: string) {
-    if (
-      !confirm(`Are you sure you want to delete user "${userName}"? This action cannot be undone.`)
-    ) {
+    const confirmed = await confirmStore.show(
+      `Are you sure you want to delete user "${userName}"? This action cannot be undone.`,
+      {
+        title: 'Delete User',
+        confirmText: 'Delete',
+        variant: 'danger'
+      }
+    );
+    if (!confirmed) {
       return;
     }
 
@@ -78,10 +86,10 @@
         await invalidateAll();
       } else {
         const result = (await response.json()) as { error?: string };
-        alert(`Failed to delete user: ${result.error || 'Unknown error'}`);
+        toastStore.error(`Failed to delete user: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {
-      alert(`Error deleting user: ${error}`);
+      toastStore.error(`Error deleting user: ${error}`);
     }
   }
 </script>
@@ -284,8 +292,7 @@
 <style>
   .users-page {
     padding: 2rem;
-    max-width: 1400px;
-    margin: 0 auto;
+    width: 100%;
   }
 
   .page-header {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { render } from '@testing-library/svelte';
 import RevisionModal from './RevisionModal.svelte';
 import type { RevisionNode } from '$lib/types/revisions';
 
@@ -49,139 +49,70 @@ describe('RevisionModal - published revision styling', () => {
     }
   ];
 
-  it('applies published class to published revisions', async () => {
+  it('applies published class to published revisions in graph view', async () => {
     render(RevisionModal, {
       props: {
         isOpen: true,
         revisions: mockRevisions,
         currentRevisionId: 'rev-2',
         onSelect: vi.fn(),
-        onPublish: vi.fn(),
         onClose: vi.fn()
       }
     });
 
-    // Switch to list view to test list-specific features
-    const listViewButton = screen.getByTitle('List view');
-    await listViewButton.click();
+    // Graph view is now the only view - check revision rows
+    const revisionRows = document.querySelectorAll('.revision-row');
+    expect(revisionRows.length).toBe(3);
 
-    // Get all revision items
-    const revisionItems = document.querySelectorAll('.revision-item');
-    expect(revisionItems.length).toBe(3);
+    // Find the published revision row (rev-1 has is_current: true)
+    const publishedRows = document.querySelectorAll('.revision-row.published');
+    expect(publishedRows.length).toBe(1);
 
-    // Check that the published revision has the published class
-    const publishedRevision = revisionItems[0];
-    expect(publishedRevision.classList.contains('published')).toBe(true);
-
-    // Check that draft revisions don't have the published class
-    const draftRevision1 = revisionItems[1];
-    const draftRevision2 = revisionItems[2];
-    expect(draftRevision1.classList.contains('published')).toBe(false);
-    expect(draftRevision2.classList.contains('published')).toBe(false);
+    // Find the selected revision row (rev-2 is currentRevisionId)
+    const selectedRows = document.querySelectorAll('.revision-row.selected');
+    expect(selectedRows.length).toBe(1);
   });
 
-  it('applies current class to the current revision', async () => {
+  it('applies selected class to the current revision in graph view', async () => {
     render(RevisionModal, {
       props: {
         isOpen: true,
         revisions: mockRevisions,
         currentRevisionId: 'rev-2',
         onSelect: vi.fn(),
-        onPublish: vi.fn(),
         onClose: vi.fn()
       }
     });
 
-    // Switch to list view to test list-specific features
-    const listViewButton = screen.getByTitle('List view');
-    await listViewButton.click();
+    // Graph view is now the only view
+    // Check that only one revision has the selected class
+    const selectedRows = document.querySelectorAll('.revision-row.selected');
+    expect(selectedRows.length).toBe(1);
 
-    // Get all revision items
-    const revisionItems = document.querySelectorAll('.revision-item');
-
-    // Check that the current revision has the current class
-    const currentRevision = revisionItems[1]; // rev-2
-    expect(currentRevision.classList.contains('current')).toBe(true);
-
-    // Check that other revisions don't have the current class
-    const otherRevision1 = revisionItems[0]; // rev-1
-    const otherRevision2 = revisionItems[2]; // rev-3
-    expect(otherRevision1.classList.contains('current')).toBe(false);
-    expect(otherRevision2.classList.contains('current')).toBe(false);
+    // Check that other revisions don't have the selected class
+    const nonSelectedRows = document.querySelectorAll('.revision-row:not(.selected)');
+    expect(nonSelectedRows.length).toBe(2);
   });
 
-  it('shows "Published" badge for published revisions', () => {
-    render(RevisionModal, {
-      props: {
-        isOpen: true,
-        revisions: mockRevisions,
-        currentRevisionId: 'rev-2',
-        onSelect: vi.fn(),
-        onPublish: vi.fn(),
-        onClose: vi.fn()
-      }
-    });
-
-    // Check for published badge (checkmark) in graph view
-    const publishedBadges = screen.getAllByText('✓');
-    expect(publishedBadges.length).toBe(1);
-  });
-
-  it('shows publish button only for draft revisions', async () => {
-    render(RevisionModal, {
-      props: {
-        isOpen: true,
-        revisions: mockRevisions,
-        currentRevisionId: 'rev-2',
-        onSelect: vi.fn(),
-        onPublish: vi.fn(),
-        onClose: vi.fn()
-      }
-    });
-
-    // Switch to list view where publish buttons are shown
-    const listViewButton = screen.getByTitle('List view');
-    await listViewButton.click();
-
-    // Check for publish buttons (should only appear on drafts)
-    const publishButtons = screen.getAllByTitle('Make this revision current');
-    expect(publishButtons.length).toBe(2); // rev-2 and rev-3 are drafts
-  });
-
-  it('does not close modal after publishing a revision', async () => {
-    const mockOnPublish = vi.fn();
+  it('calls onSelect when clicking a revision row', async () => {
+    const mockOnSelect = vi.fn();
     const mockOnClose = vi.fn();
 
-    const { container } = render(RevisionModal, {
+    render(RevisionModal, {
       props: {
         isOpen: true,
         revisions: mockRevisions,
         currentRevisionId: 'rev-2',
-        onSelect: vi.fn(),
-        onPublish: mockOnPublish,
+        onSelect: mockOnSelect,
         onClose: mockOnClose
       }
     });
 
-    // Switch to list view where publish buttons are shown
-    const listViewButton = screen.getByTitle('List view');
-    await listViewButton.click();
+    // Click on a revision row
+    const revisionRows = document.querySelectorAll('.revision-row');
+    await (revisionRows[0] as HTMLElement).click();
 
-    // Get publish button for rev-2
-    const publishButtons = screen.getAllByTitle('Make this revision current');
-    const firstPublishButton = publishButtons[0];
-
-    // Click publish
-    await firstPublishButton.click();
-
-    // Verify onPublish was called
-    expect(mockOnPublish).toHaveBeenCalledTimes(1);
-
-    // Verify onClose was NOT called (modal stays open to show updated state)
-    expect(mockOnClose).not.toHaveBeenCalled();
-
-    // Verify modal is still visible
-    const modal = container.querySelector('.modal-overlay');
-    expect(modal).toBeInTheDocument();
+    // Verify onSelect was called
+    expect(mockOnSelect).toHaveBeenCalledTimes(1);
   });
 });

@@ -15,6 +15,17 @@ Hermes is a modern multi-tenant eCommerce platform built with SvelteKit and Type
 
 ## Development Commands
 
+### Local Development Server
+
+**IMPORTANT**: During local development, the development server is almost always already running in another terminal on **port 4236**. When testing or previewing changes:
+
+- **DO NOT** start a new development server with `npm run dev`
+- **DO** use the already running server at `http://localhost:4236`
+- **DO** use Chrome Dev Tools MCP when needed, when it's available
+- If you need to verify the server is running, check for processes on port 4236 rather than starting a new one.
+
+Only start a new server if explicitly asked or if you confirm no server is currently running.
+
 ### Essential Commands
 
 - `npm run dev` - Start development server (auto-migrates and seeds DB)
@@ -204,7 +215,7 @@ export async function getProduct(
 - **Use writable stores** for mutable state
 - **Use derived stores** for computed values
 - **Export store and typed helpers** (subscribe, set, update)
-- Existing stores: `auth`, `cart`, `checkout`, `products`, `theme`, `toast`
+- Existing stores: `auth`, `cart`, `checkout`, `confirm`, `products`, `prompt`, `theme`, `toast`
 
 Example:
 
@@ -845,6 +856,94 @@ Before implementing any feature that handles sensitive data:
 
 **If you're unsure about security implications, ASK. Security is non-negotiable.**
 
+### Browser API Restrictions
+
+**NEVER use native browser dialogs. Use our custom implementations instead:**
+
+#### Prompt Dialog
+
+- **NEVER use** `prompt()` or `window.prompt()`
+- **ALWAYS use** `promptStore.show()` from `$lib/stores/prompt`
+
+```typescript
+import { promptStore } from '$lib/stores/prompt';
+
+// Basic usage - returns string or null (if canceled)
+const name = await promptStore.show('Enter your name');
+if (name !== null) {
+  console.log(`Hello, ${name}!`);
+}
+
+// With options
+const email = await promptStore.show('Enter your email', {
+  defaultValue: 'user@example.com',
+  inputType: 'email', // 'text' | 'number' | 'email' | 'password' | 'url' | 'tel'
+  placeholder: 'email@domain.com',
+  confirmText: 'Submit', // Default: 'OK'
+  cancelText: 'Skip', // Default: 'Cancel'
+  required: true // Prevents empty submissions
+});
+```
+
+**Why?**
+
+- Native `prompt()` blocks the main thread
+- Cannot be styled to match our theme
+- Poor accessibility
+- Inconsistent across browsers
+- Our implementation is promise-based and non-blocking
+
+#### Alert Dialog
+
+- **NEVER use** `alert()` or `window.alert()`
+- **ALWAYS use** `toastStore` from `$lib/stores/toast` for notifications
+
+```typescript
+import { toastStore } from '$lib/stores/toast';
+
+toastStore.success('Operation completed!');
+toastStore.error('Something went wrong');
+toastStore.info('Here is some information');
+toastStore.warning('Please be careful');
+```
+
+#### Confirm Dialog
+
+- **NEVER use** `confirm()` or `window.confirm()`
+- **ALWAYS use** `confirmStore.show()` from `$lib/stores/confirm`
+
+```typescript
+import { confirmStore } from '$lib/stores/confirm';
+
+// Basic usage - returns boolean (true if confirmed, false if canceled)
+const confirmed = await confirmStore.show('Delete this item?');
+if (confirmed) {
+  // Proceed with deletion
+}
+
+// With options
+const shouldDelete = await confirmStore.show('Delete this product permanently?', {
+  title: 'Confirm Deletion', // Dialog title (default: 'Confirm')
+  confirmText: 'Delete', // Confirm button text (default: 'OK')
+  cancelText: 'Keep', // Cancel button text (default: 'Cancel')
+  variant: 'danger' // 'default' | 'danger' | 'warning'
+});
+
+// Variant examples:
+// 'danger' - Red confirm button (for destructive actions like delete)
+// 'warning' - Orange confirm button (for unsaved changes, resets)
+// 'default' - Primary colored confirm button (for neutral confirmations)
+```
+
+**Why?**
+
+- Native `confirm()` blocks the main thread
+- Cannot be styled to match our theme
+- Poor accessibility
+- Inconsistent across browsers
+- Our implementation is promise-based and non-blocking
+- Supports variants for visual distinction of action severity
+
 ## Quality Gates & Completion Criteria
 
 ### Before Considering ANY Task Complete
@@ -1047,3 +1146,21 @@ describe('calculateDiscount', () => {
 - [Cloudflare Pages Documentation](https://developers.cloudflare.com/pages/)
 - Project docs: `docs/` folder
 - Agent guidelines: `AGENTS.md`
+
+### Svelte/SvelteKit LLM Documentation
+
+The following files in the project root contain Svelte and SvelteKit documentation optimized for LLM consumption:
+
+- `llms.txt` - Index of Svelte documentation resources with links to various documentation sets
+- `llms-full.txt` - Complete Svelte and SvelteKit developer documentation (33,000+ lines)
+
+When working with Svelte components, SvelteKit routing, or framework-specific patterns, reference these files for authoritative documentation on:
+
+- Svelte component syntax and reactivity (`$:`, `{#if}`, `{#each}`, etc.)
+- SvelteKit routing conventions (`+page.svelte`, `+layout.svelte`, `+server.ts`)
+- Stores and state management (`writable`, `readable`, `derived`)
+- Lifecycle functions (`onMount`, `beforeUpdate`, `afterUpdate`)
+- Special elements (`<svelte:component>`, `<svelte:element>`, `<svelte:window>`)
+- Actions, transitions, and animations
+- Form handling and progressive enhancement
+- Server-side rendering and hydration

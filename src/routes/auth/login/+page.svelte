@@ -1,6 +1,6 @@
 <script lang="ts">
   import { authStore } from '$lib/stores/auth';
-  import { goto } from '$app/navigation';
+  import { goto, invalidateAll } from '$app/navigation';
   import { toastStore } from '$lib/stores/toast';
   import Button from '$lib/components/Button.svelte';
   import { page } from '$app/stores';
@@ -56,6 +56,8 @@
 
       if (success) {
         toastStore.success('Login successful!');
+        // Invalidate all data to refresh server state (including currentUser), then redirect
+        await invalidateAll();
         goto('/admin/dashboard');
       } else {
         error = 'Invalid email or password';

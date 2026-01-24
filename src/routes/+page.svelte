@@ -1,47 +1,54 @@
 <script lang="ts">
   import ProductCard from '../lib/components/ProductCard.svelte';
-  import TextWidget from '../lib/components/widgets/TextWidget.svelte';
-  import ImageWidget from '../lib/components/widgets/ImageWidget.svelte';
-  import SingleProductWidget from '../lib/components/widgets/SingleProductWidget.svelte';
-  import ProductListWidget from '../lib/components/widgets/ProductListWidget.svelte';
-  import HeroWidget from '../lib/components/widgets/HeroWidget.svelte';
-  import ButtonWidget from '../lib/components/widgets/ButtonWidget.svelte';
-  import SpacerWidget from '../lib/components/widgets/SpacerWidget.svelte';
-  import DividerWidget from '../lib/components/widgets/DividerWidget.svelte';
-  import ColumnsWidget from '../lib/components/widgets/ColumnsWidget.svelte';
-  import HeadingWidget from '../lib/components/widgets/HeadingWidget.svelte';
-  import FeaturesWidget from '../lib/components/widgets/FeaturesWidget.svelte';
-  import PricingWidget from '../lib/components/widgets/PricingWidget.svelte';
-  import CTAWidget from '../lib/components/widgets/CTAWidget.svelte';
+  import FrontendComponentRenderer from '$lib/components/FrontendComponentRenderer.svelte';
+  import { themeRefToCssVar } from '$lib/utils/editor/colorThemes';
+  import { themeStore } from '$lib/stores/theme';
   import { onMount } from 'svelte';
   import { browser } from '$app/environment';
   import type { PageData } from './$types';
+  import type { PageProperties } from '$lib/types/pages';
 
   export let data: PageData;
   const products = data.products;
   const page = data.page ?? null;
-  const widgets = data.widgets ?? [];
-  const isAdmin = data.isAdmin ?? false;
+  const components = data.components ?? [];
+  const pageProperties: PageProperties | undefined = data.pageProperties;
+  const _isAdmin = data.isAdmin ?? false;
   const systemLightTheme = data.systemLightTheme ?? 'vibrant';
   const systemDarkTheme = data.systemDarkTheme ?? 'midnight';
 
-  let heroVisible = false;
-  let colorTheme = data.colorTheme || systemLightTheme;
+  // Resolve a color value that may be a theme reference (e.g., 'theme:primary') to a CSS value
+  function resolveColorValue(value: string | undefined): string | undefined {
+    if (!value) return undefined;
+    // Check if it's a theme or color reference
+    const cssVar = themeRefToCssVar(value);
+    if (cssVar) return cssVar;
+    // Otherwise return the value as-is (it's a direct color value)
+    return value;
+  }
 
-  // Get the current applied theme (light or dark) from the document
-  const getCurrentTheme = (): 'light' | 'dark' => {
+  let heroVisible = false;
+
+  // Get the system's preferred color scheme
+  function getSystemTheme(): 'light' | 'dark' {
     if (!browser) return 'light';
-    const theme = document.documentElement.getAttribute('data-theme');
-    return theme === 'dark' ? 'dark' : 'light';
-  };
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  // Derive the applied theme mode from the theme preference (reactive to theme store changes)
+  // When preference is 'system', use the OS preference
+  $: appliedThemeMode =
+    $themeStore === 'system' ? getSystemTheme() : ($themeStore as 'light' | 'dark');
+
+  // The active color theme ID that matches the current light/dark mode (reactive)
+  // If page has a specific colorTheme set, use that; otherwise use system theme
+  $: colorTheme = data.colorTheme
+    ? data.colorTheme
+    : appliedThemeMode === 'dark'
+      ? systemDarkTheme
+      : systemLightTheme;
 
   onMount(() => {
-    // Set colorTheme based on current mode after theme is initialized
-    if (!data.colorTheme) {
-      const currentMode = getCurrentTheme();
-      colorTheme = currentMode === 'dark' ? systemDarkTheme : systemLightTheme;
-    }
-
     setTimeout(() => {
       heroVisible = true;
     }, 100);
@@ -126,63 +133,27 @@
   />
 </svelte:head>
 
-{#if isAdmin}
-  <div class="edit-banner">
-    {#if page}
-      <a href="/admin/pages/{page.id}/edit" class="edit-link">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path
-            d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          ></path>
-        </svg>
-        <span>Edit Home Page</span>
-      </a>
-    {:else}
-      <a href="/admin/pages/create?title=Home&slug=/" class="edit-link create-link">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path d="M12 5v14M5 12h14" stroke-width="2" stroke-linecap="round"></path>
-        </svg>
-        <span>Create Home Page</span>
-      </a>
-    {/if}
-  </div>
-{/if}
-
-{#if page && widgets.length > 0}
-  <!-- Render page with widgets -->
-  <div class="widget-page">
-    {#each widgets as widget}
-      <div class="widget-container" data-widget-type={widget.type}>
-        {#if widget.type === 'text'}
-          <TextWidget config={widget.config} />
-        {:else if widget.type === 'image'}
-          <ImageWidget config={widget.config} />
-        {:else if widget.type === 'single_product'}
-          <SingleProductWidget config={widget.config} />
-        {:else if widget.type === 'product_list'}
-          <ProductListWidget config={widget.config} />
-        {:else if widget.type === 'hero'}
-          <HeroWidget config={widget.config} {colorTheme} />
-        {:else if widget.type === 'button'}
-          <ButtonWidget config={widget.config} />
-        {:else if widget.type === 'spacer'}
-          <SpacerWidget config={widget.config} />
-        {:else if widget.type === 'divider'}
-          <DividerWidget config={widget.config} {colorTheme} />
-        {:else if widget.type === 'columns'}
-          <ColumnsWidget config={widget.config} />
-        {:else if widget.type === 'heading'}
-          <HeadingWidget config={widget.config} {colorTheme} />
-        {:else if widget.type === 'features'}
-          <FeaturesWidget config={widget.config} {colorTheme} />
-        {:else if widget.type === 'pricing'}
-          <PricingWidget config={widget.config} />
-        {:else if widget.type === 'cta'}
-          <CTAWidget config={widget.config} {colorTheme} />
-        {/if}
+{#if page && components.length > 0}
+  <!-- Render page with components using FrontendComponentRenderer for proper container/children support -->
+  <div
+    class="component-page"
+    style:background-color={resolveColorValue(pageProperties?.backgroundColor)}
+    style:background-image={pageProperties?.backgroundImage
+      ? `url(${pageProperties.backgroundImage})`
+      : undefined}
+    style:min-height={pageProperties?.minHeight || undefined}
+    style:padding={pageProperties?.padding || undefined}
+    style:border-color={resolveColorValue(pageProperties?.borderColor)}
+    style:border-width={pageProperties?.borderWidth ? `${pageProperties.borderWidth}px` : undefined}
+    style:border-style={pageProperties?.borderStyle || undefined}
+    style:border-radius={pageProperties?.borderRadius
+      ? `${pageProperties.borderRadius}px`
+      : undefined}
+    style:box-shadow={pageProperties?.boxShadow || undefined}
+  >
+    {#each components as component}
+      <div class="component-container" data-component-type={component.type}>
+        <FrontendComponentRenderer type={component.type} config={component.config} {colorTheme} />
       </div>
     {/each}
   </div>
@@ -403,45 +374,13 @@
 {/if}
 
 <style>
-  /* Edit Banner */
-  .edit-banner {
-    position: fixed;
-    top: 80px;
-    right: 20px;
-    z-index: 1000;
-  }
-
-  .edit-link {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: var(--color-secondary);
-    color: var(--color-text-inverse);
-    text-decoration: none;
-    border-radius: 6px;
-    font-weight: 500;
-    font-size: 0.875rem;
-    transition: background-color var(--transition-normal);
-    box-shadow: 0 2px 8px var(--color-shadow-medium);
-  }
-
-  .edit-link:hover {
-    background: var(--color-secondary-hover);
-  }
-
-  .edit-link svg {
-    flex-shrink: 0;
-  }
-
-  /* Widget Page */
-  .widget-page {
+  /* Component Page */
+  .component-page {
     width: 100%;
     min-height: 100vh;
-    background: var(--theme-background);
   }
 
-  .widget-container {
+  .component-container {
     width: 100%;
   }
 

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { confirmStore } from '$lib/stores/confirm';
   import { toastStore } from '$lib/stores/toast';
   import { themeStore } from '$lib/stores/theme';
   import { themePreviewStore } from '$lib/stores/themePreview';
@@ -148,12 +149,12 @@
 
       if (lightResponse.ok) {
         const data = (await lightResponse.json()) as { value: string };
-        systemLightTheme = data.value || 'default-light';
+        systemLightTheme = data.value || 'vibrant';
       }
 
       if (darkResponse.ok) {
         const data = (await darkResponse.json()) as { value: string };
-        systemDarkTheme = data.value || 'default-dark';
+        systemDarkTheme = data.value || 'midnight';
       }
     } catch (error) {
       console.error('Error loading preferences:', error);
@@ -919,7 +920,12 @@
       return;
     }
 
-    if (confirm('Are you sure you want to delete this theme?')) {
+    const confirmed = await confirmStore.show('Are you sure you want to delete this theme?', {
+      title: 'Delete Theme',
+      confirmText: 'Delete',
+      variant: 'danger'
+    });
+    if (confirmed) {
       try {
         const response = await fetch('/api/color-themes', {
           method: 'DELETE',
@@ -933,10 +939,10 @@
 
         // Clear system theme if deleted
         if (systemLightTheme === id) {
-          await setSystemDefault('default-light', 'light');
+          await setSystemDefault('vibrant', 'light');
         }
         if (systemDarkTheme === id) {
-          await setSystemDefault('default-dark', 'dark');
+          await setSystemDefault('midnight', 'dark');
         }
         // Clear currently viewing if deleted
         if (currentlyViewingTheme === id) {

@@ -1,9 +1,32 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="no-transitions">
   <head>
     <meta charset="utf-8" />
     <link rel="icon" href="%sveltekit.assets%/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Critical FOUC prevention styles - must be inline before any external CSS -->
+    <style>
+      /* Disable all transitions during initial theme setup to prevent FOUC */
+      html.no-transitions,
+      html.no-transitions *,
+      html.no-transitions *::before,
+      html.no-transitions *::after {
+        transition: none !important;
+        animation-duration: 0s !important;
+      }
+    </style>
+    <!-- Fallback for JavaScript disabled - ensure page is visible -->
+    <noscript>
+      <style>
+        html.theme-loaded:not(.hydration-complete) {
+          visibility: visible !important;
+        }
+        html.no-transitions {
+          transition: none !important;
+        }
+      </style>
+    </noscript>
+    <link rel="stylesheet" href="/styles/browser-overrides.css" />
     <script>
       // Prevent FOUC (Flash of Unstyled Content) by setting theme immediately
       // This runs before any framework code, ensuring the correct theme is applied
@@ -16,6 +39,8 @@
           // Use session theme if available for fastest retrieval
           if (sessionTheme && ['light', 'dark'].includes(sessionTheme)) {
             document.documentElement.setAttribute('data-theme', sessionTheme);
+            // theme-loaded will be added by Svelte after hydration
+            // to prevent layout shift visibility
             document.documentElement.classList.add('theme-loaded');
             return;
           }
@@ -43,11 +68,14 @@
 
           // Store in sessionStorage for faster retrieval on subsequent page loads
           sessionStorage.setItem('applied-theme', actualTheme);
+
+          // Note: no-transitions class is removed by Svelte after hydration completes
         } catch (e) {
           // Fail silently and let CSS defaults handle theme
           console.warn('Failed to initialize theme:', e);
           document.documentElement.setAttribute('data-theme', 'light');
           document.documentElement.classList.add('theme-loaded');
+          document.documentElement.classList.remove('no-transitions');
         }
       })();
     </script>

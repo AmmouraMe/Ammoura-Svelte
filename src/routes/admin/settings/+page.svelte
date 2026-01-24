@@ -49,7 +49,7 @@
           }}
         >
           <div class="form-group">
-            <label for="storeName">Store Name</label>
+            <label for="storeName">Site Title</label>
             <input
               id="storeName"
               name="storeName"
@@ -60,12 +60,12 @@
           </div>
 
           <div class="form-group">
-            <label for="tagline">Tagline</label>
+            <label for="tagline">Site Tagline</label>
             <input id="tagline" name="tagline" type="text" value={generalSettings.tagline} />
           </div>
 
           <div class="form-group">
-            <label for="description">Description</label>
+            <label for="description">Site Description</label>
             <textarea
               id="description"
               name="description"
@@ -239,7 +239,7 @@
 
 <style>
   .settings-page {
-    max-width: 1400px;
+    width: 100%;
   }
 
   .page-header {

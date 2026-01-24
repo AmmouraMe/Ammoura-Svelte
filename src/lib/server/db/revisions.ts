@@ -6,7 +6,8 @@ import type { D1Database } from '@cloudflare/workers-types';
 import type {
   PageRevision,
   ParsedPageRevision,
-  PageWidget,
+  PageComponent,
+  PageProperties,
   CreateRevisionData,
   RevisionNode
 } from '$lib/types/pages';
@@ -36,7 +37,10 @@ export async function getPageRevisions(
 
   return (result.results || []).map((rev) => ({
     ...rev,
-    widgets: JSON.parse(rev.widgets_snapshot) as PageWidget[]
+    components: JSON.parse(rev.widgets_snapshot) as PageComponent[],
+    pageProperties: rev.page_properties
+      ? (JSON.parse(rev.page_properties) as PageProperties)
+      : undefined
   }));
 }
 
@@ -65,7 +69,10 @@ export async function getRevisionById(
 
   return {
     ...result,
-    widgets: JSON.parse(result.widgets_snapshot) as PageWidget[]
+    components: JSON.parse(result.widgets_snapshot) as PageComponent[],
+    pageProperties: result.page_properties
+      ? (JSON.parse(result.page_properties) as PageProperties)
+      : undefined
   };
 }
 
@@ -76,7 +83,7 @@ export async function createRevision(
   db: D1Database,
   siteId: string,
   pageId: string,
-  data: CreateRevisionData & { created_by?: string; parent_revision_id?: string }
+  data: CreateRevisionData & { created_by?: string; parent_revision_id?: string | null }
 ): Promise<ParsedPageRevision> {
   // Verify page exists and belongs to site
   const page = await db
@@ -104,16 +111,17 @@ export async function createRevision(
 
   const revisionId = nanoid();
   const now = Math.floor(Date.now() / 1000);
-  const widgetsSnapshot = JSON.stringify(data.widgets);
+  const componentsSnapshot = JSON.stringify(data.components);
+  const pagePropertiesJson = data.pageProperties ? JSON.stringify(data.pageProperties) : null;
 
   await db
     .prepare(
       `
       INSERT INTO page_revisions (
         id, page_id, revision_hash, parent_revision_id, title, slug, status, color_theme,
-        widgets_snapshot, created_by, created_at, is_published, notes
+        widgets_snapshot, page_properties, created_by, created_at, is_published, notes
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
     )
     .bind(
@@ -125,7 +133,8 @@ export async function createRevision(
       data.slug,
       data.status,
       data.colorTheme || null,
-      widgetsSnapshot,
+      componentsSnapshot,
+      pagePropertiesJson,
       data.created_by || null,
       now,
       data.status === 'published' ? 1 : 0,
@@ -133,16 +142,26 @@ export async function createRevision(
     )
     .run();
 
+  // Update the page's draft_revision_id when creating a draft revision
+  // This is used by the admin pages list to show draft status
+  if (data.status === 'draft') {
+    await db
+      .prepare('UPDATE pages SET draft_revision_id = ? WHERE id = ?')
+      .bind(revisionId, pageId)
+      .run();
+  }
+
   return {
     id: revisionId,
     page_id: pageId,
     revision_hash: revisionHash,
-    parent_revision_id: data.parent_revision_id,
+    parent_revision_id: data.parent_revision_id ?? undefined,
     title: data.title,
     slug: data.slug,
     status: data.status,
     color_theme: data.colorTheme || undefined,
-    widgets: data.widgets,
+    components: data.components,
+    pageProperties: data.pageProperties,
     created_by: data.created_by,
     created_at: now,
     is_published: data.status === 'published',
@@ -177,13 +196,35 @@ export async function publishRevision(
     slug: revisionToPublish.slug,
     status: 'published',
     colorTheme: revisionToPublish.color_theme,
-    widgets: revisionToPublish.widgets,
+    components: revisionToPublish.components,
+    pageProperties: revisionToPublish.pageProperties,
     notes: `Published from revision ${revisionToPublish.revision_hash}`,
     created_by: createdBy,
     parent_revision_id: currentPublished?.id || revisionToPublish.id
   });
 
-  // Start a batch of operations
+  // Update page FIRST, outside the batch, to ensure it runs
+  await db
+    .prepare(
+      `
+      UPDATE pages 
+      SET title = ?, slug = ?, status = ?, color_theme = ?, published_revision_id = ?, draft_revision_id = ?, updated_at = ?
+      WHERE id = ?
+    `
+    )
+    .bind(
+      newRevision.title,
+      newRevision.slug,
+      'published',
+      newRevision.color_theme || null,
+      newRevision.id,
+      newRevision.id,
+      Math.floor(Date.now() / 1000),
+      pageId
+    )
+    .run();
+
+  // Start a batch of operations for revisions and widgets
   const batch = [
     // Unmark all other revisions as published
     db.prepare('UPDATE page_revisions SET is_published = 0 WHERE page_id = ?').bind(pageId),
@@ -191,33 +232,15 @@ export async function publishRevision(
     // Mark the new revision as published
     db
       .prepare('UPDATE page_revisions SET is_published = 1, status = ? WHERE id = ?')
-      .bind('published', newRevision.id),
-
-    // Update the page itself
-    db
-      .prepare(
-        `
-        UPDATE pages 
-        SET title = ?, slug = ?, status = ?, color_theme = ?, updated_at = ?
-        WHERE id = ?
-      `
-      )
-      .bind(
-        newRevision.title,
-        newRevision.slug,
-        'published',
-        newRevision.color_theme || null,
-        Math.floor(Date.now() / 1000),
-        pageId
-      )
+      .bind('published', newRevision.id)
   ];
 
-  // Delete all current widgets for the page
+  // Delete all current components for the page
   batch.push(db.prepare('DELETE FROM page_widgets WHERE page_id = ?').bind(pageId));
 
-  // Insert widgets from the new revision
-  for (const widget of newRevision.widgets) {
-    const widgetId = widget.id.startsWith('temp-') ? nanoid() : widget.id;
+  // Insert components from the new revision
+  for (const component of newRevision.components) {
+    const componentId = component.id.startsWith('temp-') ? nanoid() : component.id;
     batch.push(
       db
         .prepare(
@@ -227,20 +250,112 @@ export async function publishRevision(
         `
         )
         .bind(
-          widgetId,
+          componentId,
           pageId,
-          widget.type,
-          JSON.stringify(widget.config),
-          widget.position,
-          widget.created_at || Math.floor(Date.now() / 1000),
+          component.type,
+          JSON.stringify(component.config),
+          component.position,
+          component.created_at || Math.floor(Date.now() / 1000),
+          Math.floor(Date.now() / 1000)
+        )
+    );
+  }
+
+  console.log('[publishRevision] Executing batch with:', {
+    pageId,
+    newRevisionId: newRevision.id,
+    batchOperationsCount: batch.length
+  });
+
+  const batchResults = await db.batch(batch);
+
+  console.log('[publishRevision] Batch results:', {
+    resultsCount: batchResults.length,
+    results: batchResults.map((r, i) => ({
+      index: i,
+      success: r.success,
+      changes: r.meta?.changes
+    }))
+  });
+
+  return newRevision;
+}
+
+/**
+ * Mark an existing revision as published without creating a new revision.
+ * This updates the page, marks the revision as published, and syncs page_widgets.
+ * Use this when creating a revision with status='published' directly from the builder.
+ */
+export async function markRevisionAsPublished(
+  db: D1Database,
+  pageId: string,
+  revisionId: string,
+  revisionData: {
+    title: string;
+    slug: string;
+    colorTheme?: string;
+    components: PageComponent[];
+  }
+): Promise<void> {
+  // Update page with the new published revision
+  await db
+    .prepare(
+      `
+      UPDATE pages 
+      SET title = ?, slug = ?, status = ?, color_theme = ?, published_revision_id = ?, draft_revision_id = ?, updated_at = ?
+      WHERE id = ?
+    `
+    )
+    .bind(
+      revisionData.title,
+      revisionData.slug,
+      'published',
+      revisionData.colorTheme || null,
+      revisionId,
+      revisionId, // Set draft to same as published since we just published
+      Math.floor(Date.now() / 1000),
+      pageId
+    )
+    .run();
+
+  // Start a batch of operations
+  const batch = [
+    // Unmark all other revisions as published
+    db.prepare('UPDATE page_revisions SET is_published = 0 WHERE page_id = ?').bind(pageId),
+
+    // Mark this revision as published
+    db
+      .prepare('UPDATE page_revisions SET is_published = 1, status = ? WHERE id = ?')
+      .bind('published', revisionId)
+  ];
+
+  // Delete all current components for the page
+  batch.push(db.prepare('DELETE FROM page_widgets WHERE page_id = ?').bind(pageId));
+
+  // Insert components from the revision
+  for (const component of revisionData.components) {
+    const componentId = component.id.startsWith('temp-') ? nanoid() : component.id;
+    batch.push(
+      db
+        .prepare(
+          `
+          INSERT INTO page_widgets (id, page_id, type, config, position, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `
+        )
+        .bind(
+          componentId,
+          pageId,
+          component.type,
+          JSON.stringify(component.config),
+          component.position,
+          component.created_at || Math.floor(Date.now() / 1000),
           Math.floor(Date.now() / 1000)
         )
     );
   }
 
   await db.batch(batch);
-
-  return newRevision;
 }
 
 /**
@@ -269,7 +384,43 @@ export async function getPublishedRevision(
 
   return {
     ...result,
-    widgets: JSON.parse(result.widgets_snapshot) as PageWidget[]
+    components: JSON.parse(result.widgets_snapshot) as PageComponent[],
+    pageProperties: result.page_properties
+      ? (JSON.parse(result.page_properties) as PageProperties)
+      : undefined
+  };
+}
+
+/**
+ * Get the most recent draft revision for a page
+ */
+export async function getMostRecentDraftRevision(
+  db: D1Database,
+  siteId: string,
+  pageId: string
+): Promise<ParsedPageRevision | null> {
+  const result = await db
+    .prepare(
+      `
+      SELECT pr.* 
+      FROM page_revisions pr
+      INNER JOIN pages p ON pr.page_id = p.id
+      WHERE p.site_id = ? AND pr.page_id = ? AND pr.status = 'draft'
+      ORDER BY pr.created_at DESC
+      LIMIT 1
+    `
+    )
+    .bind(siteId, pageId)
+    .first<PageRevision>();
+
+  if (!result) return null;
+
+  return {
+    ...result,
+    components: JSON.parse(result.widgets_snapshot) as PageComponent[],
+    pageProperties: result.page_properties
+      ? (JSON.parse(result.page_properties) as PageProperties)
+      : undefined
   };
 }
 
@@ -304,7 +455,7 @@ export async function buildRevisionTree(
 
   // Build parent-child relationships
   const rootNodes: RevisionNode[] = [];
-  const orphanedRevisions: ParsedPageRevision[] = [];
+  const parentlessRevisions: ParsedPageRevision[] = [];
 
   revisions.forEach((revision) => {
     const node = nodeMap.get(revision.id)!;
@@ -314,34 +465,30 @@ export async function buildRevisionTree(
       if (parent) {
         parent.children.push(node);
       } else {
-        // Parent not found, this is an orphan
-        orphanedRevisions.push(revision);
+        // Parent not found, treat as parentless
+        parentlessRevisions.push(revision);
       }
     } else {
-      // No parent - could be a true root or an orphaned revision from migration
-      // We'll treat the first one as root and rest as orphans to avoid spreading them across branches
-      if (rootNodes.length === 0) {
-        rootNodes.push(node);
-      } else {
-        orphanedRevisions.push(revision);
-      }
+      // No parent - collect for chaining
+      parentlessRevisions.push(revision);
     }
   });
 
-  // If we have orphaned revisions, link them in a chronological chain
-  if (orphanedRevisions.length > 0) {
+  // Chain all parentless revisions chronologically into a single vertical line
+  // This ensures proper vertical layout (root at top, descendants below)
+  if (parentlessRevisions.length > 0) {
     // Sort by creation time (oldest first)
-    orphanedRevisions.sort((a, b) => a.created_at - b.created_at);
+    parentlessRevisions.sort((a, b) => a.created_at - b.created_at);
 
-    // Link them as a chain: oldest -> next -> next -> ... -> newest
-    for (let i = 0; i < orphanedRevisions.length; i++) {
-      const node = nodeMap.get(orphanedRevisions[i].id)!;
+    // First parentless becomes the root, rest become a vertical chain
+    for (let i = 0; i < parentlessRevisions.length; i++) {
+      const node = nodeMap.get(parentlessRevisions[i].id)!;
       if (i === 0) {
-        // First orphan becomes a root node
+        // Oldest parentless revision is the root
         rootNodes.push(node);
       } else {
-        // Link to previous orphan
-        const prevNode = nodeMap.get(orphanedRevisions[i - 1].id)!;
+        // Chain to the previous parentless revision
+        const prevNode = nodeMap.get(parentlessRevisions[i - 1].id)!;
         prevNode.children.push(node);
       }
     }
@@ -391,8 +538,12 @@ export async function buildRevisionTree(
     }
   }
 
-  // Sort result by creation time (newest first for display)
-  result.sort((a, b) => b.created_at - a.created_at);
+  // Sort result by depth (root first), then by creation time (oldest first within a level)
+  // This matches the graph layout where root is at top and time flows downward
+  result.sort((a, b) => {
+    if (a.depth !== b.depth) return a.depth - b.depth;
+    return a.created_at - b.created_at;
+  });
 
   return result;
 }
@@ -413,4 +564,55 @@ export async function getHeadRevisions(
 
   // Head revisions are those that are not parents of any other revision
   return allRevisions.filter((r) => !childIds.has(r.id));
+}
+
+/**
+ * Ensure a page has at least one initial revision
+ * If no revisions exist, creates an initial revision with the current page state
+ */
+export async function ensureInitialRevision(
+  db: D1Database,
+  siteId: string,
+  pageId: string,
+  page: {
+    title: string;
+    slug: string;
+    status: 'draft' | 'published';
+    colorTheme?: string;
+  },
+  components: PageComponent[]
+): Promise<RevisionNode[]> {
+  // Check if revisions already exist
+  const existingRevisions = await getPageRevisions(db, siteId, pageId);
+
+  if (existingRevisions.length > 0) {
+    // Revisions exist, return the tree
+    return buildRevisionTree(db, siteId, pageId);
+  }
+
+  // No revisions exist, create the initial revision
+  const initialRevision = await createRevision(db, siteId, pageId, {
+    title: page.title,
+    slug: page.slug,
+    status: page.status,
+    colorTheme: page.colorTheme,
+    components,
+    notes: 'Initial revision'
+  });
+
+  // If the page was published, mark this revision as published
+  if (page.status === 'published') {
+    await db
+      .prepare('UPDATE page_revisions SET is_published = 1 WHERE id = ?')
+      .bind(initialRevision.id)
+      .run();
+
+    // Also update the page's published_revision_id
+    await db
+      .prepare('UPDATE pages SET published_revision_id = ? WHERE id = ?')
+      .bind(initialRevision.id, pageId)
+      .run();
+  }
+
+  return buildRevisionTree(db, siteId, pageId);
 }

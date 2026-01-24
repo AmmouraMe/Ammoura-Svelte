@@ -3,9 +3,6 @@
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
 
-  // Break layout inheritance by importing root layout data
-  export const ssr = true;
-
   onMount(() => {
     // Check authentication and role on mount
     if (!$authStore.isAuthenticated) {

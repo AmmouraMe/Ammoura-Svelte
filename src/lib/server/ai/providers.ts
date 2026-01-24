@@ -161,7 +161,6 @@ class OpenAIProvider implements AIProviderInterface {
 
         // Check for usage information in any chunk
         if (chunk.usage) {
-          console.log('OpenAI usage chunk:', JSON.stringify(chunk.usage, null, 2));
           usageData = {
             inputTokens: chunk.usage.prompt_tokens || 0,
             outputTokens: chunk.usage.completion_tokens || 0,
@@ -280,7 +279,11 @@ class AnthropicProvider implements AIProviderInterface {
   }
 
   supportsVision(model: AIModel): boolean {
-    return model === 'claude-3-5-sonnet-20241022' || model === 'claude-3-5-haiku-20241022';
+    return (
+      model === 'claude-sonnet-4-20250514' ||
+      model === 'claude-3-5-sonnet-20241022' ||
+      model === 'claude-3-5-haiku-20241022'
+    );
   }
 
   async *streamCompletion(request: AICompletionRequest): AsyncGenerator<AIStreamChunk> {

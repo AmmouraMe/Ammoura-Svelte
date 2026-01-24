@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS page_revisions (
   slug TEXT NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('draft', 'published')),
   widgets_snapshot TEXT NOT NULL,
+  color_theme TEXT DEFAULT NULL, -- Page color theme at time of revision
   created_by TEXT,
   created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
   is_published INTEGER NOT NULL DEFAULT 0,

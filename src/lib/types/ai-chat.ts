@@ -67,6 +67,7 @@ export type AIProvider = 'openai' | 'anthropic' | 'grok';
 export type AIModel =
   | 'gpt-4o'
   | 'gpt-4o-mini'
+  | 'claude-sonnet-4-20250514'
   | 'claude-3-5-sonnet-20241022'
   | 'claude-3-5-haiku-20241022'
   | 'grok-beta';

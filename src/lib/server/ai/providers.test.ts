@@ -340,6 +340,10 @@ describe('AI Providers', () => {
     });
 
     describe('supportsVision', () => {
+      it('should support vision for claude-sonnet-4-20250514', () => {
+        expect(provider.supportsVision('claude-sonnet-4-20250514')).toBe(true);
+      });
+
       it('should support vision for claude-3-5-sonnet-20241022', () => {
         expect(provider.supportsVision('claude-3-5-sonnet-20241022')).toBe(true);
       });

@@ -349,8 +349,13 @@ function getSupportedModels(): { provider: AIProvider; model: AIModel; label: st
     { provider: 'openai', model: 'gpt-4o-mini', label: 'GPT-4o Mini (Faster, cheaper)' },
     {
       provider: 'anthropic',
+      model: 'claude-sonnet-4-20250514',
+      label: 'Claude Sonnet 4 (Recommended)'
+    },
+    {
+      provider: 'anthropic',
       model: 'claude-3-5-sonnet-20241022',
-      label: 'Claude 3.5 Sonnet (Recommended)'
+      label: 'Claude 3.5 Sonnet'
     },
     {
       provider: 'anthropic',

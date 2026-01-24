@@ -47,6 +47,7 @@ export const PUT: RequestHandler = async ({ params, request, platform, locals })
       status?: string;
       content?: string;
       colorTheme?: string;
+      layout_id?: number;
     };
 
     const updateData: pagesDb.UpdatePageData = {
@@ -54,7 +55,8 @@ export const PUT: RequestHandler = async ({ params, request, platform, locals })
       slug: data.slug,
       status: data.status as 'draft' | 'published' | undefined,
       content: data.content,
-      colorTheme: data.colorTheme
+      colorTheme: data.colorTheme,
+      layout_id: data.layout_id
     };
 
     const page = await pagesDb.updatePage(db, siteId, pageId, updateData);
@@ -77,7 +79,7 @@ export const PUT: RequestHandler = async ({ params, request, platform, locals })
 
 /**
  * DELETE /api/pages/[id]
- * Delete a page
+ * Delete a page (cannot delete built-in pages)
  */
 export const DELETE: RequestHandler = async ({ params, platform, locals }) => {
   const db = getDB(platform);
@@ -85,6 +87,16 @@ export const DELETE: RequestHandler = async ({ params, platform, locals }) => {
   const pageId = params.id;
 
   try {
+    // Check if page is built-in
+    const page = await pagesDb.getPageById(db, siteId, pageId);
+    if (!page) {
+      throw error(404, 'Page not found');
+    }
+
+    if (page.is_builtin) {
+      throw error(403, 'Built-in pages cannot be deleted');
+    }
+
     const deleted = await pagesDb.deletePage(db, siteId, pageId);
     if (!deleted) {
       throw error(404, 'Page not found');

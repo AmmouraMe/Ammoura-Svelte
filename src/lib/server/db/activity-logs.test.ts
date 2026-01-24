@@ -4,7 +4,10 @@ import {
   getActivityLogs,
   getActivityLogsByUser,
   getActivityLogsByEntity,
+  getActivityLogsByAction,
+  getActivityLogCountBySeverity,
   deleteOldActivityLogs,
+  exportActivityLogs,
   type ActivityLog
 } from './activity-logs';
 
@@ -181,6 +184,242 @@ describe('Activity Logs Repository', () => {
         'DELETE FROM activity_logs WHERE site_id = ? AND created_at < ?'
       );
       expect(result).toBe(10);
+    });
+
+    it('should return 0 when no logs deleted', async () => {
+      const mockResult = { meta: { changes: 0 }, success: true };
+      const mockRun = vi.fn().mockResolvedValue(mockResult);
+      const mockBind = vi.fn().mockReturnValue({ run: mockRun });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await deleteOldActivityLogs(mockDB, siteId, 30);
+
+      expect(result).toBe(0);
+    });
+  });
+
+  describe('getActivityLogsByAction', () => {
+    it('should get activity logs by action pattern', async () => {
+      const mockLogs: ActivityLog[] = [
+        {
+          id: 'log-1',
+          site_id: siteId,
+          user_id: 'user-1',
+          action: 'order.created',
+          entity_type: 'order',
+          entity_id: 'order-123',
+          entity_name: null,
+          description: null,
+          metadata: null,
+          ip_address: null,
+          user_agent: null,
+          severity: 'info',
+          created_at: 1234567890
+        }
+      ];
+      const mockResults = { results: mockLogs, success: true };
+      const mockAll = vi.fn().mockResolvedValue(mockResults);
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getActivityLogsByAction(mockDB, siteId, 'order.%', 50, 0);
+
+      expect(mockPrepare).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE site_id = ? AND action LIKE ?')
+      );
+      expect(mockBind).toHaveBeenCalledWith(siteId, 'order.%', 50, 0);
+      expect(result).toEqual(mockLogs);
+    });
+
+    it('should return empty array when no matches', async () => {
+      const mockResults = { results: [], success: true };
+      const mockAll = vi.fn().mockResolvedValue(mockResults);
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getActivityLogsByAction(mockDB, siteId, 'nonexistent.%');
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getActivityLogCountBySeverity', () => {
+    it('should return count of logs by severity', async () => {
+      const mockFirst = vi.fn().mockResolvedValue({ count: 42 });
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getActivityLogCountBySeverity(mockDB, siteId, 'error');
+
+      expect(mockPrepare).toHaveBeenCalledWith(
+        'SELECT COUNT(*) as count FROM activity_logs WHERE site_id = ? AND severity = ?'
+      );
+      expect(mockBind).toHaveBeenCalledWith(siteId, 'error');
+      expect(result).toBe(42);
+    });
+
+    it('should return 0 when no logs found', async () => {
+      const mockFirst = vi.fn().mockResolvedValue(null);
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getActivityLogCountBySeverity(mockDB, siteId, 'critical');
+
+      expect(result).toBe(0);
+    });
+
+    it('should handle different severity levels', async () => {
+      const mockFirst = vi.fn().mockResolvedValue({ count: 10 });
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      await getActivityLogCountBySeverity(mockDB, siteId, 'warning');
+      expect(mockBind).toHaveBeenCalledWith(siteId, 'warning');
+
+      await getActivityLogCountBySeverity(mockDB, siteId, 'info');
+      expect(mockBind).toHaveBeenCalledWith(siteId, 'info');
+    });
+  });
+
+  describe('exportActivityLogs', () => {
+    it('should export activity logs with high limit', async () => {
+      const mockLogs: ActivityLog[] = [
+        {
+          id: 'log-1',
+          site_id: siteId,
+          user_id: 'user-1',
+          action: 'export.test',
+          entity_type: 'test',
+          entity_id: 'test-1',
+          entity_name: null,
+          description: null,
+          metadata: null,
+          ip_address: null,
+          user_agent: null,
+          severity: 'info',
+          created_at: 1234567890
+        }
+      ];
+      const mockResults = { results: mockLogs, success: true };
+      const mockAll = vi.fn().mockResolvedValue(mockResults);
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await exportActivityLogs(mockDB, siteId, {});
+
+      expect(result).toEqual(mockLogs);
+    });
+  });
+
+  describe('getActivityLogs with filters', () => {
+    it('should filter by user_id', async () => {
+      const mockLogs: ActivityLog[] = [];
+      const mockResults = { results: mockLogs, success: true };
+      const mockAll = vi.fn().mockResolvedValue(mockResults);
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      await getActivityLogs(mockDB, siteId, { user_id: 'user-123' });
+
+      expect(mockBind).toHaveBeenCalledWith(siteId, 'user-123', 50, 0);
+    });
+
+    it('should filter by action', async () => {
+      const mockResults = { results: [], success: true };
+      const mockAll = vi.fn().mockResolvedValue(mockResults);
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      await getActivityLogs(mockDB, siteId, { action: 'order.created' });
+
+      expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('action = ?'));
+    });
+
+    it('should filter by entity_type', async () => {
+      const mockResults = { results: [], success: true };
+      const mockAll = vi.fn().mockResolvedValue(mockResults);
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      await getActivityLogs(mockDB, siteId, { entity_type: 'product' });
+
+      expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('entity_type = ?'));
+    });
+
+    it('should filter by entity_id', async () => {
+      const mockResults = { results: [], success: true };
+      const mockAll = vi.fn().mockResolvedValue(mockResults);
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      await getActivityLogs(mockDB, siteId, { entity_id: 'entity-456' });
+
+      expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('entity_id = ?'));
+    });
+
+    it('should filter by severity', async () => {
+      const mockResults = { results: [], success: true };
+      const mockAll = vi.fn().mockResolvedValue(mockResults);
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      await getActivityLogs(mockDB, siteId, { severity: 'error' });
+
+      expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('severity = ?'));
+    });
+
+    it('should filter by start_date', async () => {
+      const mockResults = { results: [], success: true };
+      const mockAll = vi.fn().mockResolvedValue(mockResults);
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      await getActivityLogs(mockDB, siteId, { start_date: 1000000 });
+
+      expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('created_at >= ?'));
+    });
+
+    it('should filter by end_date', async () => {
+      const mockResults = { results: [], success: true };
+      const mockAll = vi.fn().mockResolvedValue(mockResults);
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      await getActivityLogs(mockDB, siteId, { end_date: 2000000 });
+
+      expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('created_at <= ?'));
+    });
+
+    it('should combine multiple filters', async () => {
+      const mockResults = { results: [], success: true };
+      const mockAll = vi.fn().mockResolvedValue(mockResults);
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      await getActivityLogs(mockDB, siteId, {
+        user_id: 'user-1',
+        action: 'order.created',
+        severity: 'info',
+        limit: 100,
+        offset: 10
+      });
+
+      expect(mockPrepare).toHaveBeenCalled();
     });
   });
 });

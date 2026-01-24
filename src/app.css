@@ -6,6 +6,37 @@
 /* Do NOT hardcode color values here as they will override system theme settings */
 
 :root {
+  /* Fallback theme CSS variables for components that use theme:* color references */
+  /* These are overridden by the dynamic styles from +layout.svelte when available */
+  --theme-primary: #ec4899;
+  --theme-secondary: #8b5cf6;
+  --theme-accent: #f59e0b;
+  --theme-background: #fdf2f8;
+  --theme-surface: #fae8ff;
+  --theme-text: #1e1b4b;
+  --theme-text-secondary: #6b21a8;
+  --theme-border: #f5d0fe;
+  --theme-success: #22c55e;
+  --theme-warning: #fb923c;
+  --theme-error: #f43f5e;
+
+  /* FOUC Prevention: Fallback color values for --color-* variables */
+  /* These are overridden by dynamic styles from +layout.svelte but prevent flash */
+  --color-primary: #ec4899;
+  --color-primary-hover: #db2777;
+  --color-primary-light: #f9a8d4;
+  --color-secondary: #8b5cf6;
+  --color-secondary-hover: #7c3aed;
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #fdf2f8;
+  --color-bg-tertiary: #fae8ff;
+  --color-text-primary: #1e1b4b;
+  --color-text-secondary: #6b21a8;
+  --color-text-muted: #9333ea;
+  --color-border-primary: #f5d0fe;
+  --color-border-secondary: #e9d5ff;
+  --color-shadow-medium: rgba(0, 0, 0, 0.1);
+
   /* Danger/Error colors (not part of theme system) */
   --color-danger: #ef4444;
   --color-danger-hover: #dc2626;
@@ -84,6 +115,37 @@
 
 /* Dark Theme - Colors dynamically loaded from database */
 [data-theme='dark'] {
+  /* Fallback theme CSS variables for dark mode */
+  /* These are overridden by the dynamic styles from +layout.svelte when available */
+  --theme-primary: #a78bfa;
+  --theme-secondary: #94a3b8;
+  --theme-accent: #c084fc;
+  --theme-background: #0f172a;
+  --theme-surface: #1e293b;
+  --theme-text: #f1f5f9;
+  --theme-text-secondary: #cbd5e1;
+  --theme-border: #334155;
+  --theme-success: #34d399;
+  --theme-warning: #fbbf24;
+  --theme-error: #f87171;
+
+  /* FOUC Prevention: Fallback color values for --color-* variables in dark mode */
+  /* These are overridden by dynamic styles from +layout.svelte but prevent flash */
+  --color-primary: #a78bfa;
+  --color-primary-hover: #8b5cf6;
+  --color-primary-light: #c4b5fd;
+  --color-secondary: #94a3b8;
+  --color-secondary-hover: #64748b;
+  --color-bg-primary: #0f172a;
+  --color-bg-secondary: #1e293b;
+  --color-bg-tertiary: #334155;
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #94a3b8;
+  --color-border-primary: #334155;
+  --color-border-secondary: #475569;
+  --color-shadow-medium: rgba(0, 0, 0, 0.3);
+
   /* Status colors (not part of theme system) */
   --color-danger: #f87171;
   --color-danger-hover: #ef4444;
@@ -149,7 +211,23 @@ html:not(.theme-loaded) {
   visibility: hidden;
 }
 
-html.theme-loaded {
+/* Hide page during hydration to prevent layout shift visibility */
+/* The hydration-complete class is added by Svelte after layout settles */
+/* Use visibility:hidden (not opacity:0) to prevent seeing through to browser background */
+html.theme-loaded:not(.hydration-complete) {
+  visibility: hidden;
+}
+
+/* Set html background to match theme to prevent flash during hidden period */
+html[data-theme='light'] {
+  background-color: #fdf2f8; /* Light theme bg-secondary */
+}
+
+html[data-theme='dark'] {
+  background-color: #0f172a; /* Dark theme bg-secondary */
+}
+
+html.theme-loaded.hydration-complete {
   visibility: visible;
 }
 
@@ -157,6 +235,9 @@ html {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Reserve space for scrollbar to prevent CLS (Cumulative Layout Shift) */
+  /* This prevents layout shifts when the scrollbar appears/disappears */
+  overflow-y: scroll;
 }
 
 body {

@@ -59,7 +59,7 @@ async function seed() {
       wranglerArgs.push('--local');
       console.log('📍 Environment: Local');
     } else if (isPreview) {
-      wranglerArgs.push('--preview --remote');
+      wranglerArgs.push('--preview', '--remote');
       console.log('📍 Environment: Preview');
     }
 

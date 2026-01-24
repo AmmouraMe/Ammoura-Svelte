@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render } from '@testing-library/svelte';
 import PageEditor from './PageEditor.svelte';
-import type { PageWidget, ColorTheme } from '$lib/types/pages';
+import type { PageComponent, ColorTheme } from '$lib/types/pages';
 
 describe('PageEditor - hasUnsavedChanges', () => {
   const defaultProps = {
@@ -10,7 +10,7 @@ describe('PageEditor - hasUnsavedChanges', () => {
     initialSlug: '/test-page',
     initialStatus: 'draft' as const,
     initialColorTheme: undefined as ColorTheme | undefined,
-    initialWidgets: [] as PageWidget[],
+    initialComponents: [] as PageComponent[],
     onSave: vi.fn(),
     onSaveDraft: vi.fn(),
     onPublish: vi.fn(),
@@ -46,7 +46,7 @@ describe('PageEditor - hasUnsavedChanges', () => {
   });
 
   it('handles initial widgets correctly', () => {
-    const initialWidgets: PageWidget[] = [
+    const initialComponents: PageComponent[] = [
       {
         id: '1',
         page_id: '1',
@@ -61,7 +61,7 @@ describe('PageEditor - hasUnsavedChanges', () => {
     const { container } = render(PageEditor, {
       props: {
         ...defaultProps,
-        initialWidgets
+        initialComponents
       }
     });
 

@@ -537,7 +537,7 @@
 
 <style>
   .dashboard {
-    max-width: 1400px;
+    width: 100%;
   }
 
   .dashboard-header {

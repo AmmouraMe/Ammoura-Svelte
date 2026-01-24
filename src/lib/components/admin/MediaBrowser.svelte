@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { confirmStore } from '$lib/stores/confirm';
   import { toastStore } from '$lib/stores/toast';
   import type { MediaLibraryItem } from '$lib/types';
 
@@ -8,6 +9,7 @@
   export let showTitle: boolean = true;
   export let showAddButton: boolean = true;
   export let showFooter: boolean = true;
+  export let allowMultiple: boolean = true;
 
   let mediaItems: MediaLibraryItem[] = [];
   let isLoading = true;
@@ -40,10 +42,15 @@
 
   async function handleDelete(item: MediaLibraryItem) {
     if (item.usedCount > 0) {
-      const confirm = window.confirm(
-        `This media is used by ${item.usedCount} product(s). Are you sure you want to delete it?`
+      const confirmed = await confirmStore.show(
+        `This media is used by ${item.usedCount} product(s). Are you sure you want to delete it?`,
+        {
+          title: 'Delete Media',
+          confirmText: 'Delete',
+          variant: 'danger'
+        }
       );
-      if (!confirm) return;
+      if (!confirmed) return;
     }
 
     try {
@@ -71,7 +78,12 @@
     if (internalSelectedIds.includes(item.id)) {
       internalSelectedIds = internalSelectedIds.filter((id) => id !== item.id);
     } else {
-      internalSelectedIds = [...internalSelectedIds, item.id];
+      // If allowMultiple is false, replace selection instead of adding to it
+      if (allowMultiple) {
+        internalSelectedIds = [...internalSelectedIds, item.id];
+      } else {
+        internalSelectedIds = [item.id];
+      }
     }
 
     // Notify parent of selection changes

@@ -236,7 +236,7 @@
 
 <style>
   .products-page {
-    max-width: 1400px;
+    width: 100%;
   }
 
   .page-header {

@@ -1,7 +1,16 @@
-import type { RevisionNode } from '$lib/types/revisions';
+// Generic revision node interface with common fields
+interface RevisionNodeLike {
+  id: string;
+  revision_hash: string;
+  created_at: number;
+  parent_revision_id?: string;
+  branch: number;
+  depth: number;
+  children: RevisionNodeLike[];
+}
 
-export interface TreeNode {
-  revision: RevisionNode<unknown>;
+export interface TreeNode<T extends RevisionNodeLike = RevisionNodeLike> {
+  revision: T;
   level: number;
   lane: number; // Which vertical lane (column) the node occupies
   x: number;
@@ -26,19 +35,19 @@ export interface Connection {
  * Calculate tree layout positions for revision nodes
  * Implements a git-like graph with lanes for branches
  */
-export function calculateTreeLayout(
-  revisions: RevisionNode<unknown>[],
+export function calculateTreeLayout<T extends RevisionNodeLike>(
+  revisions: T[],
   nodeWidth: number = 30,
   levelHeight: number = 80
-): TreeNode[] {
+): TreeNode<T>[] {
   if (revisions.length === 0) return [];
 
   // Build a map for quick lookup
-  const revMap = new Map<string, RevisionNode<unknown>>();
+  const revMap = new Map<string, T>();
   revisions.forEach((rev) => revMap.set(rev.id, rev));
 
   // Group by depth for level-based layout
-  const depthMap = new Map<number, RevisionNode<unknown>[]>();
+  const depthMap = new Map<number, T[]>();
   let maxDepth = 0;
 
   revisions.forEach((rev) => {
@@ -106,7 +115,7 @@ export function calculateTreeLayout(
   }
 
   // Build tree nodes with positions
-  const treeNodes: TreeNode[] = [];
+  const treeNodes: TreeNode<T>[] = [];
   const laneWidth = nodeWidth + 20; // Space between lanes
   const startY = 50; // Increased top padding to prevent cutoff
 
@@ -134,12 +143,12 @@ export function calculateTreeLayout(
 /**
  * Calculate connections between parent and child nodes
  */
-export function calculateConnections(
-  treeNodes: TreeNode[],
+export function calculateConnections<T extends RevisionNodeLike>(
+  treeNodes: TreeNode<T>[],
   getBranchColor: (branch: number) => string
 ): Connection[] {
   const connections: Connection[] = [];
-  const nodeMap = new Map<string, TreeNode>();
+  const nodeMap = new Map<string, TreeNode<T>>();
 
   treeNodes.forEach((node) => {
     nodeMap.set(node.revision.id, node);

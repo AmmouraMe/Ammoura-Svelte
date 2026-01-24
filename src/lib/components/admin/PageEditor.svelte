@@ -2,23 +2,23 @@
   import { onMount, onDestroy } from 'svelte';
   import { toastStore } from '$lib/stores/toast';
   import type {
-    PageWidget,
-    WidgetType,
-    WidgetConfig,
+    PageComponent,
+    ComponentType,
+    ComponentConfig,
     Breakpoint,
     ColorTheme
   } from '$lib/types/pages';
   import EditorToolbar from './EditorToolbar.svelte';
   import EditorCanvas from './EditorCanvas.svelte';
   import EditorSidebar from './EditorSidebar.svelte';
-  import WidgetLibrary from './WidgetLibrary.svelte';
-  import WidgetPropertiesPanel from './WidgetPropertiesPanel.svelte';
+  import ComponentLibrary from './ComponentLibrary.svelte';
+  import ComponentPropertiesPanel from './ComponentPropertiesPanel.svelte';
   import ExitConfirmationModal from './ExitConfirmationModal.svelte';
   import HistoryModal from './HistoryModal.svelte';
   import { HistoryManager, type HistoryEntry } from '$lib/utils/editor/historyManager';
   import { AutoSaveManager } from '$lib/utils/editor/autoSaveManager';
   import { KeyboardShortcutManager } from '$lib/utils/editor/keyboardShortcuts';
-  import { getDefaultConfig } from '$lib/utils/editor/widgetDefaults';
+  import { getDefaultConfig } from '$lib/utils/editor/componentDefaults';
   import type { ParsedPageRevision, RevisionNode as PageRevisionNode } from '$lib/types/pages';
   import type { RevisionNode } from '$lib/types/revisions';
 
@@ -27,7 +27,7 @@
   export let initialSlug = '';
   export let initialStatus: 'draft' | 'published' = 'draft';
   export let initialColorTheme: ColorTheme | undefined = undefined;
-  export let initialWidgets: PageWidget[] = [];
+  export let initialComponents: PageComponent[] = [];
   export let initialRevisions: PageRevisionNode[] | RevisionNode<unknown>[] = [];
   export let initialCurrentRevisionId: string | null = null;
   export let initialCurrentRevisionIsPublished: boolean = false;
@@ -36,19 +36,19 @@
     slug: string;
     status: 'draft' | 'published';
     colorTheme: ColorTheme | undefined;
-    widgets: PageWidget[];
+    components: PageComponent[];
   }) => Promise<void>;
   export let onSaveDraft: (data: {
     title: string;
     slug: string;
     colorTheme: ColorTheme | undefined;
-    widgets: PageWidget[];
+    components: PageComponent[];
   }) => Promise<void>;
   export let onPublish: (data: {
     title: string;
     slug: string;
     colorTheme: ColorTheme | undefined;
-    widgets: PageWidget[];
+    components: PageComponent[];
   }) => Promise<void>;
   export let onCancel: () => void;
 
@@ -57,12 +57,15 @@
   let slug = initialSlug;
   let status = initialStatus;
   let colorTheme: ColorTheme | undefined = initialColorTheme;
-  let widgets: PageWidget[] = JSON.parse(JSON.stringify(initialWidgets));
+  let components: PageComponent[] = JSON.parse(JSON.stringify(initialComponents));
+
+  // Sorted components for rendering - always keep in position order
+  $: sortedComponents = [...components].sort((a, b) => a.position - b.position);
 
   // UI state
-  let selectedWidget: PageWidget | null = null;
+  let selectedComponent: PageComponent | null = null;
   let currentBreakpoint: Breakpoint = 'desktop';
-  let showWidgetLibrary = true;
+  let showComponentLibrary = true;
   let showPropertiesPanel = true;
   let draggedIndex: number | null = null;
   let saving = false;
@@ -88,8 +91,8 @@
   let autoSaveManager: AutoSaveManager;
   let keyboardManager: KeyboardShortcutManager;
 
-  // Track the last initialWidgets to detect changes
-  let lastInitialWidgets = JSON.stringify(initialWidgets);
+  // Track the last initialComponents to detect changes
+  let lastInitialComponents = JSON.stringify(initialComponents);
 
   // Debounced history save - only save after 1 second of no changes
   let historySaveTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -99,7 +102,7 @@
       clearTimeout(historySaveTimeout);
     }
     historySaveTimeout = setTimeout(() => {
-      historyManager.saveState(widgets);
+      historyManager.saveState(components);
       updateHistoryState();
       historySaveTimeout = null;
     }, 1000); // Wait 1 second after last change
@@ -113,11 +116,11 @@
     }
   }
 
-  // Helper function to refresh selected widget reference after state changes
-  function refreshSelectedWidget() {
-    if (selectedWidget) {
-      const updatedWidget = widgets.find((w) => w.id === selectedWidget?.id);
-      selectedWidget = updatedWidget || null;
+  // Helper function to refresh selected component reference after state changes
+  function refreshSelectedComponent() {
+    if (selectedComponent) {
+      const updatedComponent = components.find((c) => c.id === selectedComponent?.id);
+      selectedComponent = updatedComponent || null;
     }
   }
 
@@ -128,7 +131,7 @@
       slug !== initialSlug ||
       status !== initialStatus ||
       JSON.stringify(colorTheme) !== JSON.stringify(initialColorTheme) ||
-      JSON.stringify(widgets) !== JSON.stringify(initialWidgets);
+      JSON.stringify(components) !== JSON.stringify(initialComponents);
   }
 
   // Determine if Save Draft button should be enabled
@@ -141,17 +144,17 @@
   // 2. Currently viewing a draft (can promote draft to published without changes)
   $: canPublish = hasUnsavedChanges || !currentRevisionIsPublished;
 
-  // Update widgets when initialWidgets change (after save/reload)
+  // Update components when initialComponents change (after save/reload)
   $: {
-    const currentInitialWidgets = JSON.stringify(initialWidgets);
-    if (currentInitialWidgets !== lastInitialWidgets) {
-      lastInitialWidgets = currentInitialWidgets;
-      widgets = JSON.parse(JSON.stringify(initialWidgets));
+    const currentInitialComponents = JSON.stringify(initialComponents);
+    if (currentInitialComponents !== lastInitialComponents) {
+      lastInitialComponents = currentInitialComponents;
+      components = JSON.parse(JSON.stringify(initialComponents));
       title = initialTitle;
       slug = initialSlug;
       status = initialStatus;
       if (historyManager) {
-        historyManager.reset(widgets);
+        historyManager.reset(components);
       }
     }
   }
@@ -168,7 +171,7 @@
 
   onMount(() => {
     // Initialize managers
-    historyManager = new HistoryManager(widgets);
+    historyManager = new HistoryManager(components);
     updateHistoryState();
 
     autoSaveManager = new AutoSaveManager(
@@ -178,7 +181,7 @@
       },
       () => {
         if (!title || !slug || saving) return false;
-        const hasChanges = JSON.stringify(widgets) !== JSON.stringify(initialWidgets);
+        const hasChanges = JSON.stringify(components) !== JSON.stringify(initialComponents);
         return hasChanges;
       }
     );
@@ -186,8 +189,8 @@
     keyboardManager = new KeyboardShortcutManager({
       undo: handleUndo,
       redo: handleRedo,
-      delete: () => selectedWidget && removeWidgetById(selectedWidget.id),
-      duplicate: () => selectedWidget && duplicateWidget(selectedWidget.id),
+      delete: () => selectedComponent && removeComponentById(selectedComponent.id),
+      duplicate: () => selectedComponent && duplicateComponent(selectedComponent.id),
       save: handleSaveDraft
     });
 
@@ -206,10 +209,10 @@
     if (historySaveTimeout) clearTimeout(historySaveTimeout);
   });
 
-  function selectWidget(widgetId: string) {
-    selectedWidget = widgets.find((w) => w.id === widgetId) || null;
-    // Automatically open properties panel when a widget is selected
-    if (selectedWidget) {
+  function selectComponent(componentId: string) {
+    selectedComponent = components.find((c) => c.id === componentId) || null;
+    // Automatically open properties panel when a component is selected
+    if (selectedComponent) {
       showPropertiesPanel = true;
     }
   }
@@ -217,8 +220,8 @@
   function handleUndo() {
     const newState = historyManager.undo();
     if (newState) {
-      widgets = newState;
-      refreshSelectedWidget();
+      components = newState;
+      refreshSelectedComponent();
       updateHistoryState();
       toastStore.info('Undo');
     }
@@ -227,8 +230,8 @@
   function handleRedo() {
     const newState = historyManager.redo();
     if (newState) {
-      widgets = newState;
-      refreshSelectedWidget();
+      components = newState;
+      refreshSelectedComponent();
       updateHistoryState();
       toastStore.info('Redo');
     }
@@ -249,8 +252,8 @@
   function handleHistorySelect(index: number) {
     const newState = historyManager.jumpToState(index);
     if (newState) {
-      widgets = newState;
-      refreshSelectedWidget();
+      components = newState;
+      refreshSelectedComponent();
       updateHistoryState();
       toastStore.success(`Jumped to state #${index + 1}`);
     }
@@ -260,32 +263,32 @@
     showHistoryModal = false;
   }
 
-  function addWidget(type: WidgetType) {
-    const newWidget: PageWidget = {
+  function addComponent(type: ComponentType) {
+    const newComponent: PageComponent = {
       id: `temp-${Date.now()}`,
       page_id: pageId || 'temp',
       type,
       config: getDefaultConfig(type),
-      position: widgets.length,
+      position: components.length,
       created_at: Date.now(),
       updated_at: Date.now()
     };
-    widgets = [...widgets, newWidget];
-    historyManager.saveState(widgets);
+    components = [...components, newComponent];
+    historyManager.saveState(components);
     updateHistoryState();
-    selectWidget(newWidget.id);
+    selectComponent(newComponent.id);
 
     if (pageId && title && slug) {
       setTimeout(() => autoSaveManager.autoSave(), 100);
     }
   }
 
-  function removeWidgetById(widgetId: string) {
-    widgets = widgets.filter((w) => w.id !== widgetId);
-    if (selectedWidget?.id === widgetId) {
-      selectedWidget = null;
+  function removeComponentById(componentId: string) {
+    components = components.filter((c) => c.id !== componentId);
+    if (selectedComponent?.id === componentId) {
+      selectedComponent = null;
     }
-    historyManager.saveState(widgets);
+    historyManager.saveState(components);
     updateHistoryState();
 
     if (pageId && title && slug) {
@@ -293,86 +296,112 @@
     }
   }
 
-  function duplicateWidget(widgetId: string) {
-    const widget = widgets.find((w) => w.id === widgetId);
-    if (!widget) return;
+  function duplicateComponent(componentId: string) {
+    const component = components.find((c) => c.id === componentId);
+    if (!component) return;
 
-    const index = widgets.findIndex((w) => w.id === widgetId);
-    const duplicated: PageWidget = {
-      ...JSON.parse(JSON.stringify(widget)),
+    const index = components.findIndex((c) => c.id === componentId);
+    const duplicated: PageComponent = {
+      ...JSON.parse(JSON.stringify(component)),
       id: `temp-${Date.now()}-${Math.random()}`,
       created_at: Date.now(),
       updated_at: Date.now()
     };
 
-    widgets = [...widgets.slice(0, index + 1), duplicated, ...widgets.slice(index + 1)];
-    updateWidgetPositions();
-    historyManager.saveState(widgets);
+    components = [...components.slice(0, index + 1), duplicated, ...components.slice(index + 1)];
+    updateComponentPositions();
+    historyManager.saveState(components);
     updateHistoryState();
-    selectedWidget = duplicated;
-    toastStore.success('Widget duplicated');
+    selectedComponent = duplicated;
+    toastStore.success('Component duplicated');
 
     if (pageId && title && slug) {
       setTimeout(() => autoSaveManager.autoSave(), 100);
     }
   }
 
-  function moveWidgetUp(widgetId: string) {
-    const index = widgets.findIndex((w) => w.id === widgetId);
-    if (index <= 0) return;
+  function moveComponentUp(componentId: string) {
+    // Sort components to get current display order
+    const sorted = [...components].sort((a, b) => a.position - b.position);
+    const index = sorted.findIndex((c) => c.id === componentId);
+    if (index <= 0) return; // Can't move first component up
 
-    const newWidgets = [...widgets];
-    const temp = newWidgets[index - 1];
-    newWidgets[index - 1] = newWidgets[index];
-    newWidgets[index] = temp;
-    widgets = newWidgets;
-    updateWidgetPositions();
-    historyManager.saveState(widgets);
-    updateHistoryState();
+    // Get the IDs of components to swap
+    const currentId = sorted[index].id;
+    const aboveId = sorted[index - 1].id;
+    const currentPos = sorted[index].position;
+    const abovePos = sorted[index - 1].position;
 
-    if (pageId && title && slug) {
-      setTimeout(() => autoSaveManager.autoSave(), 100);
-    }
-  }
-
-  function moveWidgetDown(widgetId: string) {
-    const index = widgets.findIndex((w) => w.id === widgetId);
-    if (index >= widgets.length - 1) return;
-
-    const newWidgets = [...widgets];
-    const temp = newWidgets[index];
-    newWidgets[index] = newWidgets[index + 1];
-    newWidgets[index + 1] = temp;
-    widgets = newWidgets;
-    updateWidgetPositions();
-    historyManager.saveState(widgets);
-    updateHistoryState();
-
-    if (pageId && title && slug) {
-      setTimeout(() => autoSaveManager.autoSave(), 100);
-    }
-  }
-
-  function updateWidgetConfig(widgetId: string, config: WidgetConfig) {
-    widgets = widgets.map((w) => {
-      if (w.id === widgetId) {
-        return { ...w, config: { ...w.config, ...config }, updated_at: Date.now() };
+    // Create new array with swapped positions - completely new objects
+    components = components.map((c) => {
+      if (c.id === currentId) {
+        return { ...c, position: abovePos };
       }
-      return w;
+      if (c.id === aboveId) {
+        return { ...c, position: currentPos };
+      }
+      return c;
     });
-    // Refresh the selected widget reference to point to the updated widget
-    refreshSelectedWidget();
+
+    historyManager.saveState(components);
+    updateHistoryState();
+
+    if (pageId && title && slug) {
+      setTimeout(() => autoSaveManager.autoSave(), 100);
+    }
+  }
+
+  function moveComponentDown(componentId: string) {
+    // Sort components to get current display order
+    const sorted = [...components].sort((a, b) => a.position - b.position);
+    const index = sorted.findIndex((c) => c.id === componentId);
+    if (index < 0 || index >= sorted.length - 1) return; // Can't move last component down
+
+    // Get the IDs of components to swap
+    const currentId = sorted[index].id;
+    const belowId = sorted[index + 1].id;
+    const currentPos = sorted[index].position;
+    const belowPos = sorted[index + 1].position;
+
+    // Create new array with swapped positions - completely new objects
+    components = components.map((c) => {
+      if (c.id === currentId) {
+        return { ...c, position: belowPos };
+      }
+      if (c.id === belowId) {
+        return { ...c, position: currentPos };
+      }
+      return c;
+    });
+
+    historyManager.saveState(components);
+    updateHistoryState();
+
+    if (pageId && title && slug) {
+      setTimeout(() => autoSaveManager.autoSave(), 100);
+    }
+  }
+
+  function updateComponentConfig(componentId: string, config: ComponentConfig) {
+    components = components.map((c) => {
+      if (c.id === componentId) {
+        return { ...c, config: { ...c.config, ...config }, updated_at: Date.now() };
+      }
+      return c;
+    });
+    // Refresh the selected component reference to point to the updated component
+    refreshSelectedComponent();
     // Use debounced history save to avoid saving on every keystroke
     debouncedHistorySave();
   }
 
-  function moveWidget(fromIndex: number, toIndex: number) {
-    const newWidgets = [...widgets];
-    const [removed] = newWidgets.splice(fromIndex, 1);
-    newWidgets.splice(toIndex, 0, removed);
-    widgets = newWidgets;
-    updateWidgetPositions();
-    historyManager.saveState(widgets);
+  function moveComponent(fromIndex: number, toIndex: number) {
+    const newComponents = [...components];
+    const [removed] = newComponents.splice(fromIndex, 1);
+    newComponents.splice(toIndex, 0, removed);
+    components = newComponents;
+    updateComponentPositions();
+    historyManager.saveState(components);
     updateHistoryState();
 
     if (pageId && title && slug) {
@@ -380,8 +409,8 @@
     }
   }
 
-  function updateWidgetPositions() {
-    widgets = widgets.map((w, i) => ({ ...w, position: i }));
+  function updateComponentPositions() {
+    components = components.map((c, i) => ({ ...c, position: i }));
   }
 
   function handleDragStart(index: number) {
@@ -391,7 +420,7 @@
   function handleDragOver(event: DragEvent, index: number) {
     event.preventDefault();
     if (draggedIndex !== null && draggedIndex !== index) {
-      moveWidget(draggedIndex, index);
+      moveComponent(draggedIndex, index);
       draggedIndex = index;
     }
   }
@@ -408,13 +437,13 @@
 
     try {
       saving = true;
-      await onSaveDraft({ title, slug, colorTheme, widgets });
+      await onSaveDraft({ title, slug, colorTheme, components });
 
       // Update initial values to reflect the saved state
       initialTitle = title;
       initialSlug = slug;
       initialColorTheme = colorTheme;
-      initialWidgets = JSON.parse(JSON.stringify(widgets));
+      initialComponents = JSON.parse(JSON.stringify(components));
 
       // After saving a draft, we're viewing a draft (not published)
       currentRevisionIsPublished = false;
@@ -437,7 +466,7 @@
 
     try {
       publishing = true;
-      await onPublish({ title, slug, colorTheme, widgets });
+      await onPublish({ title, slug, colorTheme, components });
       status = 'published';
 
       // Update initial values to reflect the published state
@@ -445,7 +474,7 @@
       initialSlug = slug;
       initialStatus = 'published';
       initialColorTheme = colorTheme;
-      initialWidgets = JSON.parse(JSON.stringify(widgets));
+      initialComponents = JSON.parse(JSON.stringify(components));
 
       // After publishing, we're viewing a published version
       currentRevisionIsPublished = true;
@@ -459,7 +488,7 @@
 
   function handleThemeChange(newTheme: ColorTheme | undefined) {
     colorTheme = newTheme;
-    historyManager.saveState(widgets, `Changed theme to ${newTheme || 'site default'}`);
+    historyManager.saveState(components, `Changed theme to ${newTheme || 'site default'}`);
   }
 
   async function loadRevisions() {
@@ -479,6 +508,11 @@
   async function loadRevision(revisionId: string) {
     if (!pageId) return;
 
+    // If selecting the current revision, do nothing - this preserves any unsaved changes
+    if (revisionId === currentRevisionId) {
+      return;
+    }
+
     try {
       const response = await fetch(`/api/pages/${pageId}/revisions/${revisionId}`);
       if (response.ok) {
@@ -487,20 +521,26 @@
         // Update page state with revision data
         title = revision.title;
         slug = revision.slug;
-        widgets = revision.widgets;
+        colorTheme = revision.color_theme as ColorTheme | undefined;
+        components = revision.components || [];
         currentRevisionId = revisionId;
 
         // Find the revision in the list to get its published status
+        // Check both is_published (page revisions) and is_current (generic revisions)
         const revisionInfo = revisions.find((r) => r.id === revisionId);
-        currentRevisionIsPublished = revisionInfo?.is_current || false;
+        const isPublished =
+          (revisionInfo as { is_published?: boolean })?.is_published ||
+          (revisionInfo as { is_current?: boolean })?.is_current ||
+          false;
+        currentRevisionIsPublished = isPublished;
 
         // Update initial values to match loaded revision
         initialTitle = title;
         initialSlug = slug;
         initialColorTheme = colorTheme;
-        initialWidgets = JSON.parse(JSON.stringify(widgets));
+        initialComponents = JSON.parse(JSON.stringify(components));
 
-        historyManager.reset(widgets);
+        historyManager.reset(components);
         toastStore.info(`Loaded revision ${revision.revision_hash}`);
       }
     } catch (error) {
@@ -551,7 +591,7 @@
 
     try {
       saving = true;
-      await onSave({ title, slug, status, colorTheme, widgets });
+      await onSave({ title, slug, status, colorTheme, components });
       lastSaved = new Date();
       if (autoSaveManager) {
         autoSaveManager.setLastSaved(lastSaved);
@@ -596,7 +636,7 @@
     {pageId}
     {revisions}
     {currentRevisionId}
-    {showWidgetLibrary}
+    {showComponentLibrary}
     {showPropertiesPanel}
     onShowUndoHistory={showUndoHistory}
     onShowRedoHistory={showRedoHistory}
@@ -609,36 +649,36 @@
       cancel: handleCancel,
       loadRevision,
       publishRevision,
-      toggleWidgetLibrary: () => (showWidgetLibrary = !showWidgetLibrary),
+      toggleComponentLibrary: () => (showComponentLibrary = !showComponentLibrary),
       togglePropertiesPanel: () => (showPropertiesPanel = !showPropertiesPanel),
       changeTheme: handleThemeChange
     }}
   />
 
   <div class="editor-main">
-    <!-- Left Sidebar - Widget Library -->
+    <!-- Left Sidebar - Component Library -->
     <EditorSidebar
-      title="Widgets"
+      title="Components"
       side="left"
-      collapsed={!showWidgetLibrary}
-      events={{ toggle: () => (showWidgetLibrary = !showWidgetLibrary) }}
+      collapsed={!showComponentLibrary}
+      events={{ toggle: () => (showComponentLibrary = !showComponentLibrary) }}
     >
-      <WidgetLibrary onSelectWidget={addWidget} />
+      <ComponentLibrary onSelectComponent={addComponent} />
     </EditorSidebar>
 
     <!-- Center Canvas -->
     <EditorCanvas
-      {widgets}
-      selectedWidgetId={selectedWidget?.id || null}
+      components={sortedComponents}
+      selectedComponentId={selectedComponent?.id || null}
       {currentBreakpoint}
       {colorTheme}
       events={{
-        select: selectWidget,
-        moveUp: moveWidgetUp,
-        moveDown: moveWidgetDown,
-        duplicate: duplicateWidget,
-        delete: removeWidgetById,
-        updateConfig: updateWidgetConfig,
+        select: selectComponent,
+        moveUp: moveComponentUp,
+        moveDown: moveComponentDown,
+        duplicate: duplicateComponent,
+        delete: removeComponentById,
+        updateConfig: updateComponentConfig,
         dragStart: handleDragStart,
         dragOver: handleDragOver,
         dragEnd: handleDragEnd
@@ -649,18 +689,17 @@
     <EditorSidebar
       title="Properties"
       side="right"
-      collapsed={!showPropertiesPanel || !selectedWidget}
+      collapsed={!showPropertiesPanel || !selectedComponent}
       events={{ toggle: () => (showPropertiesPanel = !showPropertiesPanel) }}
     >
-      {#if selectedWidget}
-        <WidgetPropertiesPanel
-          widget={selectedWidget}
+      {#if selectedComponent}
+        <ComponentPropertiesPanel
+          component={selectedComponent}
           {currentBreakpoint}
           {colorTheme}
           onUpdate={(config) => {
-            if (selectedWidget) updateWidgetConfig(selectedWidget.id, config);
+            if (selectedComponent) updateComponentConfig(selectedComponent.id, config);
           }}
-          onClose={() => (selectedWidget = null)}
         />
       {/if}
     </EditorSidebar>

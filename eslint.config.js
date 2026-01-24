@@ -42,6 +42,14 @@ export default [
     }
   },
   {
-    ignores: ['build/', '.svelte-kit/', 'dist/', 'coverage/']
+    ignores: [
+      'build/',
+      '.svelte-kit/',
+      '.wrangler/',
+      'dist/',
+      'coverage/',
+      'node_modules/',
+      '*.timestamp-*.mjs'
+    ]
   }
 ];

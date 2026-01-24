@@ -90,8 +90,6 @@ export function validatePaymentMethod(
 ): Partial<Record<keyof PaymentMethod, string>> {
   const errors: Partial<Record<keyof PaymentMethod, string>> = {};
 
-  console.log('DEBUG validatePaymentMethod called with:', payment);
-
   if (!payment.cardNumber || !isCreditCardNumber(payment.cardNumber)) {
     errors.cardNumber = 'Please enter a valid card number';
   }
@@ -100,12 +98,10 @@ export function validatePaymentMethod(
     errors.cardHolderName = 'Please enter the card holder name';
   }
 
-  console.log('About to validate month:', payment.expiryMonth);
   if (!payment.expiryMonth || !isValidMonth(payment.expiryMonth)) {
     errors.expiryMonth = 'Please enter a valid month';
   }
 
-  console.log('About to validate year:', payment.expiryYear);
   if (!payment.expiryYear || !isValidYear(payment.expiryYear)) {
     errors.expiryYear = 'Please enter a valid year';
   }
@@ -191,12 +187,10 @@ function luhnCheck(cardNumber: string): boolean {
 
 function isValidMonth(month: string): boolean {
   if (!month || month.trim() === '') {
-    console.log('DEBUG isValidMonth: Empty month');
     return false;
   }
   const monthNum = parseInt(month, 10);
   const isValid = !isNaN(monthNum) && monthNum >= 1 && monthNum <= 12;
-  console.log('DEBUG isValidMonth:', month, '-> parsed:', monthNum, '-> valid:', isValid);
   return isValid;
 }
 

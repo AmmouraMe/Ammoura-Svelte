@@ -1,12 +1,18 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { checkoutStore, copyShippingToBilling } from './checkout';
 import type { CheckoutFormData, CheckoutValidationErrors } from '../types/checkout';
+import type { AvailableShippingOption } from '../types/shipping';
+import type { ShippingGroup } from '../utils/shippingGroups';
 
 interface CheckoutState {
   formData: CheckoutFormData;
   currentStep: number;
   isSubmitting: boolean;
   validationErrors: CheckoutValidationErrors;
+  availableShippingOptions: AvailableShippingOption[];
+  loadingShippingOptions: boolean;
+  shippingGroups: ShippingGroup[];
+  shippingGroupsLoaded: boolean;
 }
 
 describe('Checkout Store', () => {
@@ -143,7 +149,7 @@ describe('Checkout Store', () => {
           cardNumber: '4532015112830366',
           cardHolderName: 'John Doe',
           expiryMonth: '12',
-          expiryYear: '2025',
+          expiryYear: '2027',
           cvv: '123'
         }
       });
@@ -224,7 +230,7 @@ describe('Checkout Store', () => {
           cardNumber: '4532015112830366',
           cardHolderName: 'John Doe',
           expiryMonth: '12',
-          expiryYear: '2025',
+          expiryYear: '2027',
           cvv: '123'
         }
       });
@@ -280,7 +286,7 @@ describe('Checkout Store', () => {
           cardNumber: '4532015112830366',
           cardHolderName: 'John Doe',
           expiryMonth: '12',
-          expiryYear: '2025',
+          expiryYear: '2027',
           cvv: '123'
         }
       });
@@ -419,5 +425,398 @@ describe('Checkout Store', () => {
       expect(billing).not.toHaveProperty('email');
       expect(billing).not.toHaveProperty('phone');
     });
+  });
+
+  describe('loadShippingGroups', () => {
+    beforeEach(() => {
+      checkoutStore.reset();
+      vi.clearAllMocks();
+    });
+
+    it('should load shipping groups successfully with productOptions', async () => {
+      const mockProductOptions = {
+        'prod-1': [
+          {
+            id: 'ship-1',
+            name: 'Standard',
+            description: '5-7 days',
+            price: 5.99,
+            estimatedDaysMin: 5,
+            estimatedDaysMax: 7,
+            carrier: 'USPS',
+            isDefault: true,
+            isFreeShipping: false
+          }
+        ],
+        'prod-2': [
+          {
+            id: 'ship-2',
+            name: 'Express',
+            description: '1-2 days',
+            price: 15.99,
+            estimatedDaysMin: 1,
+            estimatedDaysMax: 2,
+            carrier: 'FedEx',
+            isDefault: false,
+            isFreeShipping: false
+          }
+        ]
+      };
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          options: [],
+          hasPhysicalProducts: true,
+          productOptions: mockProductOptions
+        })
+      });
+
+      const cartItems = [
+        {
+          id: 'prod-1',
+          name: 'Product 1',
+          description: 'Test product 1',
+          category: 'Test',
+          price: 10,
+          quantity: 1,
+          image: '',
+          stock: 10,
+          tags: [],
+          type: 'physical' as const
+        },
+        {
+          id: 'prod-2',
+          name: 'Product 2',
+          description: 'Test product 2',
+          category: 'Test',
+          price: 20,
+          quantity: 2,
+          image: '',
+          stock: 10,
+          tags: [],
+          type: 'physical' as const
+        }
+      ];
+
+      await checkoutStore.loadShippingGroups(cartItems);
+
+      let state: CheckoutState | undefined;
+      const unsubscribe = checkoutStore.subscribe((s) => {
+        state = s;
+      });
+
+      expect(state?.shippingGroupsLoaded).toBe(true);
+      expect(state?.loadingShippingOptions).toBe(false);
+      unsubscribe();
+    });
+
+    it('should load shipping groups with fallback options for physical products', async () => {
+      const mockOptions = [
+        {
+          id: 'ship-1',
+          name: 'Standard',
+          description: '5-7 days',
+          price: 5.99,
+          estimatedDaysMin: 5,
+          estimatedDaysMax: 7,
+          carrier: 'USPS',
+          isDefault: true,
+          isFreeShipping: false
+        }
+      ];
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          options: mockOptions,
+          hasPhysicalProducts: true
+        })
+      });
+
+      const cartItems = [
+        {
+          id: 'prod-1',
+          name: 'Product 1',
+          description: 'Test product',
+          category: 'Test',
+          price: 10,
+          quantity: 1,
+          image: '',
+          stock: 10,
+          tags: [],
+          type: 'physical' as const
+        }
+      ];
+
+      await checkoutStore.loadShippingGroups(cartItems);
+
+      let state: CheckoutState | undefined;
+      const unsubscribe = checkoutStore.subscribe((s) => {
+        state = s;
+      });
+
+      expect(state?.shippingGroupsLoaded).toBe(true);
+      expect(state?.loadingShippingOptions).toBe(false);
+      unsubscribe();
+    });
+
+    it('should handle API errors gracefully', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: 'Failed to load' })
+      });
+
+      const cartItems = [
+        {
+          id: 'prod-1',
+          name: 'Product 1',
+          description: 'Test product',
+          category: 'Test',
+          price: 10,
+          quantity: 1,
+          image: '',
+          stock: 10,
+          tags: [],
+          type: 'physical' as const
+        }
+      ];
+
+      await checkoutStore.loadShippingGroups(cartItems);
+
+      let state: CheckoutState | undefined;
+      const unsubscribe = checkoutStore.subscribe((s) => {
+        state = s;
+      });
+
+      expect(state?.shippingGroups).toEqual([]);
+      expect(state?.shippingGroupsLoaded).toBe(false);
+      expect(state?.loadingShippingOptions).toBe(false);
+      unsubscribe();
+    });
+
+    it('should handle network errors gracefully', async () => {
+      global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+
+      const cartItems = [
+        {
+          id: 'prod-1',
+          name: 'Product 1',
+          description: 'Test product',
+          category: 'Test',
+          price: 10,
+          quantity: 1,
+          image: '',
+          stock: 10,
+          tags: [],
+          type: 'physical' as const
+        }
+      ];
+
+      await checkoutStore.loadShippingGroups(cartItems);
+
+      let state: CheckoutState | undefined;
+      const unsubscribe = checkoutStore.subscribe((s) => {
+        state = s;
+      });
+
+      expect(state?.shippingGroups).toEqual([]);
+      expect(state?.shippingGroupsLoaded).toBe(false);
+      expect(state?.loadingShippingOptions).toBe(false);
+      unsubscribe();
+    });
+  });
+
+  describe('setShippingOptionForGroup', () => {
+    it('should set shipping option for a specific group', () => {
+      checkoutStore.setShippingOptionForGroup('group-1', 'option-1');
+
+      let state: CheckoutState | undefined;
+      const unsubscribe = checkoutStore.subscribe((s) => {
+        state = s;
+      });
+
+      expect(state?.formData.selectedShippingOptions['group-1']).toBe('option-1');
+      unsubscribe();
+    });
+
+    it('should set shipping options for multiple groups', () => {
+      checkoutStore.setShippingOptionForGroup('group-1', 'option-1');
+      checkoutStore.setShippingOptionForGroup('group-2', 'option-2');
+
+      let state: CheckoutState | undefined;
+      const unsubscribe = checkoutStore.subscribe((s) => {
+        state = s;
+      });
+
+      expect(state?.formData.selectedShippingOptions['group-1']).toBe('option-1');
+      expect(state?.formData.selectedShippingOptions['group-2']).toBe('option-2');
+      unsubscribe();
+    });
+
+    it('should override existing shipping option for group', () => {
+      checkoutStore.setShippingOptionForGroup('group-1', 'option-1');
+      checkoutStore.setShippingOptionForGroup('group-1', 'option-2');
+
+      let state: CheckoutState | undefined;
+      const unsubscribe = checkoutStore.subscribe((s) => {
+        state = s;
+      });
+
+      expect(state?.formData.selectedShippingOptions['group-1']).toBe('option-2');
+      unsubscribe();
+    });
+  });
+
+  describe('getTotalShippingCost', () => {
+    it('should return 0 when no shipping groups are present', () => {
+      const cost = checkoutStore.getTotalShippingCost();
+      expect(cost).toBe(0);
+    });
+  });
+
+  describe('submitOrder with shipping groups', () => {
+    beforeEach(() => {
+      checkoutStore.reset();
+      vi.clearAllMocks();
+    });
+
+    it('should succeed when form is valid and API returns success', async () => {
+      checkoutStore.updateFormData({
+        shippingAddress: {
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john.doe@example.com',
+          phone: '1234567890',
+          address: '123 Main Street',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          country: 'United States'
+        },
+        billingAddress: {
+          firstName: 'John',
+          lastName: 'Doe',
+          address: '123 Main Street',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          country: 'United States'
+        },
+        paymentMethod: {
+          type: 'credit-card',
+          cardNumber: '4532015112830366',
+          cardHolderName: 'John Doe',
+          expiryMonth: '12',
+          expiryYear: '2027',
+          cvv: '123'
+        }
+      });
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, orderId: 'order-123' })
+      });
+
+      const mockCartItems = [
+        { id: 'prod-1', name: 'Product 1', price: 29.99, quantity: 1, image: '/test.jpg' }
+      ];
+
+      const result = await checkoutStore.submitOrder(mockCartItems, 29.99, 5.99, 2.0, 37.98);
+
+      expect(result.success).toBe(true);
+      expect(result.orderId).toBe('order-123');
+    }, 10000);
+
+    it('should handle API failure during order submission', async () => {
+      checkoutStore.updateFormData({
+        shippingAddress: {
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john.doe@example.com',
+          phone: '1234567890',
+          address: '123 Main Street',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          country: 'United States'
+        },
+        billingAddress: {
+          firstName: 'John',
+          lastName: 'Doe',
+          address: '123 Main Street',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          country: 'United States'
+        },
+        paymentMethod: {
+          type: 'credit-card',
+          cardNumber: '4532015112830366',
+          cardHolderName: 'John Doe',
+          expiryMonth: '12',
+          expiryYear: '2027',
+          cvv: '123'
+        }
+      });
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        json: async () => ({ success: false, error: 'Payment failed' })
+      });
+
+      const mockCartItems = [
+        { id: 'prod-1', name: 'Product 1', price: 29.99, quantity: 1, image: '/test.jpg' }
+      ];
+
+      const result = await checkoutStore.submitOrder(mockCartItems, 29.99, 5.99, 2.0, 37.98);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+    }, 10000);
+
+    it('should handle network errors during order submission', async () => {
+      checkoutStore.updateFormData({
+        shippingAddress: {
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john.doe@example.com',
+          phone: '1234567890',
+          address: '123 Main Street',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          country: 'United States'
+        },
+        billingAddress: {
+          firstName: 'John',
+          lastName: 'Doe',
+          address: '123 Main Street',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          country: 'United States'
+        },
+        paymentMethod: {
+          type: 'credit-card',
+          cardNumber: '4532015112830366',
+          cardHolderName: 'John Doe',
+          expiryMonth: '12',
+          expiryYear: '2027',
+          cvv: '123'
+        }
+      });
+
+      global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+
+      const mockCartItems = [
+        { id: 'prod-1', name: 'Product 1', price: 29.99, quantity: 1, image: '/test.jpg' }
+      ];
+
+      const result = await checkoutStore.submitOrder(mockCartItems, 29.99, 5.99, 2.0, 37.98);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Network error');
+    }, 10000);
   });
 });

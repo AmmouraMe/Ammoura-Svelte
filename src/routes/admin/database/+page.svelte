@@ -42,8 +42,7 @@
     justify-content: space-between;
     align-items: flex-start;
     padding: 2rem 1.5rem 1rem;
-    max-width: 1400px;
-    margin: 0 auto;
+    width: 100%;
     border-bottom: 1px solid var(--color-border-secondary);
     margin-bottom: 0;
   }

@@ -378,6 +378,12 @@
   }
 
   async function handleRevisionSelect(revisionId: string) {
+    // If selecting the current revision, do nothing - this preserves any unsaved changes
+    if (revisionId === currentRevisionId) {
+      showRevisionModal = false;
+      return;
+    }
+
     try {
       const response = await fetch(`/api/products/${product?.id}/revisions/${revisionId}`);
       if (!response.ok) {
@@ -460,32 +466,6 @@
     } catch (error) {
       console.error('Error loading revision:', error);
       toastStore.error('Failed to load revision');
-    }
-  }
-
-  async function handleRevisionPublish(revisionId: string) {
-    if (!product?.id) return;
-
-    try {
-      publishing = true;
-      const response = await fetch(`/api/products/${product.id}/revisions/${revisionId}/publish`, {
-        method: 'POST'
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to publish revision');
-      }
-
-      toastStore.success('Revision published successfully');
-      await invalidateAll();
-
-      // Load the published revision
-      await handleRevisionSelect(revisionId);
-    } catch (error) {
-      console.error('Error publishing revision:', error);
-      toastStore.error('Failed to publish revision');
-    } finally {
-      publishing = false;
     }
   }
 
@@ -1071,7 +1051,6 @@
   {revisions}
   {currentRevisionId}
   onSelect={handleRevisionSelect}
-  onPublish={handleRevisionPublish}
   onClose={() => (showRevisionModal = false)}
 />
 

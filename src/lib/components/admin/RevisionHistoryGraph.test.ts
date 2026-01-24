@@ -144,7 +144,7 @@ describe('RevisionHistoryGraph - Tree Layout', () => {
           created_at: 1000,
           is_published: true,
           color_theme: '',
-          widgets: [],
+          components: [],
           children: [],
           depth: 0,
           branch: 0
@@ -172,7 +172,7 @@ describe('RevisionHistoryGraph - Tree Layout', () => {
           created_at: 1000,
           is_published: true,
           color_theme: '',
-          widgets: [],
+          components: [],
           children: [],
           depth: 0,
           branch: 0
@@ -188,7 +188,7 @@ describe('RevisionHistoryGraph - Tree Layout', () => {
           created_at: 2000,
           is_published: false,
           color_theme: '',
-          widgets: [],
+          components: [],
           children: [],
           depth: 1,
           branch: 0
@@ -204,7 +204,7 @@ describe('RevisionHistoryGraph - Tree Layout', () => {
           created_at: 3000,
           is_published: false,
           color_theme: '',
-          widgets: [],
+          components: [],
           children: [],
           depth: 2,
           branch: 0
@@ -236,7 +236,7 @@ describe('RevisionHistoryGraph - Tree Layout', () => {
           created_at: 1000,
           is_published: true,
           color_theme: '',
-          widgets: [],
+          components: [],
           children: [],
           depth: 0,
           branch: 0
@@ -252,7 +252,7 @@ describe('RevisionHistoryGraph - Tree Layout', () => {
           created_at: 2000,
           is_published: false,
           color_theme: '',
-          widgets: [],
+          components: [],
           children: [],
           depth: 1,
           branch: 0
@@ -268,7 +268,7 @@ describe('RevisionHistoryGraph - Tree Layout', () => {
           created_at: 2500,
           is_published: false,
           color_theme: '',
-          widgets: [],
+          components: [],
           children: [],
           depth: 1,
           branch: 1

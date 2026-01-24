@@ -21,7 +21,7 @@ describe('EditorToolbar', () => {
     pageId: '1',
     revisions: [],
     currentRevisionId: null,
-    showWidgetLibrary: true,
+    showComponentLibrary: true,
     showPropertiesPanel: true,
     events: {
       undo: vi.fn(),
@@ -32,7 +32,7 @@ describe('EditorToolbar', () => {
       cancel: vi.fn(),
       loadRevision: vi.fn(),
       publishRevision: vi.fn(),
-      toggleWidgetLibrary: vi.fn(),
+      toggleComponentLibrary: vi.fn(),
       togglePropertiesPanel: vi.fn(),
       changeTheme: vi.fn()
     }

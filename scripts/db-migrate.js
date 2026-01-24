@@ -19,7 +19,8 @@ function runCommand(command, args) {
 
     const proc = spawn(command, args, {
       stdio: 'inherit',
-      shell: true
+      shell: true,
+      env: { ...process.env, CI: 'true' }
     });
 
     proc.on('close', (code) => {

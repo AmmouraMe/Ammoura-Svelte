@@ -46,7 +46,7 @@ npm install
 # Start development server
 npm run dev
 
-# Open http://localhost:5173
+# Open http://localhost:4236
 ```
 
 ## 🛠️ Available Scripts

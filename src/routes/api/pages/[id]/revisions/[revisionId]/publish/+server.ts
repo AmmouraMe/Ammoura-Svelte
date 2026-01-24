@@ -7,7 +7,8 @@ import { getPageById } from '$lib/server/db/pages';
 
 /**
  * POST /api/pages/[id]/revisions/[revisionId]/publish
- * Publish a specific revision (creates new revision at head with old as parent)
+ * Publish a specific revision by marking it as published (no new revision created).
+ * This is used when the user has a saved draft revision that they want to publish directly.
  */
 export const POST: RequestHandler = async ({ params, platform, locals }) => {
   const db = getDB(platform);
@@ -17,7 +18,19 @@ export const POST: RequestHandler = async ({ params, platform, locals }) => {
   const userId = locals.user?.id;
 
   try {
-    const newRevision = await revisionsDb.publishRevision(db, siteId, pageId, revisionId, userId);
+    // Get the revision to publish
+    const revision = await revisionsDb.getRevisionById(db, siteId, pageId, revisionId);
+    if (!revision) {
+      throw error(404, 'Revision not found');
+    }
+
+    // Mark the existing revision as published without creating a new one
+    await revisionsDb.markRevisionAsPublished(db, pageId, revisionId, {
+      title: revision.title,
+      slug: revision.slug,
+      colorTheme: revision.color_theme,
+      components: revision.components
+    });
 
     // Get page name for logging
     const page = await getPageById(db, siteId, pageId);
@@ -33,7 +46,7 @@ export const POST: RequestHandler = async ({ params, platform, locals }) => {
       revisionId
     });
 
-    return json({ success: true, revision: newRevision });
+    return json({ success: true, revisionId });
   } catch (err) {
     console.error('Error publishing revision:', err);
     throw error(500, 'Failed to publish revision');

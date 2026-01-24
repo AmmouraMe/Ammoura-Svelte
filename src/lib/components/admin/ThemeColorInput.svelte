@@ -1,210 +1,97 @@
 <script lang="ts">
-  import type { ColorTheme, ThemeSpecificColor } from '$lib/types/pages';
+  import type { ColorTheme, ThemeSpecificColor, ThemeColors } from '$lib/types/pages';
   import { getThemeColors } from '$lib/utils/editor/colorThemes';
+  import ColorPicker from './ColorPicker.svelte';
 
   export let value: string | ThemeSpecificColor | undefined;
   export let currentTheme: ColorTheme;
   export let label: string;
+  export let defaultValue: string | undefined = undefined;
   export let onChange: (newValue: string | ThemeSpecificColor) => void;
+  export let onClear: (() => void) | undefined = undefined;
+  // Optional: Allow passing theme colors directly (for builder with loaded themes from DB)
+  export let themeColors: ThemeColors | undefined = undefined;
 
-  let isThemeSpecific = false;
+  // Determine default theme color based on label
+  function getDefaultThemeColor(label: string): string {
+    const lowerLabel = label.toLowerCase();
+    if (lowerLabel.includes('primary')) return 'theme:primary';
+    if (lowerLabel.includes('secondary')) return 'theme:secondary';
+    if (lowerLabel.includes('accent')) return 'theme:accent';
+    if (lowerLabel.includes('background')) return 'theme:background';
+    if (lowerLabel.includes('text')) return 'theme:text';
+    if (lowerLabel.includes('border')) return 'theme:border';
+    if (lowerLabel.includes('success')) return 'theme:success';
+    if (lowerLabel.includes('warning')) return 'theme:warning';
+    if (lowerLabel.includes('error')) return 'theme:error';
+    // Default fallback
+    return 'theme:text';
+  }
+
+  // Use the provided value, or the explicit defaultValue prop if provided, or fall back to label-based default
+  $: effectiveValue = value || defaultValue || getDefaultThemeColor(label);
+  $: hasExplicitValue = !!value;
+
   let showColorPicker = false;
   let colorPickerButton: HTMLButtonElement | null = null;
 
-  // Initialize based on value type
-  $: {
-    if (value && typeof value === 'object') {
-      isThemeSpecific = true;
-    }
-  }
-
-  // Get current theme colors for presets
-  $: currentThemeColors = getThemeColors(currentTheme);
-
-  // Define color presets based on theme
-  // Store both the display value and the theme reference marker
-  $: colorPresets = [
-    {
-      name: 'Primary',
-      value: currentThemeColors.primary,
-      key: 'primary',
-      cssVar: 'var(--color-primary)',
-      themeRef: 'theme:primary'
-    },
-    {
-      name: 'Primary Light',
-      value: currentThemeColors.primary,
-      key: 'primary-light',
-      cssVar: 'var(--color-primary-light)',
-      themeRef: 'color:primary-light'
-    },
-    {
-      name: 'Secondary',
-      value: currentThemeColors.secondary,
-      key: 'secondary',
-      cssVar: 'var(--color-secondary)',
-      themeRef: 'theme:secondary'
-    },
-    {
-      name: 'Accent',
-      value: currentThemeColors.accent,
-      key: 'accent',
-      cssVar: 'var(--color-accent)',
-      themeRef: 'theme:accent'
-    },
-    {
-      name: 'Background',
-      value: currentThemeColors.background,
-      key: 'background',
-      cssVar: 'var(--color-bg-primary)',
-      themeRef: 'theme:background'
-    },
-    {
-      name: 'Surface',
-      value: currentThemeColors.surface,
-      key: 'surface',
-      cssVar: 'var(--color-bg-secondary)',
-      themeRef: 'theme:surface'
-    },
-    {
-      name: 'Text',
-      value: currentThemeColors.text,
-      key: 'text',
-      cssVar: 'var(--color-text-primary)',
-      themeRef: 'theme:text'
-    },
-    {
-      name: 'Text Secondary',
-      value: currentThemeColors.textSecondary,
-      key: 'textSecondary',
-      cssVar: 'var(--color-text-secondary)',
-      themeRef: 'theme:textSecondary'
-    },
-    {
-      name: 'Border',
-      value: currentThemeColors.border,
-      key: 'border',
-      cssVar: 'var(--color-border-primary)',
-      themeRef: 'theme:border'
-    },
-    {
-      name: 'Success',
-      value: currentThemeColors.success,
-      key: 'success',
-      cssVar: 'var(--color-success)',
-      themeRef: 'theme:success'
-    },
-    {
-      name: 'Warning',
-      value: currentThemeColors.warning,
-      key: 'warning',
-      cssVar: 'var(--color-warning)',
-      themeRef: 'theme:warning'
-    },
-    {
-      name: 'Error',
-      value: currentThemeColors.error,
-      key: 'error',
-      cssVar: 'var(--color-danger)',
-      themeRef: 'theme:error'
-    }
-  ];
+  // Get current theme colors for presets - use passed themeColors if available, otherwise lookup
+  $: currentThemeColors = themeColors || getThemeColors(currentTheme);
 
   // Get the resolved color for the current theme
-  // Check if value is a theme reference or color variable reference
-  $: isThemeRef = typeof value === 'string' && value.startsWith('theme:');
-  $: isColorRef = typeof value === 'string' && value.startsWith('color:');
-  $: isCssVar = typeof value === 'string' && value.startsWith('var(--');
+  $: isThemeRef = typeof effectiveValue === 'string' && effectiveValue.startsWith('theme:');
+  $: isTransparent = typeof effectiveValue === 'string' && effectiveValue === 'transparent';
+  $: isCustomColor =
+    typeof effectiveValue === 'string' &&
+    !effectiveValue.startsWith('theme:') &&
+    !effectiveValue.startsWith('color:') &&
+    !effectiveValue.startsWith('var(--') &&
+    effectiveValue !== 'transparent';
 
   $: resolvedColor = (() => {
-    if (isThemeRef && typeof value === 'string') {
-      const key = value.replace('theme:', '');
-      return currentThemeColors[key as keyof typeof currentThemeColors] || '#000000';
+    if (isThemeRef && typeof effectiveValue === 'string') {
+      const colorKey = effectiveValue.replace('theme:', '');
+      return currentThemeColors[colorKey as keyof typeof currentThemeColors] || '#808080';
     }
-    if (isColorRef && typeof value === 'string') {
-      // For color: references, find the matching preset to get the current theme's color
-      const key = value.replace('color:', '');
-      const preset = colorPresets.find((p) => p.key === key);
-      return preset?.value || '#000000';
+    if (typeof effectiveValue === 'string') {
+      return effectiveValue;
     }
-    if (isCssVar) {
-      // For CSS variables, we can't resolve them here, so show a computed color from the preset
-      const preset = colorPresets.find((p) => p.cssVar === value);
-      return preset?.value || '#000000';
-    }
-    if (typeof value === 'string') {
-      return value;
-    }
-    return '#000000';
+    return '#808080';
   })();
 
-  // Select a preset color
-  function selectPresetColor(themeRef: string) {
-    if (isThemeSpecific) {
-      updateThemeColor(currentTheme, themeRef);
-    } else {
-      onChange(themeRef);
+  $: selectedColorName = (() => {
+    if (typeof effectiveValue === 'string' && effectiveValue === 'transparent') {
+      return 'Transparent';
     }
-    showColorPicker = false;
-  }
+    if (isThemeRef && typeof effectiveValue === 'string') {
+      const colorKey = effectiveValue.replace('theme:', '');
+      return colorKey.charAt(0).toUpperCase() + colorKey.slice(1);
+    }
+    if (isCustomColor) {
+      return 'Custom';
+    }
+    return 'Color';
+  })();
 
   // Toggle color picker popup
-  function toggleColorPicker() {
+  function toggleColorPicker(): void {
     showColorPicker = !showColorPicker;
   }
 
+  // Handle color selection from picker
+  function handleColorSelect(event: CustomEvent<string>): void {
+    onChange(event.detail);
+    showColorPicker = false;
+  }
+
   // Close color picker when clicking outside
-  function handleClickOutside(event: MouseEvent) {
+  function handleClickOutside(event: MouseEvent): void {
     if (showColorPicker && colorPickerButton && !colorPickerButton.contains(event.target as Node)) {
-      const popup = document.querySelector('.color-picker-popup');
-      if (popup && !popup.contains(event.target as Node)) {
+      const pickerElement = document.querySelector('.color-picker-popup');
+      if (pickerElement && !pickerElement.contains(event.target as Node)) {
         showColorPicker = false;
       }
     }
-  }
-
-  // Toggle between simple and theme-specific mode
-  function toggleMode() {
-    if (isThemeSpecific) {
-      // Convert to simple string - use current theme value
-      onChange(resolvedColor);
-      isThemeSpecific = false;
-    } else {
-      // Convert to theme-specific - use current value for current theme
-      const themeSpecific: ThemeSpecificColor = {};
-      if (value && typeof value === 'string') {
-        themeSpecific[currentTheme] = value;
-      } else {
-        themeSpecific[currentTheme] = resolvedColor;
-      }
-      onChange(themeSpecific);
-      isThemeSpecific = true;
-    }
-  }
-
-  // Update a specific theme's color
-  function updateThemeColor(themeId: string, color: string) {
-    if (!isThemeSpecific) {
-      onChange(color);
-      return;
-    }
-
-    const themeSpecific: ThemeSpecificColor =
-      typeof value === 'object' ? { ...value } : { [currentTheme]: resolvedColor };
-
-    if (color) {
-      themeSpecific[themeId] = color;
-    } else {
-      delete themeSpecific[themeId];
-    }
-
-    onChange(themeSpecific);
-  }
-
-  // Handle custom color input
-  function handleCustomColorInput(event: Event) {
-    const input = event.target as HTMLInputElement;
-    selectPresetColor(input.value);
   }
 </script>
 
@@ -213,97 +100,67 @@
 <div class="theme-color-input">
   <div class="input-row">
     <span class="label">{label}</span>
-    <div class="color-control">
-      <button
-        type="button"
-        class="color-preview"
-        bind:this={colorPickerButton}
-        on:click={toggleColorPicker}
+    <button
+      type="button"
+      class="color-preview-btn"
+      class:muted={!hasExplicitValue}
+      bind:this={colorPickerButton}
+      on:click={toggleColorPicker}
+      title="{selectedColorName} - {isTransparent ? 'Transparent' : resolvedColor.toUpperCase()}"
+    >
+      <div
+        class="preview-swatch"
+        class:transparent-swatch={isTransparent}
         style="background-color: {resolvedColor};"
-        title="Click to choose color"
+      />
+      <svg
+        class="dropdown-icon"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
       >
-        <span class="color-value">{resolvedColor}</span>
-      </button>
-      {#if isThemeSpecific}
-        <button type="button" class="mode-badge" on:click={toggleMode} title="Per-theme colors">
-          🎨
-        </button>
-      {:else}
-        <button
-          type="button"
-          class="mode-badge simple"
-          on:click={toggleMode}
-          title="Simple color (same for all themes)"
-        >
-          🎨
-        </button>
-      {/if}
-    </div>
+        <polyline points="6 9 12 15 18 9" />
+      </svg>
+    </button>
   </div>
 
   {#if showColorPicker}
-    <div class="color-picker-popup">
-      <div class="popup-header">
-        <h4>Choose Color</h4>
-        <button type="button" class="close-btn" on:click={() => (showColorPicker = false)}>
-          ×
-        </button>
-      </div>
+    <ColorPicker
+      {currentTheme}
+      themeColors={currentThemeColors}
+      selectedValue={typeof effectiveValue === 'string' ? effectiveValue : 'theme:text'}
+      {defaultValue}
+      anchorElement={colorPickerButton}
+      on:select={handleColorSelect}
+      on:close={() => (showColorPicker = false)}
+    />
+  {/if}
 
-      <div class="popup-content">
-        <!-- Theme Color Presets -->
-        <div class="section theme-colors-section">
-          <h5>Theme Colors</h5>
-          <p class="section-description">These colors automatically adapt to each color theme</p>
-          <div class="color-options">
-            {#each colorPresets as preset}
-              <button
-                type="button"
-                class="color-option"
-                class:selected={value === preset.themeRef}
-                on:click={() => selectPresetColor(preset.themeRef)}
-              >
-                <div class="color-circle" style="background-color: {preset.value};">
-                  {#if value === preset.themeRef}
-                    <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="white"
-                      stroke-width="4"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  {/if}
-                </div>
-                <span class="color-name">{preset.name}</span>
-              </button>
-            {/each}
-          </div>
-        </div>
-
-        <!-- Custom Color Picker -->
-        <div class="section">
-          <h5>Custom Color</h5>
-          <div class="custom-picker">
-            <input
-              type="color"
-              value={resolvedColor}
-              on:input={handleCustomColorInput}
-              class="color-input"
-            />
-            <input
-              type="text"
-              value={resolvedColor}
-              on:input={handleCustomColorInput}
-              placeholder="#000000"
-              class="hex-input"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
+  {#if onClear && value && showColorPicker}
+    <button
+      type="button"
+      class="reset-btn-floating"
+      on:click={() => {
+        if (onClear) onClear();
+        showColorPicker = false;
+      }}
+      title="Reset to Default Theme Color"
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+      </svg>
+      Reset
+    </button>
   {/if}
 </div>
 
@@ -318,8 +175,7 @@
   .input-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
+    gap: 0.75rem;
   }
 
   .label {
@@ -327,238 +183,99 @@
     font-weight: 500;
     color: var(--color-text-primary);
     flex-shrink: 0;
+    min-width: 100px;
   }
 
-  .color-control {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-  }
-
-  .color-preview {
-    min-width: 120px;
-    height: 32px;
-    padding: 0 0.5rem;
-    border: 2px solid var(--color-border-secondary);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-size: 0.75rem;
-    font-family: monospace;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .color-preview:hover {
-    border-color: var(--color-primary);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  }
-
-  .color-value {
-    color: white;
-    text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
-    font-weight: 600;
-  }
-
-  .mode-badge {
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    border: 2px solid var(--color-primary);
-    border-radius: 6px;
-    background: var(--color-bg-primary);
-    cursor: pointer;
-    font-size: 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-  }
-
-  .mode-badge:hover {
-    background: var(--color-primary);
-    transform: scale(1.05);
-  }
-
-  .mode-badge.simple {
-    border-color: var(--color-border-secondary);
-    opacity: 0.6;
-  }
-
-  .mode-badge.simple:hover {
-    background: var(--color-bg-secondary);
-    opacity: 1;
-  }
-
-  .color-picker-popup {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    margin-top: 0.5rem;
-    background: var(--color-bg-primary);
-    border: 2px solid var(--color-border-secondary);
-    border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
-    max-width: 400px;
-  }
-
-  .popup-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid var(--color-border-secondary);
-    background: var(--color-bg-secondary);
-  }
-
-  .popup-header h4 {
-    margin: 0;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--color-text-primary);
-  }
-
-  .close-btn {
-    width: 24px;
-    height: 24px;
-    padding: 0;
-    border: none;
-    background: none;
-    cursor: pointer;
-    font-size: 1.5rem;
-    line-height: 1;
-    color: var(--color-text-secondary);
-    transition: color 0.2s;
-  }
-
-  .close-btn:hover {
-    color: var(--color-text-primary);
-  }
-
-  .popup-content {
-    padding: 0.75rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .section {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .section h5 {
-    margin: 0;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--color-text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .section-description {
-    margin: 0;
-    font-size: 0.75rem;
-    color: var(--color-text-tertiary);
-    font-style: italic;
-  }
-
-  .theme-colors-section {
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--color-border-secondary);
-  }
-
-  .color-options {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  .color-option {
+  .color-preview-btn {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    width: 100%;
     padding: 0.5rem 0.75rem;
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: 6px;
+    background: var(--color-bg-secondary);
+    border: 2px solid var(--color-border-secondary);
+    border-radius: 8px;
     cursor: pointer;
-    transition: all 0.15s;
-    text-align: left;
+    transition: all 0.2s;
+    min-height: 48px;
   }
 
-  .color-option:hover {
-    background: var(--color-bg-secondary);
-    border-color: var(--color-border-secondary);
+  .color-preview-btn.muted {
+    opacity: 0.6;
+    border-style: dashed;
   }
 
-  .color-option.selected {
-    background: var(--color-bg-secondary);
+  .color-preview-btn:hover {
     border-color: var(--color-primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
   }
 
-  .color-circle {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
+  .color-preview-btn.muted:hover {
+    opacity: 0.8;
+    border-style: solid;
+  }
+
+  .preview-swatch {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
     border: 2px solid rgba(0, 0, 0, 0.1);
+    box-shadow:
+      inset 0 1px 2px rgba(0, 0, 0, 0.1),
+      0 2px 4px rgba(0, 0, 0, 0.05);
     flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
   }
 
-  .color-name {
-    font-size: 0.875rem;
-    color: var(--color-text-primary);
-    font-weight: 500;
+  /* Transparent swatch with checkerboard pattern */
+  .preview-swatch.transparent-swatch {
+    background-image:
+      linear-gradient(45deg, #ccc 25%, transparent 25%),
+      linear-gradient(-45deg, #ccc 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #ccc 75%),
+      linear-gradient(-45deg, transparent 75%, #ccc 75%) !important;
+    background-size: 8px 8px;
+    background-position:
+      0 0,
+      0 4px,
+      4px -4px,
+      -4px 0px;
+    background-color: #fff !important;
   }
 
-  .color-option.selected .color-name {
+  .dropdown-icon {
+    color: var(--color-text-secondary);
+    flex-shrink: 0;
+    transition: transform 0.2s;
+  }
+
+  .color-preview-btn:hover .dropdown-icon {
     color: var(--color-primary);
-    font-weight: 600;
   }
 
-  .custom-picker {
+  /* Reset Button */
+  .reset-btn-floating {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
     display: flex;
-    gap: 0.5rem;
     align-items: center;
-  }
-
-  .color-input {
-    width: 60px;
-    height: 40px;
-    border: 2px solid var(--color-border-secondary);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: border-color 0.2s;
-  }
-
-  .color-input:hover {
-    border-color: var(--color-primary);
-  }
-
-  .hex-input {
-    flex: 1;
-    height: 40px;
-    padding: 0 0.75rem;
-    border: 2px solid var(--color-border-secondary);
-    border-radius: 6px;
-    font-family: monospace;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    background: var(--color-warning);
+    color: white;
+    border: none;
+    border-radius: 8px;
     font-size: 0.875rem;
-    background: var(--color-bg-secondary);
-    color: var(--color-text-primary);
-    transition: border-color 0.2s;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transition: all 0.2s;
+    z-index: 1001;
   }
 
-  .hex-input:focus {
-    outline: none;
-    border-color: var(--color-primary);
+  .reset-btn-floating:hover {
+    background: var(--color-warning);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
   }
 </style>

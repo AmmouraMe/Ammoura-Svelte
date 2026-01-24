@@ -115,7 +115,6 @@
     } else {
       // Session not found in initial data (might be newly created)
       // Keep current messages and sessionId as-is
-      console.log('Session not found in data, keeping current state:', id);
     }
   }
 
@@ -158,19 +157,6 @@
       mimeType: media.mimeType,
       size: media.size
     }));
-
-    // Debug: log attachments being sent
-    if (attachments.length > 0) {
-      console.log(
-        'Sending attachments:',
-        attachments.map((a) => ({
-          type: a.type,
-          filename: a.filename,
-          urlPrefix: a.url.substring(0, 50) + '...',
-          size: a.size
-        }))
-      );
-    }
 
     // Add user message to UI
     const userMessage: AIChatMessage = {
@@ -227,11 +213,6 @@
     };
 
     try {
-      console.log('Sending message to API...', {
-        hasAttachments: attachments.length > 0,
-        messageLength: messageText.length
-      });
-
       const response = await fetch('/api/ai-chat', {
         method: 'POST',
         headers: {
@@ -243,8 +224,6 @@
           attachments
         })
       });
-
-      console.log('API response status:', response.status, response.statusText);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -284,11 +263,6 @@
 
               const data = JSON.parse(jsonStr);
 
-              // Debug: log all data received in final chunk
-              if (data.done) {
-                console.log('Final chunk data:', data);
-              }
-
               if (data.error) {
                 console.error('AI error from stream:', data.error);
                 assistantMessage.content = `❌ ${data.error}`;
@@ -324,7 +298,6 @@
               // Capture model and usage info from final chunk
               if (data.model) {
                 assistantMessage.model = data.model;
-                console.log('Captured model:', data.model);
               }
               if (data.usage) {
                 assistantMessage.usage = {
@@ -333,7 +306,6 @@
                   totalTokens: data.usage.totalTokens,
                   estimatedCost: data.estimatedCost || 0
                 };
-                console.log('Captured usage:', assistantMessage.usage);
               }
 
               // Force reactive update to display the metadata

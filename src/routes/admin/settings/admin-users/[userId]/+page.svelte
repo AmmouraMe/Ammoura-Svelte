@@ -1,6 +1,8 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { enhance } from '$app/forms';
+  import { confirmStore } from '$lib/stores/confirm';
+  import { toastStore } from '$lib/stores/toast';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -62,11 +64,15 @@
   }
 
   async function handleDelete() {
-    if (
-      !confirm(
-        `Are you sure you want to delete user "${data.user.name}"? This action cannot be undone.`
-      )
-    ) {
+    const confirmed = await confirmStore.show(
+      `Are you sure you want to delete user "${data.user.name}"? This action cannot be undone.`,
+      {
+        title: 'Delete User',
+        confirmText: 'Delete',
+        variant: 'danger'
+      }
+    );
+    if (!confirmed) {
       return;
     }
 
@@ -79,7 +85,7 @@
     if (response.ok) {
       goto('/admin/users');
     } else {
-      alert('Failed to delete user');
+      toastStore.error('Failed to delete user');
     }
   }
 
@@ -455,8 +461,7 @@
 
 <style>
   .user-detail-page {
-    max-width: 1200px;
-    margin: 0 auto;
+    width: 100%;
     padding: 2rem;
   }
 

@@ -115,7 +115,7 @@
 
 <style>
   .settings-page {
-    max-width: 800px;
+    width: 100%;
   }
 
   .page-header {

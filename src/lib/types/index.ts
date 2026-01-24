@@ -44,13 +44,24 @@ export type {
 // Re-export page types
 export type {
   PageStatus,
-  WidgetType,
+  ComponentType,
+  WidgetType, // @deprecated - use ComponentType
   Page,
-  PageWidget,
-  WidgetConfig,
-  PageWithWidgets,
+  PageComponent,
+  PageWidget, // @deprecated - use PageComponent
+  ComponentConfig,
+  WidgetConfig, // @deprecated - use ComponentConfig
+  PageWithComponents,
+  PageWithWidgets, // @deprecated - use PageWithComponents
   PageFormData,
-  WidgetFormData
+  ComponentFormData,
+  WidgetFormData, // @deprecated - use ComponentFormData
+  LayoutComponent,
+  LayoutWidget, // @deprecated - use LayoutComponent
+  ChildComponent,
+  ComponentWidget, // @deprecated - use ChildComponent
+  ComponentWithChildren,
+  ComponentWithWidgets // @deprecated - use ComponentWithChildren
 } from './pages';
 
 // Re-export media types

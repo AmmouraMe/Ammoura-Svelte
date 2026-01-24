@@ -9,8 +9,8 @@ import {
   updateAISessionMessages
 } from '$lib/server/db/ai-sessions';
 import { createAIProvider } from '$lib/server/ai/providers';
-import { PRODUCT_CREATION_SYSTEM_PROMPT } from '$lib/server/ai/prompts';
 import { parseProductCommand } from '$lib/server/ai/product-parser';
+import { detectAIContext } from '$lib/server/ai/context-detector';
 import type { AIChatMessage, AIChatAttachment } from '$lib/types/ai-chat';
 
 /**
@@ -39,7 +39,7 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
 
   try {
     const body = await request.json();
-    const { sessionId, message, attachments } = body as {
+    const { sessionId, message, attachments, urlPath, entityData, conversationHistory } = body as {
       sessionId?: string;
       message: string;
       attachments?: Array<{
@@ -50,6 +50,9 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
         mimeType: string;
         size: number;
       }>;
+      urlPath?: string;
+      entityData?: Record<string, unknown>;
+      conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>;
     };
 
     // Validate message - allow empty message if there are attachments
@@ -118,12 +121,8 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
 
     // Check if model supports vision when images are present
     const hasImages = attachments && attachments.some((att) => att.type === 'image');
-    console.log('Has images:', hasImages, 'Model:', preferredModel, 'Provider:', providerName);
 
     if (hasImages) {
-      console.log(
-        `Processing message with ${attachments.length} attachments using model ${preferredModel}`
-      );
       if (!provider.supportsVision(preferredModel)) {
         const errorMsg = `Model ${preferredModel} does not support image analysis. Please select a vision-capable model (e.g., gpt-4o, gpt-4o-mini, claude-3-5-sonnet) in AI settings.`;
         console.error(errorMsg);
@@ -144,8 +143,6 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
         const processedAttachments: AIChatAttachment[] = [];
         for (const attachment of msg.attachments) {
           if (attachment.type === 'image') {
-            console.log(`Converting attachment ${attachment.url} to data URI for AI...`);
-
             // Skip if already a data URI
             if (attachment.url.startsWith('data:')) {
               processedAttachments.push(attachment);
@@ -199,27 +196,29 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
         allMessages.push(msg);
       }
     }
-    console.log('Calling AI provider with', allMessages.length, 'messages');
 
-    // Debug: Log message attachments
-    for (const msg of allMessages) {
-      if (msg.attachments && msg.attachments.length > 0) {
-        console.log(
-          `Message has ${msg.attachments.length} attachments:`,
-          msg.attachments.map((att) => ({
-            type: att.type,
-            mimeType: att.mimeType,
-            urlPrefix: att.url.substring(0, 50)
-          }))
-        );
-      }
-    }
+    // Detect context from URL and conversation
+    const contextDetection = detectAIContext(
+      urlPath || '/admin/ai-chat',
+      entityData,
+      conversationHistory ||
+        allMessages
+          .filter((m) => m.role !== 'system')
+          .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+    );
 
-    // Get available fulfillment providers for AI context
-    const fulfillmentProviders = await getAvailableFulfillmentProvidersForAI(db, siteId);
+    // Get available fulfillment providers for AI context (for product-related contexts)
+    const fulfillmentProviders =
+      contextDetection.context.type === 'product_creation' ||
+      contextDetection.context.type === 'product_editing'
+        ? await getAvailableFulfillmentProvidersForAI(db, siteId)
+        : [];
 
-    // Build enhanced system prompt with fulfillment provider context
-    const enhancedSystemPrompt = `${PRODUCT_CREATION_SYSTEM_PROMPT}
+    // Build enhanced system prompt with context and fulfillment provider info
+    let enhancedSystemPrompt = contextDetection.systemPrompt;
+
+    if (fulfillmentProviders.length > 0) {
+      enhancedSystemPrompt += `
 
 ## Available Fulfillment Providers
 
@@ -227,7 +226,18 @@ The following fulfillment providers are currently available for this site:
 
 ${fulfillmentProviders.map((p) => `- **${p.name}** (ID: ${p.id})${p.isDefault ? ' [DEFAULT]' : ''}`).join('\n')}
 
-When creating products, use these provider IDs in the fulfillmentOptions array. If the user doesn't specify providers, use the default provider${fulfillmentProviders.length === 0 ? ' (Note: No providers configured - prompt user to set up fulfillment first)' : ''}.`;
+When creating products, use these provider IDs in the fulfillmentOptions array. If the user doesn't specify providers, use the default provider.`;
+    }
+
+    if (entityData && Object.keys(entityData).length > 0) {
+      enhancedSystemPrompt += `
+
+## Current Context
+
+${JSON.stringify(entityData, null, 2)}
+
+Use this context to help the user with their current task.`;
+    }
 
     // Create a streaming response
     const stream = new ReadableStream({
@@ -264,6 +274,7 @@ When creating products, use these provider IDs in the fulfillmentOptions array. 
                 const modelCosts: Record<string, { input: number; output: number }> = {
                   'gpt-4o': { input: 0.0025, output: 0.01 },
                   'gpt-4o-mini': { input: 0.00015, output: 0.0006 },
+                  'claude-sonnet-4-20250514': { input: 0.003, output: 0.015 },
                   'claude-3-5-sonnet-20241022': { input: 0.003, output: 0.015 },
                   'claude-3-5-haiku-20241022': { input: 0.0008, output: 0.004 }
                 };
@@ -296,14 +307,11 @@ When creating products, use these provider IDs in the fulfillmentOptions array. 
               // Check if response contains a product command
               const productCommand = parseProductCommand(accumulatedResponse);
 
-              // Log usage info for debugging
-              console.log('Sending final chunk with usage:', {
-                model: preferredModel,
-                usage: usageInfo,
-                estimatedCost
-              });
+              // Check if response contains widget changes
+              const { parseWidgetChanges } = await import('$lib/server/ai/widget-parser');
+              const widgetChanges = parseWidgetChanges(accumulatedResponse);
 
-              // Send final chunk with session ID, usage info, and product command if present
+              // Send final chunk with session ID, usage info, and commands if present
               controller.enqueue(
                 encoder.encode(
                   `data: ${JSON.stringify({
@@ -313,7 +321,8 @@ When creating products, use these provider IDs in the fulfillmentOptions array. 
                     model: preferredModel,
                     usage: usageInfo,
                     estimatedCost,
-                    productCommand: productCommand || undefined
+                    productCommand: productCommand || undefined,
+                    widgetChanges: widgetChanges || undefined
                   })}\n\n`
                 )
               );
@@ -368,7 +377,6 @@ When creating products, use these provider IDs in the fulfillmentOptions array. 
                 }
               ];
               await updateAISessionMessages(db, siteId, session.id, updatedMessages);
-              console.log('Saved partial response to DB after streaming error');
             } catch (saveError) {
               console.error('Failed to save partial response after error:', saveError);
             }
@@ -395,7 +403,8 @@ When creating products, use these provider IDs in the fulfillmentOptions array. 
     });
   } catch (err) {
     console.error('AI chat error:', err);
-    if (err instanceof Error && 'status' in err) {
+    // Re-throw HttpError from SvelteKit (has status property)
+    if (err && typeof err === 'object' && 'status' in err) {
       throw err;
     }
     const errorMessage = err instanceof Error ? err.message : 'Unknown error';

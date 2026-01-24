@@ -79,7 +79,6 @@
     // Update store with split values - both at once to avoid race condition
     if (formatted.includes('/')) {
       const [month, year] = formatted.split('/');
-      console.log('DEBUG: Setting month:', month, 'year:', year); // Debug log
       updateExpiryFields(month, year || '');
     } else {
       updateExpiryFields(formatted, '');

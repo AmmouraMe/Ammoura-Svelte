@@ -20,7 +20,7 @@
   export let pageId: string | null = null;
   export let revisions: RevisionNode<unknown>[] = [];
   export let currentRevisionId: string | null = null;
-  export let showWidgetLibrary = true;
+  export let showComponentLibrary = true;
   export let showPropertiesPanel = true;
 
   interface Events {
@@ -32,7 +32,7 @@
     cancel: () => void;
     loadRevision?: (revisionId: string) => void;
     publishRevision?: (revisionId: string) => void;
-    toggleWidgetLibrary: () => void;
+    toggleComponentLibrary: () => void;
     togglePropertiesPanel: () => void;
     changeTheme: (theme: ColorTheme | undefined) => void;
   }
@@ -63,12 +63,6 @@
   function handleRevisionSelect(revisionId: string) {
     if (events.loadRevision) {
       events.loadRevision(revisionId);
-    }
-  }
-
-  function handleRevisionPublish(revisionId: string) {
-    if (events.publishRevision) {
-      events.publishRevision(revisionId);
     }
   }
 
@@ -135,9 +129,9 @@
     <button
       type="button"
       class="icon-btn"
-      title="Toggle Widget Library"
-      on:click={events.toggleWidgetLibrary}
-      class:active={showWidgetLibrary}
+      title="Toggle Component Library"
+      on:click={events.toggleComponentLibrary}
+      class:active={showComponentLibrary}
     >
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
         <rect
@@ -248,7 +242,7 @@
     <div class="divider"></div>
 
     <!-- Revision History Button -->
-    {#if pageId && revisions.length > 0}
+    {#if pageId}
       <button type="button" class="revision-btn" on:click={toggleRevisionModal}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <path
@@ -258,7 +252,7 @@
             stroke-linejoin="round"
           />
         </svg>
-        History ({revisions.length})
+        History
       </button>
       <div class="divider"></div>
     {/if}
@@ -341,7 +335,6 @@
   {revisions}
   {currentRevisionId}
   onSelect={handleRevisionSelect}
-  onPublish={handleRevisionPublish}
   onClose={() => (showRevisionModal = false)}
 />
 

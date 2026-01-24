@@ -1,27 +1,27 @@
 <script lang="ts">
-  import type { PageWidget, Breakpoint, WidgetConfig, ColorTheme } from '$lib/types/pages';
-  import WidgetRenderer from './WidgetRenderer.svelte';
-  import WidgetControls from './WidgetControls.svelte';
+  import type { PageComponent, Breakpoint, ComponentConfig, ColorTheme } from '$lib/types/pages';
+  import ComponentRenderer from './ComponentRenderer.svelte';
+  import ComponentControls from './ComponentControls.svelte';
   import { getThemeColors, generateThemeStyles } from '$lib/utils/editor/colorThemes';
 
-  export let widgets: PageWidget[];
-  export let selectedWidgetId: string | null;
+  export let components: PageComponent[];
+  export let selectedComponentId: string | null;
   export let currentBreakpoint: Breakpoint;
   export let colorTheme: ColorTheme = 'default';
 
-  interface WidgetEvents {
-    select: (widgetId: string) => void;
-    moveUp: (widgetId: string) => void;
-    moveDown: (widgetId: string) => void;
-    duplicate: (widgetId: string) => void;
-    delete: (widgetId: string) => void;
-    updateConfig: (widgetId: string, config: WidgetConfig) => void;
+  interface ComponentEvents {
+    select: (componentId: string) => void;
+    moveUp: (componentId: string) => void;
+    moveDown: (componentId: string) => void;
+    duplicate: (componentId: string) => void;
+    delete: (componentId: string) => void;
+    updateConfig: (componentId: string, config: ComponentConfig) => void;
     dragStart: (index: number) => void;
     dragOver: (event: DragEvent, index: number) => void;
     dragEnd: () => void;
   }
 
-  export let events: WidgetEvents;
+  export let events: ComponentEvents;
 
   $: themeColors = getThemeColors(colorTheme);
   $: themeStyles = generateThemeStyles(themeColors);
@@ -34,49 +34,49 @@
     class:tablet={currentBreakpoint === 'tablet'}
     style={themeStyles}
   >
-    {#if widgets.length === 0}
+    {#if components.length === 0}
       <div class="empty-canvas">
         <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2" />
           <path d="M12 8v8M8 12h8" stroke-width="2" stroke-linecap="round" />
         </svg>
         <h3>Start Building Your Page</h3>
-        <p>Select a widget from the library on the left to add content</p>
+        <p>Select a component from the library on the left to add content</p>
       </div>
     {:else}
-      <div class="widgets-canvas">
-        {#each widgets as widget, index (widget.id)}
+      <div class="components-canvas">
+        {#each components as component, index}
           <div
-            class="canvas-widget"
-            class:selected={selectedWidgetId === widget.id}
+            class="canvas-component"
+            class:selected={selectedComponentId === component.id}
             draggable="true"
             on:dragstart={() => events.dragStart(index)}
             on:dragover={(e) => events.dragOver(e, index)}
             on:dragend={events.dragEnd}
-            on:click={() => events.select(widget.id)}
-            on:keydown={(e) => e.key === 'Enter' && events.select(widget.id)}
+            on:click={() => events.select(component.id)}
+            on:keydown={(e) => e.key === 'Enter' && events.select(component.id)}
             role="button"
             tabindex="0"
           >
-            <div class="widget-controls-wrapper">
-              <WidgetControls
-                widgetType={widget.type}
+            <div class="component-controls-wrapper">
+              <ComponentControls
+                componentType={component.type}
                 canMoveUp={index > 0}
-                canMoveDown={index < widgets.length - 1}
+                canMoveDown={index < components.length - 1}
                 events={{
-                  moveUp: () => events.moveUp(widget.id),
-                  moveDown: () => events.moveDown(widget.id),
-                  duplicate: () => events.duplicate(widget.id),
-                  delete: () => events.delete(widget.id)
+                  moveUp: () => events.moveUp(component.id),
+                  moveDown: () => events.moveDown(component.id),
+                  duplicate: () => events.duplicate(component.id),
+                  delete: () => events.delete(component.id)
                 }}
               />
             </div>
-            <div class="widget-render">
-              <WidgetRenderer
-                {widget}
+            <div class="component-render">
+              <ComponentRenderer
+                {component}
                 {currentBreakpoint}
                 {colorTheme}
-                onUpdate={(config) => events.updateConfig(widget.id, config)}
+                onUpdate={(config) => events.updateConfig(component.id, config)}
               />
             </div>
           </div>
@@ -147,14 +147,14 @@
     font-size: 0.8125rem;
   }
 
-  .widgets-canvas {
+  .components-canvas {
     padding: 0.75rem;
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
   }
 
-  .canvas-widget {
+  .canvas-component {
     position: relative;
     border: 2px solid transparent;
     border-radius: 6px;
@@ -162,25 +162,25 @@
     cursor: pointer;
   }
 
-  .canvas-widget:hover {
+  .canvas-component:hover {
     border-color: var(--color-border-secondary);
   }
 
-  .canvas-widget.selected {
-    border-color: var(--color-primary);
+  .canvas-component.selected {
+    border-color: #3b82f6;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
   }
 
-  .widget-controls-wrapper {
+  .component-controls-wrapper {
     display: none;
   }
 
-  .canvas-widget:hover .widget-controls-wrapper,
-  .canvas-widget.selected .widget-controls-wrapper {
+  .canvas-component:hover .component-controls-wrapper,
+  .canvas-component.selected .component-controls-wrapper {
     display: block;
   }
 
-  .widget-render {
+  .component-render {
     padding: 0.75rem;
     min-height: 50px;
   }
@@ -215,20 +215,20 @@
       font-size: 0.875rem;
     }
 
-    .widgets-canvas {
+    .components-canvas {
       padding: 1rem;
       gap: 0.875rem;
     }
 
-    .canvas-widget {
+    .canvas-component {
       border-radius: 8px;
     }
 
-    .canvas-widget.selected {
+    .canvas-component.selected {
       box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     }
 
-    .widget-render {
+    .component-render {
       padding: 0.875rem;
       min-height: 55px;
     }
@@ -254,11 +254,11 @@
       margin-bottom: 1.5rem;
     }
 
-    .widgets-canvas {
+    .components-canvas {
       gap: 1rem;
     }
 
-    .widget-render {
+    .component-render {
       padding: 1rem;
       min-height: 60px;
     }

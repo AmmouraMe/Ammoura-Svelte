@@ -9,7 +9,8 @@ import {
   logCartAction,
   logCheckoutAction,
   logProductAction,
-  logPageAction
+  logPageAction,
+  logRevisionAction
 } from './activity-logger';
 import type { D1Database } from '@cloudflare/workers-types';
 
@@ -212,6 +213,155 @@ describe('Activity Logger', () => {
         pageId: 'page-123',
         pageName: 'Home',
         pageUrl: '/'
+      });
+
+      expect(mockPrepare).toHaveBeenCalled();
+    });
+
+    it('should log page created', async () => {
+      await logPageAction(mockDb, {
+        siteId: 'site-123',
+        userId: 'user-456',
+        action: 'created',
+        pageId: 'page-123',
+        pageName: 'About Us',
+        pageUrl: '/about'
+      });
+
+      expect(mockPrepare).toHaveBeenCalled();
+    });
+
+    it('should log page updated', async () => {
+      await logPageAction(mockDb, {
+        siteId: 'site-123',
+        userId: 'user-456',
+        action: 'updated',
+        pageId: 'page-123',
+        pageName: 'About Us',
+        pageUrl: '/about'
+      });
+
+      expect(mockPrepare).toHaveBeenCalled();
+    });
+
+    it('should log page deleted with warning severity', async () => {
+      await logPageAction(mockDb, {
+        siteId: 'site-123',
+        userId: 'user-456',
+        action: 'deleted',
+        pageId: 'page-123',
+        pageName: 'Old Page'
+      });
+
+      expect(mockPrepare).toHaveBeenCalled();
+    });
+
+    it('should log page published', async () => {
+      await logPageAction(mockDb, {
+        siteId: 'site-123',
+        userId: 'user-456',
+        action: 'published',
+        pageId: 'page-123',
+        pageName: 'Home',
+        pageUrl: '/'
+      });
+
+      expect(mockPrepare).toHaveBeenCalled();
+    });
+  });
+
+  describe('logProductAction', () => {
+    it('should log product filtered', async () => {
+      await logProductAction(mockDb, {
+        siteId: 'site-123',
+        userId: 'user-456',
+        action: 'filtered',
+        resultsCount: 25
+      });
+
+      expect(mockPrepare).toHaveBeenCalled();
+    });
+  });
+
+  describe('logCheckoutAction', () => {
+    it('should log checkout abandoned', async () => {
+      await logCheckoutAction(mockDb, {
+        siteId: 'site-123',
+        userId: 'user-456',
+        action: 'abandoned',
+        totalAmount: 149.99,
+        itemCount: 3
+      });
+
+      expect(mockPrepare).toHaveBeenCalled();
+    });
+  });
+
+  describe('logRevisionAction', () => {
+    it('should log revision created for product', async () => {
+      await logRevisionAction(mockDb, {
+        siteId: 'site-123',
+        userId: 'user-456',
+        action: 'created',
+        entityType: 'product',
+        entityId: 'prod-789',
+        entityName: 'Test Product',
+        revisionId: 'rev-001',
+        revisionMessage: 'Initial version'
+      });
+
+      expect(mockPrepare).toHaveBeenCalled();
+    });
+
+    it('should log revision created for page', async () => {
+      await logRevisionAction(mockDb, {
+        siteId: 'site-123',
+        userId: 'user-456',
+        action: 'created',
+        entityType: 'page',
+        entityId: 'page-789',
+        entityName: 'Home Page',
+        revisionId: 'rev-002'
+      });
+
+      expect(mockPrepare).toHaveBeenCalled();
+    });
+
+    it('should log revision published', async () => {
+      await logRevisionAction(mockDb, {
+        siteId: 'site-123',
+        userId: 'user-456',
+        action: 'published',
+        entityType: 'product',
+        entityId: 'prod-789',
+        revisionId: 'rev-001'
+      });
+
+      expect(mockPrepare).toHaveBeenCalled();
+    });
+
+    it('should log revision restored with warning severity', async () => {
+      await logRevisionAction(mockDb, {
+        siteId: 'site-123',
+        userId: 'user-456',
+        action: 'restored',
+        entityType: 'page',
+        entityId: 'page-789',
+        revisionId: 'rev-001',
+        parentRevisionId: 'rev-000'
+      });
+
+      expect(mockPrepare).toHaveBeenCalled();
+    });
+
+    it('should log revision viewed', async () => {
+      await logRevisionAction(mockDb, {
+        siteId: 'site-123',
+        userId: 'user-456',
+        action: 'viewed',
+        entityType: 'product',
+        entityId: 'prod-789',
+        revisionId: 'rev-001'
       });
 
       expect(mockPrepare).toHaveBeenCalled();

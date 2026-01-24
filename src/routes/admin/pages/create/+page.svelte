@@ -3,7 +3,7 @@
   import { page } from '$app/stores';
   import { toastStore } from '$lib/stores/toast';
   import PageEditor from '$lib/components/admin/PageEditor.svelte';
-  import type { PageWidget } from '$lib/types/pages';
+  import type { PageComponent } from '$lib/types/pages';
 
   // Get URL params for pre-filling
   $: initialTitle = $page.url.searchParams.get('title') || '';
@@ -13,7 +13,7 @@
     title: string;
     slug: string;
     colorTheme: string | undefined;
-    widgets: PageWidget[];
+    components: PageComponent[];
   }) {
     return handleSave({ ...data, status: 'draft' });
   }
@@ -22,7 +22,7 @@
     title: string;
     slug: string;
     colorTheme: string | undefined;
-    widgets: PageWidget[];
+    components: PageComponent[];
   }) {
     return handleSave({ ...data, status: 'published' });
   }
@@ -32,7 +32,7 @@
     slug: string;
     status: 'draft' | 'published';
     colorTheme: string | undefined;
-    widgets: PageWidget[];
+    components: PageComponent[];
   }) {
     try {
       // First, create the page
@@ -55,7 +55,7 @@
       const page = (await pageResponse.json()) as { id: string };
 
       // Then, create all widgets
-      for (const widget of data.widgets) {
+      for (const widget of data.components) {
         const widgetResponse = await fetch(`/api/pages/${page.id}/widgets`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -95,7 +95,7 @@
   {initialTitle}
   {initialSlug}
   initialStatus="draft"
-  initialWidgets={[]}
+  initialComponents={[]}
   onSave={handleSave}
   onSaveDraft={handleSaveDraft}
   onPublish={handlePublish}

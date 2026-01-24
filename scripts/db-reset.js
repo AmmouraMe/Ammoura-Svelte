@@ -95,17 +95,105 @@ async function resetLocal() {
 async function resetPreview() {
   console.log('🗑️  Resetting preview D1 database...\n');
 
-  console.log('📋 Clearing all table data...');
+  // First, clear the migrations table so migrations will re-run
+  // This must happen first and separately to ensure it succeeds even if other tables don't exist
+  console.log('📋 Clearing migrations table...');
+  const migrationsClearPath = join(process.cwd(), '.wrangler', 'temp-reset-migrations.sql');
+  const migrationsClearCommand = `DELETE FROM d1_migrations;`;
 
-  // Create a temporary SQL file to clear all data (can't DROP tables via wrangler)
+  writeFileSync(migrationsClearPath, migrationsClearCommand, 'utf-8');
+
+  try {
+    await runCommand('wrangler', [
+      'd1',
+      'execute',
+      'hermes-db',
+      '--remote',
+      '--preview',
+      '--file',
+      migrationsClearPath
+    ]);
+    console.log('✅ Migrations table cleared!');
+  } catch (_error) {
+    console.log('⚠️  d1_migrations table may not exist, continuing...');
+  } finally {
+    if (existsSync(migrationsClearPath)) {
+      rmSync(migrationsClearPath);
+    }
+  }
+
+  console.log('📋 Dropping all tables...');
+
+  // Create a temporary SQL file to DROP all tables (this is a full reset)
   const tempSqlPath = join(process.cwd(), '.wrangler', 'temp-reset.sql');
-  const clearCommands = `-- Clear all data from tables (order matters due to foreign keys)
-DELETE FROM order_items;
-DELETE FROM orders;
-DELETE FROM carts;
-DELETE FROM products;
-DELETE FROM users;
-DELETE FROM sites;
+  // DROP ALL tables in proper order (respecting foreign key constraints)
+  // Tables with FK dependencies must be dropped first
+  const clearCommands = `-- Drop all tables (order matters due to foreign keys)
+-- Disable foreign key checks temporarily (SQLite)
+PRAGMA foreign_keys = OFF;
+
+-- Revisions and history tables (depend on pages, components, layouts)
+DROP TABLE IF EXISTS revisions;
+DROP TABLE IF EXISTS page_revisions;
+DROP TABLE IF EXISTS layout_revisions;
+DROP TABLE IF EXISTS component_revisions;
+
+-- Order-related tables
+DROP TABLE IF EXISTS order_items;
+DROP TABLE IF EXISTS orders;
+
+-- Cart and product tables
+DROP TABLE IF EXISTS carts;
+DROP TABLE IF EXISTS product_media;
+DROP TABLE IF EXISTS product_shipping_options;
+DROP TABLE IF EXISTS product_fulfillment_options;
+DROP TABLE IF EXISTS products;
+
+-- Page-related tables
+DROP TABLE IF EXISTS page_widgets;
+DROP TABLE IF EXISTS pages;
+
+-- Component and layout tables
+DROP TABLE IF EXISTS component_widgets;
+DROP TABLE IF EXISTS components;
+DROP TABLE IF EXISTS layout_widgets;
+DROP TABLE IF EXISTS layouts;
+
+-- Theme and settings tables
+DROP TABLE IF EXISTS color_themes;
+DROP TABLE IF EXISTS theme_preferences;
+DROP TABLE IF EXISTS site_settings;
+
+-- AI tables
+DROP TABLE IF EXISTS ai_sessions;
+DROP TABLE IF EXISTS ai_settings;
+
+-- User and auth tables
+DROP TABLE IF EXISTS notifications;
+DROP TABLE IF EXISTS activity_logs;
+DROP TABLE IF EXISTS auth_audit_logs;
+DROP TABLE IF EXISTS oauth_sessions;
+DROP TABLE IF EXISTS provider_accounts;
+DROP TABLE IF EXISTS sso_providers;
+DROP TABLE IF EXISTS role_permissions;
+DROP TABLE IF EXISTS permissions;
+DROP TABLE IF EXISTS roles;
+DROP TABLE IF EXISTS users;
+
+-- Fulfillment and shipping
+DROP TABLE IF EXISTS fulfillment_providers;
+DROP TABLE IF EXISTS shipping_options;
+DROP TABLE IF EXISTS category_shipping_options;
+
+-- Media and API
+DROP TABLE IF EXISTS media_library;
+DROP TABLE IF EXISTS api_keys;
+
+-- Finally, drop sites (everything else depends on this)
+DROP TABLE IF EXISTS sites;
+
+-- Re-enable foreign key checks
+PRAGMA foreign_keys = ON;
 `;
 
   // Write SQL to temp file
@@ -122,7 +210,7 @@ DELETE FROM sites;
       tempSqlPath
     ]);
 
-    console.log('✅ Preview database data cleared successfully!');
+    console.log('✅ Preview database tables dropped successfully!');
   } catch (_error) {
     console.log('⚠️  Some tables may not exist yet, continuing...');
   } finally {

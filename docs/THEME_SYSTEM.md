@@ -173,6 +173,10 @@ The theme system uses CSS custom properties defined in `src/app.css`:
 
 ### FOUC Prevention
 
+FOUC (Flash of Unstyled Content) prevention is implemented at multiple levels:
+
+#### 1. Immediate Theme Application (app.html)
+
 The inline script in `app.html` runs before any framework code:
 
 ```html
@@ -191,11 +195,65 @@ The inline script in `app.html` runs before any framework code:
       }
 
       document.documentElement.setAttribute('data-theme', actualTheme);
+      document.documentElement.classList.add('theme-loaded');
     } catch (e) {
       console.warn('Failed to initialize theme:', e);
     }
   })();
 </script>
+```
+
+#### 2. CSS Variable Fallbacks (app.css)
+
+The `app.css` file defines fallback values for all `--color-*` and `--theme-*`
+CSS variables in both `:root` (light) and `[data-theme='dark']` selectors. These
+fallbacks ensure that even before the dynamic database-loaded styles are
+injected via `+layout.svelte`, the page renders with correct theme colors.
+
+```css
+:root {
+  /* FOUC Prevention: Fallback color values for --color-* variables */
+  --color-primary: #ec4899;
+  --color-bg-primary: #ffffff;
+  --color-text-primary: #1e1b4b;
+  /* ... more fallbacks ... */
+}
+
+[data-theme='dark'] {
+  /* FOUC Prevention: Fallback color values for dark mode */
+  --color-primary: #a78bfa;
+  --color-bg-primary: #0f172a;
+  --color-text-primary: #f1f5f9;
+  /* ... more fallbacks ... */
+}
+```
+
+#### 3. Component Fallbacks
+
+UI components (NavBar, Footer, etc.) must use CSS variable fallbacks instead of
+hardcoded hex colors. This ensures they adapt automatically to the theme:
+
+```typescript
+// ❌ BAD - causes FOUC in dark mode
+$: textColor = config.navbarTextColor || '#000000';
+
+// ✅ GOOD - automatically adapts to theme
+$: textColor = config.navbarTextColor || 'var(--theme-text)';
+```
+
+#### 4. Visibility Control (app.css)
+
+As a final safeguard, the page is hidden until the theme is fully loaded:
+
+```css
+/* Prevent flash during theme loading */
+html:not(.theme-loaded) {
+  visibility: hidden;
+}
+
+html.theme-loaded {
+  visibility: visible;
+}
 ```
 
 ### SSR Safety

@@ -35,6 +35,7 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
       status?: string;
       content?: string;
       colorTheme?: string;
+      layout_id?: number;
     };
 
     // Validate required fields
@@ -47,7 +48,8 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
       slug: data.slug,
       status: data.status as 'draft' | 'published',
       content: data.content,
-      colorTheme: data.colorTheme
+      colorTheme: data.colorTheme,
+      layout_id: data.layout_id
     };
 
     const page = await pagesDb.createPage(db, siteId, pageData);

@@ -125,7 +125,6 @@
       use:enhance={() => {
         isSubmitting = true;
         return async ({ result, update }) => {
-          console.log('Form submission result:', result);
           if (result.type === 'redirect') {
             // Let SvelteKit handle the redirect
             await update();
@@ -364,8 +363,7 @@
 
 <style>
   .user-edit-page {
-    max-width: 1200px;
-    margin: 0 auto;
+    width: 100%;
     padding: 2rem;
   }
 

@@ -2,10 +2,11 @@ import type { ColorTheme, ThemeColors, ColorThemeDefinition } from '$lib/types/p
 
 /**
  * System default themes (light and dark) - fallback themes used in code
+ * Note: IDs must match database theme IDs for consistent rendering
  */
 export const SYSTEM_THEMES: ColorThemeDefinition[] = [
   {
-    id: 'default-light',
+    id: 'vibrant', // Matches database theme ID
     name: 'Vibrant Pink',
     mode: 'light',
     isDefault: true,
@@ -25,7 +26,7 @@ export const SYSTEM_THEMES: ColorThemeDefinition[] = [
     }
   },
   {
-    id: 'default-dark',
+    id: 'midnight', // Matches database theme ID
     name: 'Midnight Purple',
     mode: 'dark',
     isDefault: true,
@@ -183,14 +184,14 @@ const isBrowser = typeof window !== 'undefined';
  * These are used when user selects system theme or hasn't chosen a preference
  */
 export function getSystemTheme(mode: 'light' | 'dark'): string {
-  if (!isBrowser) return mode === 'light' ? 'default-light' : 'default-dark';
+  if (!isBrowser) return mode === 'light' ? 'vibrant' : 'midnight';
 
   try {
     const key = mode === 'light' ? SYSTEM_LIGHT_THEME_KEY : SYSTEM_DARK_THEME_KEY;
     const stored = localStorage.getItem(key);
-    return stored || (mode === 'light' ? 'default-light' : 'default-dark');
+    return stored || (mode === 'light' ? 'vibrant' : 'midnight');
   } catch {
-    return mode === 'light' ? 'default-light' : 'default-dark';
+    return mode === 'light' ? 'vibrant' : 'midnight';
   }
 }
 
@@ -314,7 +315,7 @@ export function getThemeById(id: string): ColorThemeDefinition | undefined {
 /**
  * Get theme colors for a specific theme
  */
-export function getThemeColors(themeId: ColorTheme = 'default-light'): ThemeColors {
+export function getThemeColors(themeId: ColorTheme = 'vibrant'): ThemeColors {
   const theme = getThemeById(themeId);
   if (theme) {
     return theme.colors;
@@ -456,6 +457,11 @@ export function resolveThemeColor(
   asCssVar = false
 ): string {
   if (!colorValue) {
+    // Also convert fallback color if it's a theme/color reference
+    if (fallbackColor && asCssVar) {
+      const cssVar = themeRefToCssVar(fallbackColor);
+      if (cssVar) return cssVar;
+    }
     return fallbackColor || '';
   }
 

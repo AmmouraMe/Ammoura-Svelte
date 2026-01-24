@@ -74,7 +74,7 @@ export const actions: Actions = {
       await createActivityLog(db, siteId, {
         user_id: userId,
         action: 'Updated general settings',
-        description: `Changed store name to "${generalSettings.storeName}" and updated address`,
+        description: `Changed site title to "${generalSettings.storeName}" and updated address`,
         entity_type: 'settings',
         entity_id: 'general',
         severity: 'info'
