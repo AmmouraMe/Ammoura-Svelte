@@ -39,3 +39,20 @@ preview_bucket_name = "hermes-media-preview"
 binding = "MEDIA_BUCKET"
 bucket_name = "hermes-media"
 preview_bucket_name = "hermes-media-preview"
+
+# Staging environment configuration (for testing migrations against production clone)
+# The staging database ID will be shown when you first run: npm run db:test-migrations
+# Update the database_id below after running that command.
+[env.staging]
+name = "hermes-staging"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "hermes-db-staging"
+database_id = "STAGING_DB_ID_PLACEHOLDER"
+migrations_dir = "migrations"
+
+[[env.staging.r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "hermes-media-preview"
+preview_bucket_name = "hermes-media-preview"

@@ -32,6 +32,15 @@
     "db:setup:preview:seed": "node scripts/db-setup.js --remote --preview --seed",
     "db:reset:local": "node scripts/db-reset.js --local && npm run db:seed:local",
     "db:reset:preview": "node scripts/db-reset.js --remote --preview && npm run db:seed:preview",
+    "db:backup": "node scripts/db-backup.js",
+    "db:backup:production": "node scripts/db-backup.js",
+    "db:backup:preview": "node scripts/db-backup.js --preview",
+    "db:backup:local": "node scripts/db-backup.js --local",
+    "db:restore": "node scripts/db-restore.js",
+    "db:test-migrations": "node scripts/db-staging-test.js",
+    "seed:production": "node scripts/seed-production.js",
+    "seed:preview": "node scripts/seed-production.js --preview",
+    "seed:local": "node scripts/seed-production.js --local",
     "prepare": "npm run format && npm run lint && npm run check && npm run test"
   },
   "devDependencies": {

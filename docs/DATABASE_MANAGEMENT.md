@@ -237,11 +237,31 @@ Then update the `database_id` in `wrangler.toml` with the returned ID.
 ## Best Practices
 
 1. **Test migrations locally first**: Always run `npm run db:migrate:local` and verify before deploying
-2. **Keep migrations small**: Each migration should do one thing
-3. **Never modify existing migrations**: Create new migrations instead
-4. **Use transactions**: Wrap related changes in transactions
-5. **Document schema changes**: Add comments to migration files
-6. **Backup before major changes**: Export data before running destructive migrations
+2. **Test against production clone**: Run `npm run db:test-migrations` before deploying to production
+3. **Keep migrations small**: Each migration should do one thing
+4. **Never modify existing migrations**: Create new migrations instead
+5. **Use transactions**: Wrap related changes in transactions
+6. **Document schema changes**: Add comments to migration files
+7. **Backup before major changes**: Run `npm run db:backup` before running destructive migrations
+
+## Backup and Restore
+
+For backing up, restoring, and testing migrations against production data, see:
+
+- **[Database Backup and Restore Guide](./DATABASE_BACKUP_RESTORE.md)** - Complete backup/restore documentation
+
+Quick commands:
+
+```bash
+# Backup production database
+npm run db:backup
+
+# Test migrations against production clone (RECOMMENDED before deploy)
+npm run db:test-migrations
+
+# Restore backup to local for development
+npm run db:restore -- --file backups/backup.sql --to local
+```
 
 ## Security Notes
 
@@ -257,3 +277,4 @@ Then update the `database_id` in `wrangler.toml` with the returned ID.
 - [Wrangler CLI Reference](https://developers.cloudflare.com/workers/wrangler/)
 - [Database Schema Documentation](./DATABASE.md)
 - [Revision System Documentation](./REVISIONS.md)
+- [Database Backup and Restore Guide](./DATABASE_BACKUP_RESTORE.md)
