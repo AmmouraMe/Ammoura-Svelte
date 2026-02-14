@@ -1,15 +1,17 @@
 {
   "chat.promptFilesRecommendations": {
-    "speckit.constitution": true,
-    "speckit.specify": true,
-    "speckit.plan": true,
-    "speckit.tasks": true,
-    "speckit.implement": true
+    "speckit.constitution": false,
+    "speckit.specify": false,
+    "speckit.plan": false,
+    "speckit.tasks": false,
+    "speckit.implement": false
   },
   "chat.tools.terminal.autoApprove": {
     ".specify/scripts/bash/": true,
     ".specify/scripts/powershell/": true
   },
-  "cSpell.words": ["quicktime"],
+  "cSpell.words": [
+    "quicktime"
+  ],
   "chat.agent.maxRequests": 42
 }
