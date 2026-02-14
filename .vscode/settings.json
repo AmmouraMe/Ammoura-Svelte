@@ -10,8 +10,6 @@
     ".specify/scripts/bash/": true,
     ".specify/scripts/powershell/": true
   },
-  "cSpell.words": [
-    "quicktime"
-  ],
+  "cSpell.words": ["quicktime"],
   "chat.agent.maxRequests": 42
 }
