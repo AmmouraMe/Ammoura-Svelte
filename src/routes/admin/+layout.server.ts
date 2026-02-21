@@ -3,7 +3,9 @@ import type { LayoutServerLoad } from './$types';
 import { getDB } from '$lib/server/db/connection';
 import { getUserAISessions } from '$lib/server/db/ai-sessions';
 import { isAIChatEnabled } from '$lib/server/db/ai-settings';
+import { getContentTypes } from '$lib/server/db/contentTypes';
 import type { AISession } from '$lib/types/ai-chat';
+import type { ContentType } from '$lib/types/contentTypes';
 
 export const load: LayoutServerLoad = async ({ cookies, url, platform, locals, depends }) => {
   // Mark this load function as dependent on AI settings changes
@@ -39,6 +41,7 @@ export const load: LayoutServerLoad = async ({ cookies, url, platform, locals, d
     let sessions: AISession[] = [];
     let archivedSessions: AISession[] = [];
     let hasAIChat = false;
+    let contentTypes: ContentType[] = [];
     if (locals.currentUser && platform?.env?.DB && platform?.env?.ENCRYPTION_KEY) {
       const db = getDB(platform);
       const siteId = locals.siteId;
@@ -54,13 +57,20 @@ export const load: LayoutServerLoad = async ({ cookies, url, platform, locals, d
       } catch (error) {
         console.error('Failed to load AI sessions:', error);
       }
+      try {
+        // Load content types for navigation submenu
+        contentTypes = await getContentTypes(db, siteId);
+      } catch (error) {
+        console.error('Failed to load content types:', error);
+      }
     }
 
     return {
       user,
       sessions,
       archivedSessions,
-      hasAIChat
+      hasAIChat,
+      contentTypes
     };
   } catch (error) {
     // Check if it's a redirect error (which we want to throw)

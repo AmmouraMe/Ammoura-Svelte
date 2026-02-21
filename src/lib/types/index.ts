@@ -120,3 +120,29 @@ export type {
 
 // Re-export OAuth types
 export type { OAuthProvider, OAuthProviderConfig, OAuthUserProfile } from './oauth';
+
+// Re-export content management types
+export type {
+  ContentFieldType,
+  ContentFieldDefinition,
+  TextFieldConfig,
+  NumberFieldConfig,
+  SelectionFieldConfig,
+  MediaFieldConfig,
+  ReferenceFieldConfig,
+  JsonFieldConfig,
+  DateFieldConfig,
+  DBContentType,
+  ContentType,
+  DBContentEntry,
+  ContentEntry,
+  ContentFieldValues,
+  DBContentEntryTag,
+  ContentEntryTag,
+  ContentEntryQueryOptions,
+  ContentTypeTemplate,
+  ContentValidationResult,
+  ContentValidationError
+} from './contentTypes';
+
+export { parseContentType, parseContentEntry, parseContentEntryTag } from './contentTypes';

@@ -18,3 +18,6 @@ export * from './activity-logs.js';
 export * from './notifications.js';
 export * from './fulfillment-providers.js';
 export * from './shipping-options.js';
+export * from './contentTypes.js';
+export * from './contentEntries.js';
+export * from './contentValidation.js';

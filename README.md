@@ -1,4 +1,6 @@
-# Hermes eCommerce Platform
+# Ammoura™ eCommerce Platform
+
+_(codenamed Hermes during development)_
 
 Hermes is a modern multi-tenant eCommerce platform built with SvelteKit and
 TypeScript, deployed on Cloudflare Pages with D1 database and R2 storage. It
@@ -189,3 +191,15 @@ All code must pass:
 
 See [docs/GITHUB_COPILOT_SETUP.md](docs/GITHUB_COPILOT_SETUP.md) for complete
 Copilot configuration details.
+
+---
+
+## 📜 Brand & Legal
+
+**Ammoura™** is a trademark of David William Monaghan.
+
+**Name Origin:** Inspired by King Hammurabi of Babylon (c. 1792-1750 BCE), creator of one of history's first commercial legal codes. Just as Hammurabi brought order and fairness to ancient markets, Ammoura provides the foundation for modern digital commerce.
+
+**Copyright © 2025 David William Monaghan. All rights reserved.**
+
+This software is open source under the MIT License. The Ammoura™ name and brand are protected trademarks.

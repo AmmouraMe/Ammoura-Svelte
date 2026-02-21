@@ -15,6 +15,7 @@
   let isAIChatSubmenuOpen = false;
   let isArchivedSubmenuOpen = false;
   let isSiteSubmenuOpen = false;
+  let isContentSubmenuOpen = false;
   let currentPath = '';
   let notifications: Notification[] = [];
   let unreadCount = 0;
@@ -41,6 +42,7 @@
   $: sessions = $page.data?.sessions || [];
   $: archivedSessions = $page.data?.archivedSessions || [];
   $: hasAIChat = $page.data?.hasAIChat || false;
+  $: contentTypes = $page.data?.contentTypes || [];
   $: {
     // Auto-expand settings submenu if on a settings page
     if (
@@ -70,6 +72,12 @@
       isSiteSubmenuOpen = true;
     } else {
       isSiteSubmenuOpen = false;
+    }
+    // Auto-expand Content submenu if on a content page
+    if (currentPath.startsWith('/admin/content')) {
+      isContentSubmenuOpen = true;
+    } else {
+      isContentSubmenuOpen = false;
     }
   }
 
@@ -140,6 +148,10 @@
 
   function toggleSiteSubmenu() {
     isSiteSubmenuOpen = !isSiteSubmenuOpen;
+  }
+
+  function toggleContentSubmenu() {
+    isContentSubmenuOpen = !isContentSubmenuOpen;
   }
 
   function formatSessionDate(dateString: string): string {
@@ -487,6 +499,110 @@
           </svg>
           Products
         </a>
+
+        <!-- Content with submenu (Content Types) -->
+        <div class="menu-item-with-submenu">
+          <button
+            class="menu-item-button"
+            class:active={currentPath.startsWith('/admin/content')}
+            on:click={toggleContentSubmenu}
+          >
+            <div class="menu-item-content">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path
+                  d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ></path>
+                <polyline
+                  points="14 2 14 8 20 8"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ></polyline>
+                <line
+                  x1="16"
+                  y1="13"
+                  x2="8"
+                  y2="13"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ></line>
+                <line
+                  x1="16"
+                  y1="17"
+                  x2="8"
+                  y2="17"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ></line>
+              </svg>
+              <span>Content</span>
+            </div>
+            <svg
+              class="chevron"
+              class:open={isContentSubmenuOpen}
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            >
+              <path
+                d="M9 18l6-6-6-6"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ></path>
+            </svg>
+          </button>
+
+          {#if isContentSubmenuOpen}
+            <div class="submenu">
+              <a
+                href="/admin/content"
+                class:active={currentPath === '/admin/content'}
+                on:click={closeSidebar}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path
+                    d="M12 5v14M5 12h14"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  ></path>
+                </svg>
+                Manage Types
+              </a>
+
+              {#each contentTypes as ct (ct.id)}
+                <a
+                  href="/admin/content/{ct.id}/entries"
+                  class:active={currentPath.startsWith(`/admin/content/${ct.id}`)}
+                  on:click={closeSidebar}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path
+                      d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    ></path>
+                    <path
+                      d="M14 2v6h6M16 13H8M16 17H8M10 9H8"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                    ></path>
+                  </svg>
+                  {ct.name}
+                </a>
+              {/each}
+            </div>
+          {/if}
+        </div>
 
         <a
           href="/admin/orders"

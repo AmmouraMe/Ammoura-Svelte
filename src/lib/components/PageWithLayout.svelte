@@ -71,19 +71,23 @@
             {#if showPageTitle}
               <h1 class="page-title">{pageTitle}</h1>
             {/if}
-            <div class="page-components">
-              {#each sortedPageComponents as component (component.id)}
-                <div class="component-container" data-component-type={component.type}>
-                  <FrontendComponentRenderer
-                    type={component.type}
-                    config={component.config}
-                    {colorTheme}
-                    {siteContext}
-                    {user}
-                  />
-                </div>
-              {/each}
-            </div>
+            {#if sortedPageComponents.length > 0}
+              <div class="page-components">
+                {#each sortedPageComponents as component (component.id)}
+                  <div class="component-container" data-component-type={component.type}>
+                    <FrontendComponentRenderer
+                      type={component.type}
+                      config={component.config}
+                      {colorTheme}
+                      {siteContext}
+                      {user}
+                    />
+                  </div>
+                {/each}
+              </div>
+            {:else}
+              <slot />
+            {/if}
           </div>
         {:else}
           <!-- Other layout components (spacer, divider, etc.) -->
@@ -103,19 +107,23 @@
       {#if showPageTitle}
         <h1 class="page-title">{pageTitle}</h1>
       {/if}
-      <div class="page-components">
-        {#each sortedPageComponents as component (component.id)}
-          <div class="component-container" data-component-type={component.type}>
-            <FrontendComponentRenderer
-              type={component.type}
-              config={component.config}
-              {colorTheme}
-              {siteContext}
-              {user}
-            />
-          </div>
-        {/each}
-      </div>
+      {#if sortedPageComponents.length > 0}
+        <div class="page-components">
+          {#each sortedPageComponents as component (component.id)}
+            <div class="component-container" data-component-type={component.type}>
+              <FrontendComponentRenderer
+                type={component.type}
+                config={component.config}
+                {colorTheme}
+                {siteContext}
+                {user}
+              />
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <slot />
+      {/if}
     </div>
   {/if}
 </div>

@@ -1,5 +1,7 @@
 <script lang="ts">
   import PageWithLayout from '$lib/components/PageWithLayout.svelte';
+  import DefaultContentEntry from '$lib/components/DefaultContentEntry.svelte';
+  import DefaultContentListing from '$lib/components/DefaultContentListing.svelte';
   import { browser } from '$app/environment';
   import { page as pageStore } from '$app/stores';
   import { themeStore } from '$lib/stores/theme';
@@ -9,6 +11,11 @@
 
   // Use reactive declarations to ensure data updates on client-side navigation
   $: ({ page, components, layoutComponents, isPreview, isAdmin: _isAdmin } = data);
+
+  // Determine if we need default CMS rendering (no page builder template assigned)
+  $: hasPageBuilderContent = components && components.length > 0;
+  $: needsDefaultEntry = !hasPageBuilderContent && data.contentEntry;
+  $: needsDefaultListing = !hasPageBuilderContent && data.contentEntries;
 
   // Get the site context from the parent layout data for template substitution
   $: siteContext = $pageStore.data.siteContext;
@@ -60,7 +67,13 @@
   {siteContext}
   user={data.currentUser}
   pageShowPageTitle={data.pageShowPageTitle}
-/>
+>
+  {#if needsDefaultEntry && data.contentEntry && data.contentType}
+    <DefaultContentEntry entry={data.contentEntry} contentType={data.contentType} />
+  {:else if needsDefaultListing && data.contentEntries && data.contentType}
+    <DefaultContentListing entries={data.contentEntries} contentType={data.contentType} />
+  {/if}
+</PageWithLayout>
 
 <style>
   .preview-banner {
