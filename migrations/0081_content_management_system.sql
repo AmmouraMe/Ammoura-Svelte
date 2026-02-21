@@ -74,37 +74,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_content_entry_tags_unique ON content_entry
 CREATE INDEX IF NOT EXISTS idx_content_entry_tags_type_category ON content_entry_tags(site_id, content_type_id, tag_category);
 CREATE INDEX IF NOT EXISTS idx_content_entry_tags_name ON content_entry_tags(site_id, tag_name);
 
--- Update the revisions table CHECK constraint to include CMS entity types
--- SQLite does not support ALTER TABLE to modify CHECK constraints,
--- so we recreate the table with the updated constraint
-CREATE TABLE IF NOT EXISTS revisions_new (
-  id TEXT PRIMARY KEY,
-  site_id TEXT NOT NULL,
-  entity_type TEXT NOT NULL CHECK (entity_type IN ('page', 'product', 'category', 'theme', 'site', 'component', 'layout', 'content_type', 'content_entry')),
-  entity_id TEXT NOT NULL,
-  revision_number INTEGER NOT NULL,
-  data TEXT NOT NULL,
-  message TEXT,
-  hash TEXT,
-  parent_id TEXT,
-  created_by TEXT,
-  created_at INTEGER NOT NULL,
-  FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-  FOREIGN KEY (parent_id) REFERENCES revisions_new(id) ON DELETE SET NULL
-);
-
--- Copy data from old revisions table
-INSERT OR IGNORE INTO revisions_new SELECT * FROM revisions;
-
--- Drop old table and rename new one
-DROP TABLE IF EXISTS revisions;
-ALTER TABLE revisions_new RENAME TO revisions;
-
--- Recreate indexes for revisions table
-CREATE INDEX IF NOT EXISTS idx_revisions_entity ON revisions(site_id, entity_type, entity_id);
-CREATE INDEX IF NOT EXISTS idx_revisions_hash ON revisions(hash);
-CREATE INDEX IF NOT EXISTS idx_revisions_parent ON revisions(parent_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_revisions_entity_number ON revisions(site_id, entity_type, entity_id, revision_number);
+-- NOTE: Revisions table CHECK constraint update is handled by migration 0082
+-- which drops and recreates the revisions table with the expanded entity_type
+-- CHECK constraint (adding 'content_type' and 'content_entry').
 
 -- Add CMS permissions
 INSERT OR IGNORE INTO permissions (id, name, description, category, created_at) VALUES
