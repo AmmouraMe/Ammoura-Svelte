@@ -1,5 +1,6 @@
 import { getDB } from '$lib/server/db/connection';
 import * as colorThemes from '$lib/server/db/color-themes';
+import { getUserThemePreferences } from '$lib/server/db/user-theme-preferences';
 import { getGeneralSettings } from '$lib/server/db/site-settings';
 import { getDefaultLayout, getLayoutComponents } from '$lib/server/db/layouts';
 import { getComponent, getGlobalComponentByName } from '$lib/server/db/components';
@@ -90,15 +91,23 @@ export const load: LayoutServerLoad = async ({ platform, locals }) => {
         getDefaultLayout(db, siteId)
       ]);
 
-    // Fetch all themes
-    const allThemes = await colorThemes.getAllColorThemes(db, siteId);
+    // Fetch all themes and user preferences in parallel
+    const userId = locals.currentUser?.id;
+    const [allThemes, userPrefs] = await Promise.all([
+      colorThemes.getAllColorThemes(db, siteId),
+      userId ? getUserThemePreferences(db, siteId, userId) : Promise.resolve(null)
+    ]);
 
-    // Get the system default themes (or fallback to vibrant/midnight)
-    const lightTheme = allThemes.find((t) => t.id === (systemLightThemeId || 'vibrant'));
-    const darkTheme = allThemes.find((t) => t.id === (systemDarkThemeId || 'midnight'));
+    // Resolve effective theme IDs: user preference > site default > fallback
+    const effectiveLightThemeId = userPrefs?.light_theme_id || systemLightThemeId || 'vibrant';
+    const effectiveDarkThemeId = userPrefs?.dark_theme_id || systemDarkThemeId || 'midnight';
+
+    // Get the effective themes (considering user preferences)
+    const lightTheme = allThemes.find((t) => t.id === effectiveLightThemeId);
+    const darkTheme = allThemes.find((t) => t.id === effectiveDarkThemeId);
 
     // Map color_themes colors to the old SiteThemeColors format for compatibility
-    const mapThemeColors = (theme: { colors: Record<string, string> } | null | undefined) => {
+    const mapThemeColors = (theme: { colors: Record<string, string>; } | null | undefined) => {
       if (!theme) return null;
       const colors = theme.colors;
       return {
@@ -203,8 +212,8 @@ export const load: LayoutServerLoad = async ({ platform, locals }) => {
     return {
       themeColorsLight: mapThemeColors(lightTheme as never),
       themeColorsDark: mapThemeColors(darkTheme as never),
-      systemLightThemeId: systemLightThemeId || 'vibrant',
-      systemDarkThemeId: systemDarkThemeId || 'midnight',
+      systemLightThemeId: effectiveLightThemeId,
+      systemDarkThemeId: effectiveDarkThemeId,
       currentUser: locals.currentUser || null,
       storeName: generalSettings.storeName || 'Hermes eCommerce',
       siteContext: createSiteContext(generalSettings),

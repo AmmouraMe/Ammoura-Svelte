@@ -1,6 +1,7 @@
 import { json, type RequestEvent } from '@sveltejs/kit';
 import { getDB } from '$lib/server/db/connection';
 import * as colorThemes from '$lib/server/db/color-themes';
+import { getUserThemePreferences } from '$lib/server/db/user-theme-preferences';
 
 export async function GET({ platform, locals }: RequestEvent): Promise<Response> {
   // If platform is not available, return defaults
@@ -15,21 +16,27 @@ export async function GET({ platform, locals }: RequestEvent): Promise<Response>
     const db = getDB(platform);
     const siteId = locals.siteId || 'default-site';
 
-    // Get system default theme IDs
-    const [systemLightThemeId, systemDarkThemeId] = await Promise.all([
+    // Get system default theme IDs and user preferences in parallel
+    const userId = locals.currentUser?.id;
+    const [systemLightThemeId, systemDarkThemeId, userPrefs] = await Promise.all([
       colorThemes.getThemePreference(db, siteId, 'system-light-theme'),
-      colorThemes.getThemePreference(db, siteId, 'system-dark-theme')
+      colorThemes.getThemePreference(db, siteId, 'system-dark-theme'),
+      userId ? getUserThemePreferences(db, siteId, userId) : Promise.resolve(null)
     ]);
 
     // Fetch all themes
     const allThemes = await colorThemes.getAllColorThemes(db, siteId);
 
-    // Get the system default themes (or fallback to vibrant/midnight)
-    const lightTheme = allThemes.find((t) => t.id === (systemLightThemeId || 'vibrant'));
-    const darkTheme = allThemes.find((t) => t.id === (systemDarkThemeId || 'midnight'));
+    // Resolve effective theme IDs: user preference > site default > fallback
+    const effectiveLightThemeId = userPrefs?.light_theme_id || systemLightThemeId || 'vibrant';
+    const effectiveDarkThemeId = userPrefs?.dark_theme_id || systemDarkThemeId || 'midnight';
+
+    // Get the effective themes (considering user preferences)
+    const lightTheme = allThemes.find((t) => t.id === effectiveLightThemeId);
+    const darkTheme = allThemes.find((t) => t.id === effectiveDarkThemeId);
 
     // Map color_themes colors to the old SiteThemeColors format for compatibility
-    const mapThemeColors = (theme: { colors: { [key: string]: string } } | null | undefined) => {
+    const mapThemeColors = (theme: { colors: { [key: string]: string; }; } | null | undefined) => {
       if (!theme) return null;
       const colors = theme.colors;
       return {

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { invalidateAll } from '$app/navigation';
   import { themeStore } from '$lib/stores/theme';
   import { toastStore } from '$lib/stores/toast';
   import type { Theme } from '$lib/types/theme';
@@ -115,6 +116,9 @@
           dark_theme_id: selectedDarkTheme
         };
       }
+
+      // Reload layout data so the new theme colors are applied immediately
+      await invalidateAll();
     } catch (error) {
       console.error('Error saving theme preferences:', error);
       toastStore.error('Failed to save theme preferences');
