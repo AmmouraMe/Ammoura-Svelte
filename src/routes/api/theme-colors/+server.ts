@@ -36,7 +36,7 @@ export async function GET({ platform, locals }: RequestEvent): Promise<Response>
     const darkTheme = allThemes.find((t) => t.id === effectiveDarkThemeId);
 
     // Map color_themes colors to the old SiteThemeColors format for compatibility
-    const mapThemeColors = (theme: { colors: { [key: string]: string; }; } | null | undefined) => {
+    const mapThemeColors = (theme: { colors: { [key: string]: string } } | null | undefined) => {
       if (!theme) return null;
       const colors = theme.colors;
       return {

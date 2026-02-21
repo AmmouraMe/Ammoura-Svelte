@@ -10,7 +10,7 @@ vi.mock('$lib/server/db/user-theme-preferences', () => ({
 }));
 
 vi.mock('$lib/server/db/connection', () => ({
-  getDB: vi.fn((platform: { env: { DB: unknown; }; }) => platform.env.DB)
+  getDB: vi.fn((platform: { env: { DB: unknown } }) => platform.env.DB)
 }));
 
 // Import after mocking
@@ -204,7 +204,7 @@ describe('/api/theme-colors', () => {
 
     vi.mocked(colorThemes.getThemePreference).mockRejectedValueOnce(new Error('DB error'));
 
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const response = await GET({
       platform: mockPlatform,
