@@ -1102,13 +1102,13 @@
       </nav>
 
       <div class="sidebar-footer">
-        <div class="user-info">
+        <a href="/user/profile" class="user-info">
           <Avatar name={$authStore.user?.name} size="large" variant="primary" />
           <div class="user-details">
             <div class="user-name">{$authStore.user?.name || 'Admin'}</div>
             <div class="user-role">{$authStore.user?.role || 'admin'}</div>
           </div>
-        </div>
+        </a>
         <button class="logout-btn" on:click={handleLogout}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path
@@ -1528,6 +1528,13 @@
     gap: 0.75rem;
     padding: 0.75rem;
     margin-bottom: 0.75rem;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: background-color var(--transition-normal);
+  }
+
+  .user-info:hover {
+    background-color: var(--color-bg-secondary);
   }
 
   .user-details {
