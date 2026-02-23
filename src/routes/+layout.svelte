@@ -7,13 +7,13 @@
   import PromptModal from '../lib/components/PromptModal.svelte';
   import ThemePreviewIndicator from '../lib/components/ThemePreviewIndicator.svelte';
   import ToastContainer from '../lib/components/ToastContainer.svelte';
-  import { authStore, authState } from '../lib/stores/auth';
+  import { authState } from '../lib/stores/auth';
   import { themeStore } from '../lib/stores/theme';
 
   import '../app.css';
   import { browser } from '$app/environment';
   import { page } from '$app/stores';
-  import { goto } from '$app/navigation';
+  import { goto, invalidateAll } from '$app/navigation';
   import type { LayoutData } from './$types';
   import type { ResponsiveValue, PositionConfig } from '$lib/types/pages';
 
@@ -205,8 +205,22 @@
     themeStore.cleanup();
   });
 
-  function handleLogout(): void {
-    authStore.logout();
+  async function handleLogout(): Promise<void> {
+    // Clear server-side session cookies first and wait for completion
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+
+    // Clear client-side auth state directly (don't use authStore.logout()
+    // which would fire another non-awaited API call)
+    authState.set({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false
+    });
+
+    // Invalidate all data to refresh server state (currentUser will now be null)
+    await invalidateAll();
+
+    // Navigate home
     goto('/');
   }
 </script>

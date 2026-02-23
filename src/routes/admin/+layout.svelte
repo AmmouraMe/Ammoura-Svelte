@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { beforeNavigate, afterNavigate, goto } from '$app/navigation';
+  import { beforeNavigate, afterNavigate, goto, invalidateAll } from '$app/navigation';
   import { page } from '$app/stores';
   import { onMount, onDestroy } from 'svelte';
 
   import Avatar from '$lib/components/Avatar.svelte';
   import NotificationCenter from '$lib/components/notifications/NotificationCenter.svelte';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
-  import { authStore } from '$lib/stores/auth';
+  import { authStore, authState } from '$lib/stores/auth';
   import { themeStore } from '$lib/stores/theme';
   import type { Notification } from '$lib/types/notifications';
 
@@ -125,8 +125,21 @@
     themeStore.cleanup();
   });
 
-  function handleLogout() {
-    authStore.logout();
+  async function handleLogout(): Promise<void> {
+    // Clear server-side session cookies first and wait for completion
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+
+    // Clear client-side auth state directly
+    authState.set({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false
+    });
+
+    // Invalidate all data to refresh server state (currentUser will now be null)
+    await invalidateAll();
+
+    // Navigate to login
     goto('/auth/login');
   }
 

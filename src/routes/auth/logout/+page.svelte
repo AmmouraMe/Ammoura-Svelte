@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto, invalidateAll } from '$app/navigation';
   import { browser } from '$app/environment';
-  import { authStore } from '$lib/stores/auth';
+  import { authState } from '$lib/stores/auth';
   import Button from '$lib/components/Button.svelte';
   import type { PageData } from './$types';
 
@@ -37,14 +37,19 @@
     isLoggingOut = true;
 
     try {
-      // Call the logout API
+      // Call the logout API and wait for cookies to be cleared
       await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include'
       });
 
-      // Clear local auth store regardless of response
-      authStore.logout();
+      // Clear client-side auth state directly (avoid authStore.logout()
+      // which fires a redundant non-awaited API call)
+      authState.set({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false
+      });
       logoutComplete = true;
 
       // Invalidate all data to refresh server state, then redirect
@@ -54,7 +59,11 @@
       console.error('Logout failed:', error);
       logoutError = true;
       // Still clear the local store and redirect on error
-      authStore.logout();
+      authState.set({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false
+      });
       await invalidateAll();
       goto('/');
     } finally {
