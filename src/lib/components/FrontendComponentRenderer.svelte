@@ -49,6 +49,7 @@
   import Footer from '$lib/components/builtin/Footer.svelte';
   import DropdownComponent from '$lib/components/builtin/Dropdown.svelte';
   import ThemeToggleComponent from '$lib/components/builtin/ThemeToggle.svelte';
+  import MobileCollapseToggle from '$lib/components/builtin/MobileCollapseToggle.svelte';
   import {
     resolveThemeColor,
     getThemeColors,
@@ -497,6 +498,27 @@
   $: isContainer =
     type === 'container' || type === 'row' || type === 'flex' || type === 'composite';
 
+  // Mobile collapse state
+  $: hasMobileCollapse = isContainer && config.containerMobileCollapse === true;
+  $: mobileCollapseLabel = (config.containerMobileCollapseLabel as string) || 'Menu';
+  $: mobileCollapseIconColor = config.containerMobileCollapseIconColor
+    ? resolveThemeColor(
+        config.containerMobileCollapseIconColor as string,
+        colorTheme,
+        'currentColor',
+        true
+      )
+    : 'currentColor';
+  $: mobileCollapseBackground = config.containerMobileCollapseBackground
+    ? resolveThemeColor(
+        config.containerMobileCollapseBackground as string,
+        colorTheme,
+        'transparent',
+        true
+      )
+    : 'transparent';
+  let mobileCollapseExpanded = false;
+
   // Check if this component type uses container-based rendering with children
   $: usesContainerChildren =
     (type === 'navbar' ||
@@ -557,6 +579,7 @@
     <!-- Generic container with children -->
     <div
       class="frontend-container frontend-responsive-container"
+      class:has-mobile-collapse={hasMobileCollapse}
       id={config.anchorName || undefined}
       style="
         {responsiveVars}
@@ -574,26 +597,39 @@
         box-sizing: border-box;
       "
     >
+      {#if hasMobileCollapse}
+        <MobileCollapseToggle
+          label={mobileCollapseLabel}
+          iconColor={mobileCollapseIconColor}
+          backgroundColor={mobileCollapseBackground}
+          bind:expanded={mobileCollapseExpanded}
+        />
+      {/if}
       {#if children.length > 0}
-        {#each children as child, i (child.id || i)}
-          <div
-            class="child-wrapper"
-            style={getChildLayoutStyles(
-              child.config || {},
-              containerDisplay,
-              containerFlexDirection,
-              containerAlignItems
-            )}
-          >
-            <svelte:self
-              type={child.type}
-              config={child.config || child}
-              {colorTheme}
-              {siteContext}
-              {user}
-            />
-          </div>
-        {/each}
+        <div
+          class="mobile-collapse-content"
+          class:mobile-collapse-hidden={hasMobileCollapse && !mobileCollapseExpanded}
+        >
+          {#each children as child, i (child.id || i)}
+            <div
+              class="child-wrapper"
+              style={getChildLayoutStyles(
+                child.config || {},
+                containerDisplay,
+                containerFlexDirection,
+                containerAlignItems
+              )}
+            >
+              <svelte:self
+                type={child.type}
+                config={child.config || child}
+                {colorTheme}
+                {siteContext}
+                {user}
+              />
+            </div>
+          {/each}
+        </div>
       {/if}
     </div>
   {:else if type === 'navbar' && !usesContainerChildren}
@@ -894,6 +930,38 @@
 
   .child-wrapper {
     box-sizing: border-box;
+  }
+
+  /* Mobile collapse content wrapper */
+  .mobile-collapse-content {
+    display: contents;
+  }
+
+  /* On desktop/tablet, mobile collapse is always visible regardless of state */
+  /* On mobile, hide when collapsed */
+  @media (max-width: 768px) {
+    .has-mobile-collapse {
+      flex-direction: column;
+    }
+
+    .mobile-collapse-content {
+      display: flex;
+      flex-direction: column;
+      gap: inherit;
+      width: 100%;
+      overflow: hidden;
+      transition:
+        max-height 0.3s ease,
+        opacity 0.3s ease;
+      max-height: 2000px;
+      opacity: 1;
+    }
+
+    .mobile-collapse-hidden {
+      max-height: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
   }
 
   .unknown-component {

@@ -473,6 +473,73 @@
         <small>Space between children (px)</small>
       </div>
     </div>
+
+    <!-- Mobile Collapse -->
+    <div class="section">
+      <h4>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <rect x="2" y="3" width="20" height="18" rx="2" stroke-width="2" />
+          <path d="M8 10h8M8 14h8" stroke-width="2" stroke-linecap="round" />
+        </svg>
+        Mobile Collapse
+      </h4>
+      <div class="form-group toggle-row">
+        <label for="mobile-collapse-toggle">Collapse on mobile</label>
+        <input
+          id="mobile-collapse-toggle"
+          type="checkbox"
+          checked={config.containerMobileCollapse === true}
+          on:change={(e) => {
+            config.containerMobileCollapse = e.currentTarget.checked;
+            handleUpdate();
+          }}
+        />
+      </div>
+      <small>Hide children behind a hamburger icon on mobile screens</small>
+
+      {#if config.containerMobileCollapse}
+        <div class="form-group">
+          <label for="mobile-collapse-label">Toggle label</label>
+          <input
+            id="mobile-collapse-label"
+            type="text"
+            value={config.containerMobileCollapseLabel || ''}
+            on:input={(e) => {
+              config.containerMobileCollapseLabel = e.currentTarget.value;
+              handleUpdate();
+            }}
+            placeholder="Menu"
+          />
+          <small>Text shown next to the hamburger icon</small>
+        </div>
+        <div class="form-group">
+          <label for="mobile-collapse-icon-color">Icon color</label>
+          <input
+            id="mobile-collapse-icon-color"
+            type="color"
+            value={config.containerMobileCollapseIconColor || '#000000'}
+            on:input={(e) => {
+              config.containerMobileCollapseIconColor = e.currentTarget.value;
+              handleUpdate();
+            }}
+          />
+          <small>Color of the hamburger icon</small>
+        </div>
+        <div class="form-group">
+          <label for="mobile-collapse-bg">Toggle background</label>
+          <input
+            id="mobile-collapse-bg"
+            type="color"
+            value={config.containerMobileCollapseBackground || '#ffffff'}
+            on:input={(e) => {
+              config.containerMobileCollapseBackground = e.currentTarget.value;
+              handleUpdate();
+            }}
+          />
+          <small>Background color of the toggle bar</small>
+        </div>
+      {/if}
+    </div>
   {:else if effectiveTab === 'style'}
     <!-- Spacing Section -->
     <div class="section">
@@ -983,5 +1050,16 @@
     background: var(--color-primary-light, #eff6ff);
     border-color: var(--color-primary, #3b82f6);
     color: var(--color-primary, #3b82f6);
+  }
+
+  .toggle-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .toggle-row input[type='checkbox'] {
+    width: auto;
+    cursor: pointer;
   }
 </style>
