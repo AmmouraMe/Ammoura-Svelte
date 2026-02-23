@@ -15,6 +15,7 @@ import {
   createAuthAuditLog
 } from '$lib/server/db/oauth.js';
 import { getSSOProvider } from '$lib/server/db/sso-providers.js';
+import { getEnvOAuthCredentials } from '$lib/server/oauth/env-providers.js';
 import { createOAuthProvider } from '$lib/server/oauth/providers/index.js';
 import type { OAuthProvider } from '$lib/types/oauth.js';
 import { logActivity } from '$lib/server/activity-logger';
@@ -60,24 +61,41 @@ export const GET: RequestHandler = async ({ params, url, platform, locals, cooki
 
     const encryptionKey = platform?.env.ENCRYPTION_KEY;
 
-    if (!encryptionKey) {
-      throw new Error('ENCRYPTION_KEY not configured');
+    let clientId: string;
+    let clientSecret: string;
+    let tenant: string | undefined;
+
+    // Try database first (site-specific config), fall back to env vars
+    if (encryptionKey) {
+      const ssoProvider = await getSSOProvider(db, siteId, provider, encryptionKey);
+      if (ssoProvider && ssoProvider.enabled) {
+        clientId = ssoProvider.client_id;
+        clientSecret = ssoProvider.client_secret;
+        tenant = ssoProvider.tenant || undefined;
+      } else {
+        const envCreds = getEnvOAuthCredentials(
+          platform?.env as unknown as Record<string, unknown>,
+          provider
+        );
+        if (!envCreds) {
+          throw new Error(`OAuth provider ${provider} not configured for this site`);
+        }
+        clientId = envCreds.clientId;
+        clientSecret = envCreds.clientSecret;
+      }
+    } else {
+      const envCreds = getEnvOAuthCredentials(
+        platform?.env as unknown as Record<string, unknown>,
+        provider
+      );
+      if (!envCreds) {
+        throw new Error(
+          `OAuth provider ${provider} not configured (no encryption key or env vars)`
+        );
+      }
+      clientId = envCreds.clientId;
+      clientSecret = envCreds.clientSecret;
     }
-
-    // Get OAuth credentials from database (decrypts client_secret)
-    const ssoProvider = await getSSOProvider(db, siteId, provider, encryptionKey);
-
-    if (!ssoProvider) {
-      throw new Error(`OAuth provider ${provider} not configured for this site`);
-    }
-
-    if (!ssoProvider.enabled) {
-      throw new Error(`OAuth provider ${provider} is disabled`);
-    }
-
-    const clientId = ssoProvider.client_id;
-    const clientSecret = ssoProvider.client_secret;
-    const tenant = ssoProvider.tenant || undefined;
 
     // Create provider instance and exchange code for tokens
     const oauthProvider = createOAuthProvider(provider, { clientId, clientSecret, tenant });
@@ -175,11 +193,39 @@ export const GET: RequestHandler = async ({ params, url, platform, locals, cooki
     }
 
     // Get full user object
-    const { getUserById } = await import('$lib/server/db/users.js');
-    const user = await getUserById(db, siteId, userId);
+    const { getUserById, updateUser: updateUserRole } = await import('$lib/server/db/users.js');
+    let user = await getUserById(db, siteId, userId);
 
     if (!user || user.status !== 'active') {
       redirect(302, `/auth/login?error=account_inactive`);
+    }
+
+    // Check if this user's email matches the platform engineer email from env
+    const platformEngineerEmail = platform?.env?.PLATFORM_ENGINEER_EMAIL;
+    if (
+      platformEngineerEmail &&
+      user.email.toLowerCase() === platformEngineerEmail.toLowerCase() &&
+      user.role !== 'platform_engineer'
+    ) {
+      await updateUserRole(db, siteId, user.id, { role: 'platform_engineer' });
+      user = await getUserById(db, siteId, userId);
+      if (!user) {
+        redirect(302, `/auth/login?error=account_inactive`);
+      }
+
+      await logActivity(db, {
+        siteId,
+        userId: user.id,
+        action: 'user.role_elevated',
+        entityType: 'user',
+        entityId: user.id,
+        entityName: user.name,
+        description: `User role elevated to platform_engineer via PLATFORM_ENGINEER_EMAIL match`,
+        ipAddress:
+          request.headers.get('cf-connecting-ip') || request.headers.get('x-real-ip') || null,
+        userAgent: request.headers.get('user-agent') || null,
+        metadata: { provider, previous_role: 'customer' }
+      });
     }
 
     // Create session

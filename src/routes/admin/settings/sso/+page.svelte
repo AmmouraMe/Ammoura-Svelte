@@ -60,8 +60,10 @@
   );
   $: disabledProviders = data.providers.filter((p) => p.enabled === 0);
   $: disabledProviderSet = new Set(disabledProviders.map((p) => p.provider));
+  $: envProviders = data.envProviders || [];
+  $: envProviderSet = new Set(envProviders.map((p: { provider: OAuthProvider }) => p.provider));
   $: availableToAdd = data.availableProviders.filter(
-    (p) => !enabledProviders.has(p) && !disabledProviderSet.has(p)
+    (p) => !enabledProviders.has(p) && !disabledProviderSet.has(p) && !envProviderSet.has(p)
   );
   $: localProviders = [...data.providers]
     .filter((p) => p.enabled === 1)
@@ -258,7 +260,7 @@
     {/if}
   </div>
 
-  {#if localProviders.length === 0}
+  {#if localProviders.length === 0 && envProviders.length === 0}
     <div class="empty-state">
       <div class="empty-icon">🔐</div>
       <h2>No SSO Providers Enabled</h2>
@@ -268,83 +270,108 @@
       {/if}
     </div>
   {:else}
-    <div class="providers-list">
-      {#each localProviders as provider, index (provider.provider)}
-        <div
-          class="provider-card"
-          class:disabled={provider.enabled === 0}
-          class:dragging={draggedIndex === index}
-          class:drag-over={dragOverIndex === index}
-          draggable="true"
-          on:dragstart={(e) => handleDragStart(e, index)}
-          on:dragover={(e) => handleDragOver(e, index)}
-          on:dragleave={handleDragLeave}
-          on:drop={(e) => handleDrop(e, index)}
-          on:dragend={handleDragEnd}
-          role="button"
-          tabindex="0"
-        >
-          <div class="drag-handle" title="Drag to reorder">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path
-                d="M7 4a1 1 0 100 2 1 1 0 000-2zM13 4a1 1 0 100 2 1 1 0 000-2zM7 9a1 1 0 100 2 1 1 0 000-2zM13 9a1 1 0 100 2 1 1 0 000-2zM7 14a1 1 0 100 2 1 1 0 000-2zM13 14a1 1 0 100 2 1 1 0 000-2z"
-                fill="currentColor"
-              />
-            </svg>
-          </div>
+    {#if envProviders.length > 0}
+      <div class="env-providers-section">
+        <div class="section-header">
+          <h2>Environment Variable Providers</h2>
+          <p>These providers are configured via environment variables and are always active.</p>
+        </div>
+        <div class="providers-list">
+          {#each envProviders as provider (provider.provider)}
+            <div class="provider-card env-provider">
+              <div class="provider-content">
+                <span class="provider-icon">
+                  <IconDisplay iconName={provider.icon} size={28} fallbackEmoji={provider.icon} />
+                </span>
+                <span class="provider-name">{provider.display_name}</span>
+                <span class="env-badge" title="Configured via environment variables">ENV</span>
+                <span class="client-id-preview">{provider.client_id}</span>
+              </div>
+            </div>
+          {/each}
+        </div>
+      </div>
+    {/if}
 
-          <div class="provider-content">
-            <span class="provider-icon">
-              <IconDisplay iconName={provider.icon} size={28} fallbackEmoji={provider.icon} />
-            </span>
-            <span class="provider-name">{provider.display_name}</span>
+    {#if localProviders.length > 0}
+      <div class="providers-list">
+        {#each localProviders as provider, index (provider.provider)}
+          <div
+            class="provider-card"
+            class:disabled={provider.enabled === 0}
+            class:dragging={draggedIndex === index}
+            class:drag-over={dragOverIndex === index}
+            draggable="true"
+            on:dragstart={(e) => handleDragStart(e, index)}
+            on:dragover={(e) => handleDragOver(e, index)}
+            on:dragleave={handleDragLeave}
+            on:drop={(e) => handleDrop(e, index)}
+            on:dragend={handleDragEnd}
+            role="button"
+            tabindex="0"
+          >
+            <div class="drag-handle" title="Drag to reorder">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path
+                  d="M7 4a1 1 0 100 2 1 1 0 000-2zM13 4a1 1 0 100 2 1 1 0 000-2zM7 9a1 1 0 100 2 1 1 0 000-2zM13 9a1 1 0 100 2 1 1 0 000-2zM7 14a1 1 0 100 2 1 1 0 000-2zM13 14a1 1 0 100 2 1 1 0 000-2z"
+                  fill="currentColor"
+                />
+              </svg>
+            </div>
 
-            <div class="provider-actions">
-              <button
-                class="icon-btn"
-                on:click={() => openEditModal(provider)}
-                title="Settings"
-                aria-label="Edit {provider.display_name} settings"
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
+            <div class="provider-content">
+              <span class="provider-icon">
+                <IconDisplay iconName={provider.icon} size={28} fallbackEmoji={provider.icon} />
+              </span>
+              <span class="provider-name">{provider.display_name}</span>
+
+              <div class="provider-actions">
+                <button
+                  class="icon-btn"
+                  on:click={() => openEditModal(provider)}
+                  title="Settings"
+                  aria-label="Edit {provider.display_name} settings"
                 >
-                  <path d="M12 15a3 3 0 100-6 3 3 0 000 6z"></path>
-                  <path
-                    d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"
-                  ></path>
-                </svg>
-              </button>
-              <button
-                class="icon-btn danger"
-                on:click={() => handleDisable(provider)}
-                title="Disable provider"
-                aria-label="Disable {provider.display_name}"
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M12 15a3 3 0 100-6 3 3 0 000 6z"></path>
+                    <path
+                      d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"
+                    ></path>
+                  </svg>
+                </button>
+                <button
+                  class="icon-btn danger"
+                  on:click={() => handleDisable(provider)}
+                  title="Disable provider"
+                  aria-label="Disable {provider.display_name}"
                 >
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </button>
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      {/each}
-    </div>
+        {/each}
+      </div>
+    {/if}
   {/if}
 </div>
 
@@ -962,5 +989,55 @@
     .drag-handle {
       left: 0.5rem;
     }
+  }
+
+  .env-providers-section {
+    margin-bottom: 2rem;
+  }
+
+  .env-providers-section .section-header {
+    margin-bottom: 1rem;
+  }
+
+  .env-providers-section .section-header h2 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.1rem;
+    color: var(--color-text-primary);
+  }
+
+  .env-providers-section .section-header p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+  }
+
+  .provider-card.env-provider {
+    padding-left: 1.5rem;
+    cursor: default;
+    border-left: 3px solid var(--color-success, #22c55e);
+  }
+
+  .provider-card.env-provider:hover {
+    cursor: default;
+  }
+
+  .env-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--color-success, #22c55e);
+    background: color-mix(in srgb, var(--color-success, #22c55e) 15%, transparent);
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+
+  .client-id-preview {
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    font-family: monospace;
+    margin-left: auto;
   }
 </style>

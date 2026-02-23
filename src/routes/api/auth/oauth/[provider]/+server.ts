@@ -9,6 +9,7 @@ import { getDB } from '$lib/server/db';
 import { createOAuthProvider } from '$lib/server/oauth/providers/index.js';
 import { createOAuthSession, createAuthAuditLog } from '$lib/server/db/oauth.js';
 import { getSSOProvider } from '$lib/server/db/sso-providers.js';
+import { getEnvOAuthCredentials } from '$lib/server/oauth/env-providers.js';
 import type { OAuthProvider } from '$lib/types/oauth.js';
 
 const VALID_PROVIDERS: OAuthProvider[] = [
@@ -37,24 +38,41 @@ export const GET: RequestHandler = async ({ params, url, platform, locals, reque
   const siteId = locals.siteId;
   const encryptionKey = platform?.env.ENCRYPTION_KEY;
 
-  if (!encryptionKey) {
-    throw new Error('ENCRYPTION_KEY not configured');
+  let clientId: string;
+  let clientSecret: string;
+  let tenant: string | undefined;
+
+  // Try database first (site-specific config)
+  if (encryptionKey) {
+    const ssoProvider = await getSSOProvider(db, siteId, provider, encryptionKey);
+    if (ssoProvider && ssoProvider.enabled) {
+      clientId = ssoProvider.client_id;
+      clientSecret = ssoProvider.client_secret;
+      tenant = ssoProvider.tenant || undefined;
+    } else {
+      // Fall back to environment variables
+      const envCreds = getEnvOAuthCredentials(
+        platform?.env as unknown as Record<string, unknown>,
+        provider
+      );
+      if (!envCreds) {
+        throw new Error(`OAuth provider ${provider} not configured for this site`);
+      }
+      clientId = envCreds.clientId;
+      clientSecret = envCreds.clientSecret;
+    }
+  } else {
+    // No encryption key - try env vars directly
+    const envCreds = getEnvOAuthCredentials(
+      platform?.env as unknown as Record<string, unknown>,
+      provider
+    );
+    if (!envCreds) {
+      throw new Error(`OAuth provider ${provider} not configured (no encryption key or env vars)`);
+    }
+    clientId = envCreds.clientId;
+    clientSecret = envCreds.clientSecret;
   }
-
-  // Get OAuth credentials from database (decrypts client_secret)
-  const ssoProvider = await getSSOProvider(db, siteId, provider, encryptionKey);
-
-  if (!ssoProvider) {
-    throw new Error(`OAuth provider ${provider} not configured for this site`);
-  }
-
-  if (!ssoProvider.enabled) {
-    throw new Error(`OAuth provider ${provider} is disabled`);
-  }
-
-  const clientId = ssoProvider.client_id;
-  const clientSecret = ssoProvider.client_secret;
-  const tenant = ssoProvider.tenant || undefined;
 
   try {
     // Create provider instance

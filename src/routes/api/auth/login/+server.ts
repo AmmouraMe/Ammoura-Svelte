@@ -104,11 +104,37 @@ export const POST: RequestHandler = async ({ request, cookies, platform, locals 
     }
 
     // Prepare user object for session (without password hash)
+    // Check if this user's email matches the platform engineer email from env
+    const platformEngineerEmail = platform?.env?.PLATFORM_ENGINEER_EMAIL;
+    let role = dbUser.role;
+    if (
+      platformEngineerEmail &&
+      dbUser.email.toLowerCase() === platformEngineerEmail.toLowerCase() &&
+      dbUser.role !== 'platform_engineer'
+    ) {
+      const { updateUser } = await import('$lib/server/db/users');
+      await updateUser(db, siteId, dbUser.id, { role: 'platform_engineer' });
+      role = 'platform_engineer';
+
+      await logActivity(db, {
+        siteId,
+        userId: dbUser.id,
+        action: 'user.role_elevated',
+        entityType: 'user',
+        entityId: dbUser.id,
+        entityName: dbUser.name,
+        description: `User role elevated to platform_engineer via PLATFORM_ENGINEER_EMAIL match`,
+        ipAddress,
+        userAgent,
+        metadata: { previous_role: dbUser.role }
+      });
+    }
+
     const user = {
       id: dbUser.id,
       email: dbUser.email,
       name: dbUser.name,
-      role: dbUser.role,
+      role,
       permissions: dbUser.permissions,
       status: dbUser.status,
       expiration_date: dbUser.expiration_date,

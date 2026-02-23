@@ -1,6 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { getDB } from '$lib/server/db/connection';
 import { getEnabledSSOProviders } from '$lib/server/db/sso-providers';
+import { getEnvOAuthProviders } from '$lib/server/oauth/env-providers';
 
 export const load: PageServerLoad = async ({ platform, locals }) => {
   const db = getDB(platform);
@@ -18,6 +19,22 @@ export const load: PageServerLoad = async ({ platform, locals }) => {
       icon: p.icon || '',
       enabled: true
     }));
+
+    // Also detect providers configured via environment variables
+    const envProviders = getEnvOAuthProviders(platform?.env as unknown as Record<string, unknown>);
+    const dbProviderIds = new Set(providers.map((p) => p.id));
+
+    // Add env-var providers not already in DB
+    for (const ep of envProviders) {
+      if (!dbProviderIds.has(ep.provider)) {
+        providers.push({
+          id: ep.provider,
+          name: ep.displayName,
+          icon: ep.icon,
+          enabled: true
+        });
+      }
+    }
 
     return {
       ssoProviders: providers

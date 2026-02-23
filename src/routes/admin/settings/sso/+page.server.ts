@@ -10,6 +10,7 @@ import {
   type CreateSSOProviderData,
   type UpdateSSOProviderData
 } from '$lib/server/db/sso-providers';
+import { getEnvOAuthProviders } from '$lib/server/oauth/env-providers';
 import type { OAuthProvider } from '$lib/types/oauth';
 
 const VALID_PROVIDERS: OAuthProvider[] = [
@@ -56,8 +57,31 @@ export const load: PageServerLoad = async ({ platform, locals }) => {
       icon: p.icon || PROVIDER_DEFAULTS[p.provider].icon
     }));
 
+    // Detect providers configured via environment variables
+    const envProviders = getEnvOAuthProviders(platform?.env as unknown as Record<string, unknown>);
+    const dbProviderSet = new Set(providers.map((p) => p.provider));
+
+    // Create "virtual" entries for env-var providers not in DB
+    const envOnlyProviders = envProviders
+      .filter((ep) => !dbProviderSet.has(ep.provider))
+      .map((ep) => ({
+        id: `env-${ep.provider}`,
+        site_id: siteId,
+        provider: ep.provider,
+        enabled: 1,
+        client_id: ep.clientId.slice(0, 8) + '••••',
+        tenant: null,
+        display_name: ep.displayName,
+        icon: ep.icon,
+        sort_order: 0,
+        created_at: 0,
+        updated_at: 0,
+        from_env: true
+      }));
+
     return {
       providers: providersWithDefaults,
+      envProviders: envOnlyProviders,
       availableProviders: VALID_PROVIDERS,
       providerDefaults: PROVIDER_DEFAULTS
     };
