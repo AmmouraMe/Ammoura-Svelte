@@ -219,7 +219,7 @@ describe('themeStore.reloadThemeColors', () => {
     await themeStore.reloadThemeColors();
 
     expect(mockStyleElement.id).toBe('theme-colors-dark');
-    expect(mockStyleElement.textContent).toContain("[data-theme='dark']");
+    expect(mockStyleElement.textContent).toContain("html[data-theme='dark']");
     expect(mockStyleElement.textContent).toContain('--color-primary: #60a5fa');
   });
 });

@@ -149,8 +149,36 @@
     `
     : '';
 
+  // Subscription to persist theme changes to the database for logged-in users
+  let themeUnsubscribe: (() => void) | null = null;
+
   onMount(() => {
     themeStore.initTheme();
+
+    // Sync user's color scheme preference from server (DB is source of truth for logged-in users)
+    // This handles cases where localStorage is cleared, out of sync, or the user logged in
+    // from a different device/browser. The server loads the user's preference from the database.
+    if (data.userColorScheme && data.currentUser) {
+      themeStore.setTheme(data.userColorScheme);
+    }
+
+    // Persist future theme changes to the database for logged-in users.
+    // subscribe fires synchronously with current value — skip that initial call.
+    let themeChangeReady = false;
+    themeUnsubscribe = themeStore.subscribe((theme) => {
+      if (!themeChangeReady) return;
+      if (data.currentUser) {
+        fetch('/api/user/theme-preferences', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ color_scheme: theme }),
+          credentials: 'include'
+        }).catch((err) => {
+          console.warn('Failed to persist theme preference:', err);
+        });
+      }
+    });
+    themeChangeReady = true;
 
     // Remove the no-transitions class and add hydration-complete after hydration settles
     // We wait until document.fonts.ready to ensure all fonts are loaded,
@@ -203,6 +231,7 @@
 
   onDestroy(() => {
     themeStore.cleanup();
+    if (themeUnsubscribe) themeUnsubscribe();
   });
 
   async function handleLogout(): Promise<void> {
@@ -227,12 +256,14 @@
 
 <svelte:head>
   {#if lightThemeStyles}
+    <!-- Use html:root for higher specificity than app.css :root defaults -->
     <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-    {@html `<style>:root { ${lightThemeStyles} }</style>`}
+    {@html `<style>html:root { ${lightThemeStyles} }</style>`}
   {/if}
   {#if darkThemeStyles}
+    <!-- Use html[data-theme='dark'] for higher specificity than app.css defaults -->
     <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-    {@html `<style>[data-theme='dark'] { ${darkThemeStyles} }</style>`}
+    {@html `<style>html[data-theme='dark'] { ${darkThemeStyles} }</style>`}
   {/if}
 </svelte:head>
 

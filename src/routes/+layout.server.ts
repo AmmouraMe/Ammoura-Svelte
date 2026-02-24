@@ -69,6 +69,7 @@ export const load: LayoutServerLoad = async ({ platform, locals }) => {
       themeColorsDark: null,
       systemLightThemeId: 'vibrant',
       systemDarkThemeId: 'midnight',
+      userColorScheme: null,
       currentUser: locals.currentUser || null,
       storeName: 'Hermes eCommerce',
       layoutData: {
@@ -214,6 +215,7 @@ export const load: LayoutServerLoad = async ({ platform, locals }) => {
       themeColorsDark: mapThemeColors(darkTheme as never),
       systemLightThemeId: effectiveLightThemeId,
       systemDarkThemeId: effectiveDarkThemeId,
+      userColorScheme: userPrefs?.color_scheme || null,
       currentUser: locals.currentUser || null,
       storeName: generalSettings.storeName || 'Hermes eCommerce',
       siteContext: createSiteContext(generalSettings),
@@ -226,6 +228,7 @@ export const load: LayoutServerLoad = async ({ platform, locals }) => {
       themeColorsDark: null,
       systemLightThemeId: 'vibrant',
       systemDarkThemeId: 'midnight',
+      userColorScheme: null,
       currentUser: locals.currentUser || null,
       storeName: 'Hermes eCommerce',
       siteContext: createDefaultSiteContext(),

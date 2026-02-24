@@ -5,6 +5,7 @@ import { load, type LayoutData as ServerLayoutData } from './+layout.server';
 interface LayoutLoadResult {
   themeColorsLight: Record<string, string> | null;
   themeColorsDark: Record<string, string> | null;
+  userColorScheme: string | null;
   currentUser: {
     id: string;
     email: string;
@@ -130,6 +131,7 @@ describe('+layout.server load function', () => {
 
       expect(result.themeColorsLight).toBeNull();
       expect(result.themeColorsDark).toBeNull();
+      expect(result.userColorScheme).toBeNull();
       expect(result.currentUser).toBeNull();
       expect(result.storeName).toBe('Hermes eCommerce');
       expect(result.layoutData).toBeDefined();
@@ -210,6 +212,114 @@ describe('+layout.server load function', () => {
         name: 'Test User',
         role: 'admin'
       });
+    });
+
+    it('should return userColorScheme null when no user is logged in', async () => {
+      const result = (await load({
+        platform: mockPlatform,
+        locals: mockLocals
+      } as never)) as LayoutLoadResult;
+
+      expect(result.userColorScheme).toBeNull();
+    });
+
+    it('should return userColorScheme from user preferences when logged in', async () => {
+      mockLocals.currentUser = {
+        id: 'user-1',
+        email: 'test@example.com',
+        name: 'Test User',
+        role: 'customer'
+      };
+
+      // Create a mock DB that returns user theme preferences
+      const userPrefsPlatform = {
+        env: {
+          DB: {
+            prepare: vi.fn().mockImplementation((sql: string) => ({
+              bind: vi.fn().mockReturnValue({
+                first: vi.fn().mockImplementation(() => {
+                  if (sql.includes('SELECT * FROM site_settings')) {
+                    return Promise.resolve({
+                      settings: JSON.stringify({ storeName: 'Test Store' })
+                    });
+                  }
+                  if (sql.includes('SELECT value FROM theme_preferences')) {
+                    return Promise.resolve(null);
+                  }
+                  if (sql.includes('FROM user_theme_preferences')) {
+                    return Promise.resolve({
+                      user_id: 'user-1',
+                      site_id: 'site-1',
+                      color_scheme: 'dark',
+                      light_theme_id: null,
+                      dark_theme_id: null,
+                      created_at: 1234567890,
+                      updated_at: 1234567890
+                    });
+                  }
+                  if (sql.includes('SELECT * FROM layouts WHERE site_id = ? AND is_default')) {
+                    return Promise.resolve(null);
+                  }
+                  if (sql.includes('SELECT * FROM components WHERE name = ? AND is_global = 1')) {
+                    return Promise.resolve(null);
+                  }
+                  return Promise.resolve(null);
+                }),
+                all: vi.fn().mockImplementation(() => {
+                  if (sql.includes('SELECT * FROM site_settings WHERE site_id')) {
+                    return Promise.resolve({
+                      results: [{ setting_key: 'general_store_name', setting_value: 'Test Store' }]
+                    });
+                  }
+                  if (sql.includes('SELECT * FROM color_themes')) {
+                    return Promise.resolve({
+                      results: [
+                        {
+                          id: 'vibrant',
+                          colors: JSON.stringify({
+                            primary: '#3B82F6',
+                            secondary: '#10B981',
+                            background: '#FFFFFF',
+                            text: '#1F2937',
+                            textSecondary: '#6B7280',
+                            surface: '#F3F4F6',
+                            border: '#E5E7EB',
+                            accent: '#8B5CF6'
+                          })
+                        },
+                        {
+                          id: 'midnight',
+                          colors: JSON.stringify({
+                            primary: '#60A5FA',
+                            secondary: '#34D399',
+                            background: '#111827',
+                            text: '#F9FAFB',
+                            textSecondary: '#9CA3AF',
+                            surface: '#1F2937',
+                            border: '#374151',
+                            accent: '#A78BFA'
+                          })
+                        }
+                      ]
+                    });
+                  }
+                  if (sql.includes('SELECT * FROM layout_widgets')) {
+                    return Promise.resolve({ results: [] });
+                  }
+                  return Promise.resolve({ results: [] });
+                })
+              })
+            }))
+          }
+        }
+      };
+
+      const result = (await load({
+        platform: userPrefsPlatform,
+        locals: mockLocals
+      } as never)) as LayoutLoadResult;
+
+      expect(result.userColorScheme).toBe('dark');
     });
 
     it('should load layout data with navbar config', async () => {

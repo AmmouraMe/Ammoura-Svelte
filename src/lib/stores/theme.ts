@@ -205,7 +205,7 @@ const createThemeStore = (): ThemeStore => {
             lightStyleEl.id = 'theme-colors-light';
             document.head.appendChild(lightStyleEl);
           }
-          lightStyleEl.textContent = `:root { ${lightStyles} }`;
+          lightStyleEl.textContent = `html:root { ${lightStyles} }`;
         }
 
         // Update dark theme colors
@@ -225,7 +225,7 @@ const createThemeStore = (): ThemeStore => {
             darkStyleEl.id = 'theme-colors-dark';
             document.head.appendChild(darkStyleEl);
           }
-          darkStyleEl.textContent = `[data-theme='dark'] { ${darkStyles} }`;
+          darkStyleEl.textContent = `html[data-theme='dark'] { ${darkStyles} }`;
         }
       } catch (error) {
         console.error('Failed to reload theme colors:', error);
