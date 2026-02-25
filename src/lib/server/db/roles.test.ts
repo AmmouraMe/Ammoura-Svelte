@@ -678,4 +678,94 @@ describe('Roles Repository', () => {
       expect(result).toBe(false);
     });
   });
+
+  describe('branch coverage - undefined results fallback', () => {
+    it('getAllPermissions should return empty array when results is undefined', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ success: true });
+      const mockPrepare = vi
+        .fn()
+        .mockReturnValue({ all: mockAll, bind: vi.fn().mockReturnValue({ all: mockAll }) });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getAllPermissions(mockDB);
+      expect(result).toEqual([]);
+    });
+
+    it('getPermissionsByCategory should return empty array when results is undefined', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ success: true });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getPermissionsByCategory(mockDB, 'admin');
+      expect(result).toEqual([]);
+    });
+
+    it('getAllRoles should return empty array when results is undefined', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ success: true });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getAllRoles(mockDB, siteId);
+      expect(result).toEqual([]);
+    });
+
+    it('getRolePermissions should return empty array when results is undefined', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ success: true });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getRolePermissions(mockDB, 'role-1');
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('createRole - empty permissions branch', () => {
+    it('should create role without permission_ids', async () => {
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockFirst = vi.fn().mockResolvedValue({
+        id: 'role-new',
+        site_id: siteId,
+        name: 'TestRole',
+        description: 'A test role',
+        is_system: 0,
+        created_at: 12345,
+        updated_at: 12345
+      });
+      const mockBind = vi.fn().mockReturnValue({ run: mockRun, first: mockFirst });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await createRole(mockDB, siteId, {
+        name: 'TestRole',
+        description: 'A test role'
+      });
+      expect(result).toBeDefined();
+    });
+
+    it('should create role with empty permission_ids array', async () => {
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockFirst = vi.fn().mockResolvedValue({
+        id: 'role-new',
+        site_id: siteId,
+        name: 'TestRole',
+        description: 'A test role',
+        is_system: 0,
+        created_at: 12345,
+        updated_at: 12345
+      });
+      const mockBind = vi.fn().mockReturnValue({ run: mockRun, first: mockFirst });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await createRole(mockDB, siteId, {
+        name: 'TestRole',
+        description: 'A test role',
+        permission_ids: []
+      });
+      expect(result).toBeDefined();
+    });
+  });
 });

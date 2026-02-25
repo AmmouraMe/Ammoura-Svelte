@@ -279,4 +279,13 @@ describe('Environment Variable OAuth Providers', () => {
       expect(result).toHaveLength(7);
     });
   });
+
+  describe('getEnvOAuthCredentials unknown provider', () => {
+    it('should return null for unsupported provider', () => {
+      const env = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = getEnvOAuthCredentials(env, 'unknown_provider' as any);
+      expect(result).toBeNull();
+    });
+  });
 });

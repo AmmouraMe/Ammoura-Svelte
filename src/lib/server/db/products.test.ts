@@ -292,4 +292,104 @@ describe('Products Repository', () => {
       );
     });
   });
+
+  describe('createProduct error branch', () => {
+    it('should throw when getProductById returns null after insert', async () => {
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockFirst = vi.fn().mockResolvedValue(null);
+      const mockBind = vi.fn().mockReturnValue({ run: mockRun, first: mockFirst });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      await expect(
+        createProduct(mockDB, siteId, {
+          name: 'Test',
+          description: 'Test',
+          price: 9.99,
+          image: 'test.jpg',
+          category: 'Cat',
+          stock: 10,
+          type: 'physical',
+          tags: []
+        })
+      ).rejects.toThrow('Failed to create product');
+    });
+  });
+
+  describe('updateProduct stock and type branches', () => {
+    it('should include stock in update query', async () => {
+      const mockFirst = vi.fn().mockResolvedValue(mockProduct);
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst, run: mockRun });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await updateProduct(mockDB, siteId, 'product-1', {
+        stock: 25
+      });
+
+      expect(result).toBeDefined();
+    });
+
+    it('should include type in update query', async () => {
+      const mockFirst = vi.fn().mockResolvedValue(mockProduct);
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst, run: mockRun });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await updateProduct(mockDB, siteId, 'product-1', {
+        type: 'digital'
+      });
+
+      expect(result).toBeDefined();
+    });
+
+    it('should return empty array when results is null for getCategories', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const { getCategories } = await import('./products');
+      const result = await getCategories(mockDB, siteId);
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('null results fallbacks', () => {
+    it('getAllProducts should return empty array when results is null', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const { getAllProducts } = await import('./products');
+      const result = await getAllProducts(mockDB, siteId);
+      expect(result).toEqual([]);
+    });
+
+    it('getProductsByCategory should return empty array when results is null', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const { getProductsByCategory } = await import('./products');
+      const result = await getProductsByCategory(mockDB, siteId, 'electronics');
+      expect(result).toEqual([]);
+    });
+
+    it('calculateProductStock should return 0 when result is null', async () => {
+      const mockFirst = vi.fn().mockResolvedValue(null);
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const { calculateProductStock } = await import('./products');
+      const result = await calculateProductStock(mockDB, siteId, 'product-1');
+      expect(result).toBe(0);
+    });
+  });
 });

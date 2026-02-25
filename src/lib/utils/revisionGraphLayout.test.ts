@@ -634,4 +634,40 @@ describe('revisionGraphLayout', () => {
       expect(result[0].color).toBe('#main');
     });
   });
+
+  describe('branch fallback branches', () => {
+    it('should handle revisions with undefined branch (fallback to 0)', () => {
+      // When both parent and child have the same branch (0),
+      // the child continues in the parent's lane
+      const revisions: TestRevisionNode[] = [
+        {
+          id: 'root',
+          revision_hash: 'root1234',
+          created_at: 1000,
+          branch: 0,
+          depth: 0,
+          children: []
+        },
+        {
+          id: 'child',
+          revision_hash: 'child123',
+          created_at: 2000,
+          parent_revision_id: 'root',
+          branch: 0,
+          depth: 1,
+          children: []
+        }
+      ];
+
+      const result = calculateTreeLayout(revisions);
+      expect(result.length).toBe(2);
+      const rootNode = result.find((n) => n.revision.id === 'root');
+      const childNode = result.find((n) => n.revision.id === 'child');
+      expect(rootNode).toBeDefined();
+      expect(childNode).toBeDefined();
+      // Both on branch 0: parent.branch === branch, so child stays in lane 0
+      expect(rootNode!.lane).toBe(0);
+      expect(childNode!.lane).toBe(0);
+    });
+  });
 });

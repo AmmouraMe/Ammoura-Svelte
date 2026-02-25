@@ -527,5 +527,287 @@ describe('Component Defaults', () => {
       };
       expect(getComponentContentPreview(component)).toBe('Bold and italic text');
     });
+
+    it('should extract style from divider component', () => {
+      const component = {
+        type: 'divider' as ComponentType,
+        config: { style: 'dashed' } as unknown as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('dashed');
+    });
+
+    it('should return empty string for divider without style', () => {
+      const component = {
+        type: 'divider' as ComponentType,
+        config: {}
+      };
+      expect(getComponentContentPreview(component)).toBe('');
+    });
+
+    it('should extract title from default/unknown component type', () => {
+      const component = {
+        type: 'composite' as ComponentType,
+        config: { title: 'My Composite Widget' }
+      };
+      expect(getComponentContentPreview(component)).toBe('My Composite Widget');
+    });
+
+    it('should extract text from default component type when no title', () => {
+      const component = {
+        type: 'composite' as ComponentType,
+        config: { text: 'Some text content' }
+      };
+      expect(getComponentContentPreview(component)).toBe('Some text content');
+    });
+
+    it('should extract label from default component type when no title or text', () => {
+      const component = {
+        type: 'composite' as ComponentType,
+        config: { label: 'My Label' }
+      };
+      expect(getComponentContentPreview(component)).toBe('My Label');
+    });
+
+    it('should return empty for default component type with no known properties', () => {
+      const component = {
+        type: 'composite' as ComponentType,
+        config: { someUnknownProp: 'value' } as unknown as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('');
+    });
+
+    it('should extract content from text component via content property', () => {
+      const component = {
+        type: 'text' as ComponentType,
+        config: { content: 'Plain text content' } as unknown as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('Plain text content');
+    });
+
+    it('should extract name from container component', () => {
+      const component = {
+        type: 'container' as ComponentType,
+        config: { name: 'My Section' }
+      };
+      expect(getComponentContentPreview(component)).toBe('My Section');
+    });
+
+    it('should extract label from container component when no name', () => {
+      const component = {
+        type: 'container' as ComponentType,
+        config: { label: 'Section Label' }
+      };
+      expect(getComponentContentPreview(component)).toBe('Section Label');
+    });
+
+    it('should return empty string for component with null config', () => {
+      const component = {
+        type: 'text' as ComponentType,
+        config: undefined as unknown as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('');
+    });
+
+    it('should extract label from button component', () => {
+      const component = {
+        type: 'button' as ComponentType,
+        config: { label: 'Click Here' }
+      };
+      expect(getComponentContentPreview(component)).toBe('Click Here');
+    });
+
+    it('should extract alt text from image component', () => {
+      const component = {
+        type: 'image' as ComponentType,
+        config: { alt: 'A beautiful sunset' }
+      };
+      expect(getComponentContentPreview(component)).toBe('A beautiful sunset');
+    });
+
+    it('should extract filename from image src when no alt', () => {
+      const component = {
+        type: 'image' as ComponentType,
+        config: { src: '/images/photo.png' }
+      };
+      expect(getComponentContentPreview(component)).toBe('photo.png');
+    });
+
+    it('should extract title from CTA via title fallback', () => {
+      const component = {
+        type: 'cta' as ComponentType,
+        config: { title: 'My CTA Title' } as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('My CTA Title');
+    });
+
+    it('should extract title from features component', () => {
+      const component = {
+        type: 'features' as ComponentType,
+        config: { title: 'Our Key Features' } as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('Our Key Features');
+    });
+
+    it('should return empty string for hero without title', () => {
+      const component = {
+        type: 'hero' as ComponentType,
+        config: {} as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('');
+    });
+
+    it('should return empty string for cta without headline or title', () => {
+      const component = {
+        type: 'cta' as ComponentType,
+        config: {} as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('');
+    });
+
+    it('should return empty string for features without title', () => {
+      const component = {
+        type: 'features' as ComponentType,
+        config: {} as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('');
+    });
+
+    it('should extract title from pricing component', () => {
+      const component = {
+        type: 'pricing' as ComponentType,
+        config: { title: 'Choose Your Plan' } as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('Choose Your Plan');
+    });
+
+    it('should extract label from dropdown component', () => {
+      const component = {
+        type: 'dropdown' as ComponentType,
+        config: { label: 'Select Option' } as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('Select Option');
+    });
+
+    it('should extract brand name from navbar component', () => {
+      const component = {
+        type: 'navbar' as ComponentType,
+        config: { brandName: 'My Store' } as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('My Store');
+    });
+
+    it('should extract copyright from footer component', () => {
+      const component = {
+        type: 'footer' as ComponentType,
+        config: { copyright: '2024 My Company' } as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('2024 My Company');
+    });
+
+    it('should truncate long content preview', () => {
+      const longText = 'A'.repeat(100);
+      const component = {
+        type: 'heading' as ComponentType,
+        config: { text: longText }
+      };
+      const preview = getComponentContentPreview(component);
+      expect(preview.length).toBeLessThanOrEqual(53); // 50 + '...'
+    });
+
+    it('should extract logoText from navbar when brandName is absent', () => {
+      const component = {
+        type: 'navbar' as ComponentType,
+        config: { logoText: 'My Logo' } as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('My Logo');
+    });
+
+    it('should return empty string for navbar with no brandName or logoText', () => {
+      const component = {
+        type: 'navbar' as ComponentType,
+        config: {} as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('');
+    });
+
+    it('should extract height from spacer component', () => {
+      const component = {
+        type: 'spacer' as ComponentType,
+        config: { height: 48 } as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('48');
+    });
+
+    it('should return empty for spacer without height', () => {
+      const component = {
+        type: 'spacer' as ComponentType,
+        config: {} as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('');
+    });
+
+    it('should extract label from container when name is absent', () => {
+      const component = {
+        type: 'container' as ComponentType,
+        config: { label: 'My Container' } as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('My Container');
+    });
+
+    it('should extract label from columns when name is absent', () => {
+      const component = {
+        type: 'columns' as ComponentType,
+        config: { label: 'Two Columns' } as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('Two Columns');
+    });
+
+    it('should extract style from divider component', () => {
+      const component = {
+        type: 'divider' as ComponentType,
+        config: { style: 'dashed' } as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('dashed');
+    });
+
+    it('should return empty string for icon with no name or icon', () => {
+      const component = {
+        type: 'icon' as ComponentType,
+        config: {} as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('');
+    });
+
+    it('should return empty string for dropdown with no label', () => {
+      const component = {
+        type: 'dropdown' as ComponentType,
+        config: {} as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('');
+    });
+
+    it('should return empty string for footer with no copyright', () => {
+      const component = {
+        type: 'footer' as ComponentType,
+        config: {} as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('');
+    });
+
+    it('should return icon name for icon with name but no icon property', () => {
+      const component = {
+        type: 'icon' as ComponentType,
+        config: { name: 'arrow-right' } as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('arrow-right');
+    });
+
+    it('should return empty string for pricing with no title', () => {
+      const component = {
+        type: 'pricing' as ComponentType,
+        config: {} as ComponentConfig
+      };
+      expect(getComponentContentPreview(component)).toBe('');
+    });
   });
 });

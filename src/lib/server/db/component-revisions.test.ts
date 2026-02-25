@@ -9,7 +9,10 @@ import {
   createInitialComponentRevision,
   resetComponentToOriginal,
   componentToRevisionData,
-  revisionDataToComponent
+  revisionDataToComponent,
+  getComponentRevisionById,
+  buildComponentRevisionTree,
+  ensureComponentHasRevision
 } from './component-revisions';
 import type { ComponentRevisionData } from '$lib/types/revisions';
 
@@ -393,6 +396,266 @@ describe('Component Revisions', () => {
       await publishComponentRevision(mockDb, siteId, componentId, 'rev-to-publish');
 
       expect(mockDb.batch).toHaveBeenCalled();
+    });
+  });
+
+  describe('getComponentRevisionById', () => {
+    it('should return a specific revision by ID', async () => {
+      const mockStatement = {
+        bind: vi.fn().mockReturnValue({
+          first: vi.fn().mockResolvedValue({
+            id: 'rev-1',
+            site_id: siteId,
+            entity_type: 'component',
+            entity_id: String(componentId),
+            revision_hash: 'abc123',
+            data: JSON.stringify(mockRevisionData),
+            message: 'Test revision',
+            user_id: null,
+            parent_revision_id: null,
+            is_current: 1,
+            created_at: 12345
+          })
+        })
+      };
+      mockDb.prepare.mockReturnValue(mockStatement);
+
+      const result = await getComponentRevisionById(mockDb, siteId, 'rev-1');
+
+      expect(result).not.toBeNull();
+      expect(result?.id).toBe('rev-1');
+    });
+
+    it('should return null when revision not found', async () => {
+      const mockStatement = {
+        bind: vi.fn().mockReturnValue({
+          first: vi.fn().mockResolvedValue(null)
+        })
+      };
+      mockDb.prepare.mockReturnValue(mockStatement);
+
+      const result = await getComponentRevisionById(mockDb, siteId, 'nonexistent');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('buildComponentRevisionTree', () => {
+    it('should build a tree from revisions', async () => {
+      const mockStatement = {
+        bind: vi.fn().mockReturnValue({
+          all: vi.fn().mockResolvedValue({
+            results: [
+              {
+                id: 'rev-1',
+                site_id: siteId,
+                entity_type: 'component',
+                entity_id: String(componentId),
+                revision_hash: 'abc123',
+                data: JSON.stringify(mockRevisionData),
+                message: 'Initial',
+                user_id: null,
+                parent_revision_id: null,
+                is_current: 1,
+                created_at: 12345
+              }
+            ]
+          })
+        })
+      };
+      mockDb.prepare.mockReturnValue(mockStatement);
+
+      const result = await buildComponentRevisionTree(mockDb, siteId, componentId);
+
+      expect(Array.isArray(result)).toBe(true);
+    });
+  });
+
+  describe('ensureComponentHasRevision', () => {
+    it('should return existing current revision if revisions exist', async () => {
+      const mockStatement = {
+        bind: vi.fn().mockReturnValue({
+          all: vi.fn().mockResolvedValue({
+            results: [
+              {
+                id: 'rev-existing',
+                site_id: siteId,
+                entity_type: 'component',
+                entity_id: String(componentId),
+                revision_hash: 'abc123',
+                data: JSON.stringify(mockRevisionData),
+                message: 'Existing',
+                user_id: null,
+                parent_revision_id: null,
+                is_current: 1,
+                created_at: 12345
+              }
+            ]
+          })
+        })
+      };
+      mockDb.prepare.mockReturnValue(mockStatement);
+
+      const component = {
+        name: 'Test',
+        type: 'container',
+        config: { padding: 10 }
+      };
+
+      const result = await ensureComponentHasRevision(
+        mockDb,
+        siteId,
+        componentId,
+        component,
+        'user-1'
+      );
+
+      expect(result).not.toBeNull();
+      expect(result.id).toBe('rev-existing');
+    });
+
+    it('should return first revision if no current revision found', async () => {
+      const mockStatement = {
+        bind: vi.fn().mockReturnValue({
+          all: vi.fn().mockResolvedValue({
+            results: [
+              {
+                id: 'rev-first',
+                site_id: siteId,
+                entity_type: 'component',
+                entity_id: String(componentId),
+                revision_hash: 'abc123',
+                data: JSON.stringify(mockRevisionData),
+                message: 'First',
+                user_id: null,
+                parent_revision_id: null,
+                is_current: 0,
+                created_at: 12345
+              }
+            ]
+          })
+        })
+      };
+      mockDb.prepare.mockReturnValue(mockStatement);
+
+      const component = {
+        name: 'Test',
+        type: 'container',
+        config: { padding: 10 }
+      };
+
+      const result = await ensureComponentHasRevision(mockDb, siteId, componentId, component);
+
+      expect(result).not.toBeNull();
+      expect(result.id).toBe('rev-first');
+    });
+
+    it('should create initial revision when none exist', async () => {
+      // First call: getComponentRevisions returns empty
+      const mockAllEmpty = vi.fn().mockResolvedValue({ results: [] });
+      // Create revision calls
+      const mockInsertRun = vi.fn().mockResolvedValue({ success: true });
+      const mockFirstCreated = vi.fn().mockResolvedValue({
+        id: 'rev-new',
+        site_id: siteId,
+        entity_type: 'component',
+        entity_id: String(componentId),
+        revision_hash: 'new123',
+        data: JSON.stringify(mockRevisionData),
+        message: 'Initial component configuration',
+        user_id: 'user-1',
+        parent_revision_id: null,
+        is_current: 0,
+        created_at: 12345
+      });
+
+      let prepareCallCount = 0;
+      mockDb.prepare.mockImplementation(() => {
+        prepareCallCount++;
+        if (prepareCallCount === 1) {
+          // getComponentRevisions query
+          return {
+            bind: vi.fn().mockReturnValue({ all: mockAllEmpty })
+          };
+        }
+        // Subsequent queries for createRevision, etc.
+        return {
+          bind: vi.fn().mockReturnValue({
+            run: mockInsertRun,
+            first: mockFirstCreated,
+            all: vi.fn().mockResolvedValue({ results: [] })
+          })
+        };
+      });
+
+      // Mock batch for publishComponentRevision
+      mockDb.batch.mockResolvedValue([]);
+
+      const component = {
+        name: 'Test',
+        type: 'container',
+        config: { padding: 10, children: [{ id: 'c1', type: 'text' }] }
+      };
+
+      const result = await ensureComponentHasRevision(
+        mockDb,
+        siteId,
+        componentId,
+        component,
+        'user-1'
+      );
+
+      expect(result).not.toBeNull();
+    });
+
+    it('should return null when no original revision exists', async () => {
+      const mockStatement = {
+        bind: vi.fn().mockReturnValue({
+          first: vi.fn().mockResolvedValue(null)
+        })
+      };
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const { resetComponentToOriginal } = await import('./component-revisions');
+      const result = await resetComponentToOriginal(mockDb, siteId, componentId);
+
+      expect(result).toBeNull();
+    });
+
+    it('should reset component when original revision exists', async () => {
+      const originalRevisionRow = {
+        id: 'rev-orig',
+        component_id: componentId,
+        site_id: siteId,
+        revision_hash: 'orig1234',
+        parent_revision_id: null,
+        data: JSON.stringify({
+          name: 'Original',
+          config: { title: 'Original Title' },
+          children: []
+        }),
+        status: 'draft',
+        is_current: 0,
+        created_by: 'user-1',
+        created_at: 1000,
+        notes: null
+      };
+
+      const mockFirst = vi.fn().mockResolvedValue(originalRevisionRow);
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBind = vi.fn().mockReturnValue({
+        first: mockFirst,
+        run: mockRun
+      });
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+        bind: mockBind
+      });
+
+      const { resetComponentToOriginal } = await import('./component-revisions');
+      const result = await resetComponentToOriginal(mockDb, siteId, componentId);
+
+      expect(result).not.toBeNull();
+      expect(result!.name).toBe('Original');
     });
   });
 });

@@ -224,3 +224,62 @@ describe('hasProductCommand', () => {
     expect(hasProductCommand(response)).toBe(false);
   });
 });
+
+describe('parseProductCommand edge cases', () => {
+  it('returns null when product field is missing for create', () => {
+    const response = `\`\`\`json
+{"action": "create_product"}
+\`\`\``;
+    const result = parseProductCommand(response);
+    expect(result).toBeNull();
+  });
+
+  it('returns null when productId is missing for update', () => {
+    const response = `\`\`\`json
+{"action": "update_product", "updates": {"name": "New Name"}}
+\`\`\``;
+    const result = parseProductCommand(response);
+    expect(result).toBeNull();
+  });
+
+  it('returns null when updates is missing for update', () => {
+    const response = `\`\`\`json
+{"action": "update_product", "productId": "123"}
+\`\`\``;
+    const result = parseProductCommand(response);
+    expect(result).toBeNull();
+  });
+
+  it('returns valid update when both productId and updates present', () => {
+    const response = `\`\`\`json
+{"action": "update_product", "productId": "123", "updates": {"name": "Updated"}}
+\`\`\``;
+    const result = parseProductCommand(response);
+    expect(result).not.toBeNull();
+    expect(result!.action).toBe('update_product');
+  });
+
+  it('returns null for unknown action type', () => {
+    const response = `\`\`\`json
+{"action": "delete_product", "productId": "123"}
+\`\`\``;
+    const result = parseProductCommand(response);
+    expect(result).toBeNull();
+  });
+
+  it('returns null when action is missing', () => {
+    const response = `\`\`\`json
+{"type": "product", "name": "Test"}
+\`\`\``;
+    const result = parseProductCommand(response);
+    expect(result).toBeNull();
+  });
+
+  it('returns null when action is not a string', () => {
+    const response = `\`\`\`json
+{"action": 123, "name": "Test"}
+\`\`\``;
+    const result = parseProductCommand(response);
+    expect(result).toBeNull();
+  });
+});

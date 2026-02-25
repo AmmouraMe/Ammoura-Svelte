@@ -6,6 +6,7 @@ import {
   upsertAISetting,
   deleteAISetting,
   hasAPIKeysConfigured,
+  isAIChatEnabled,
   getAvailableProviders,
   setDefaultAIConfig,
   getAvailableFulfillmentProvidersForAI
@@ -436,6 +437,103 @@ describe('AI Settings Database Operations', () => {
       expect(mockPrepare).toHaveBeenCalledWith(
         expect.stringContaining('ORDER BY is_default DESC, name ASC')
       );
+    });
+  });
+
+  describe('getAISetting edge cases', () => {
+    it('should return number for number-typed setting', async () => {
+      mockFirst.mockResolvedValue({
+        setting_value: '42',
+        setting_type: 'number'
+      });
+
+      const result = await getAISetting(mockDb, 'site-1', 'max_tokens', testEncryptionKey);
+      expect(result).toBe(42);
+    });
+
+    it('should return boolean for boolean-typed setting', async () => {
+      mockFirst.mockResolvedValue({
+        setting_value: 'true',
+        setting_type: 'boolean'
+      });
+
+      const result = await getAISetting(mockDb, 'site-1', 'enabled', testEncryptionKey);
+      expect(result).toBe(true);
+    });
+
+    it('should return null when decrypt fails for encrypted setting', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      vi.mocked(crypto.decrypt).mockRejectedValueOnce(new Error('Decrypt failed'));
+
+      mockFirst.mockResolvedValue({
+        setting_value: 'encrypted_value',
+        setting_type: 'encrypted'
+      });
+
+      const result = await getAISetting(mockDb, 'site-1', 'api_key', testEncryptionKey);
+      expect(result).toBeNull();
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to decrypt'),
+        expect.any(Error)
+      );
+      consoleSpy.mockRestore();
+    });
+
+    it('should return string for string-typed setting', async () => {
+      mockFirst.mockResolvedValue({
+        setting_value: 'hello',
+        setting_type: 'string'
+      });
+
+      const result = await getAISetting(mockDb, 'site-1', 'greeting', testEncryptionKey);
+      expect(result).toBe('hello');
+    });
+  });
+
+  describe('isAIChatEnabled', () => {
+    it('should return false when ai_chat_enabled is not true', async () => {
+      mockFirst.mockResolvedValue({
+        setting_value: 'false',
+        setting_type: 'boolean'
+      });
+
+      const result = await isAIChatEnabled(mockDb, 'site-1', testEncryptionKey);
+      expect(result).toBe(false);
+    });
+
+    it('should return false when enabled but no API keys configured', async () => {
+      // First call: getAISetting returns true (ai_chat_enabled)
+      // Second call: hasAPIKeysConfigured returns false (no keys)
+      mockFirst
+        .mockResolvedValueOnce({
+          setting_value: 'true',
+          setting_type: 'boolean'
+        })
+        .mockResolvedValueOnce(null);
+      mockAll.mockResolvedValueOnce({ results: [] });
+
+      const result = await isAIChatEnabled(mockDb, 'site-1', testEncryptionKey);
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('null results fallbacks', () => {
+    it('getAISettings should handle null results from all', async () => {
+      mockAll.mockResolvedValue({ results: null });
+      const result = await getAISettings(mockDb, 'site-1', testEncryptionKey);
+      expect(result).toEqual({});
+    });
+
+    it('getAvailableProviders should handle null results', async () => {
+      mockAll.mockResolvedValue({ results: null });
+      const result = await getAvailableProviders(mockDb, 'site-1');
+      expect(result).toEqual([]);
+    });
+
+    it('getAvailableFulfillmentProvidersForAI should handle null results', async () => {
+      mockAll.mockResolvedValue({ results: null });
+      const result = await getAvailableFulfillmentProvidersForAI(mockDb, 'site-1');
+      expect(result).toEqual([]);
     });
   });
 });

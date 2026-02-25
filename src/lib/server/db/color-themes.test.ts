@@ -694,4 +694,71 @@ describe('Color Themes Database Functions', () => {
       consoleSpy.mockRestore();
     });
   });
+
+  describe('deleteColorTheme error branch', () => {
+    it('should return false when delete throws an error', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      let callCount = 0;
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        first: vi.fn().mockResolvedValue(null),
+        run: vi.fn().mockImplementation(() => {
+          callCount++;
+          if (callCount > 0) {
+            throw new Error('Delete failed');
+          }
+          return Promise.resolve({ success: true });
+        })
+      };
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const { deleteColorTheme } = await import('./color-themes');
+      const result = await deleteColorTheme(mockDb, siteId, 'theme-1');
+
+      expect(result).toBe(false);
+      consoleSpy.mockRestore();
+    });
+
+    it('should return false when deleting active system light theme', async () => {
+      let callCount = 0;
+      const mockStatement = {
+        bind: vi.fn().mockReturnValue({
+          first: vi.fn().mockImplementation(() => {
+            callCount++;
+            if (callCount === 1) return Promise.resolve({ setting_value: 'theme-1' });
+            if (callCount === 2) return Promise.resolve({ setting_value: 'theme-2' });
+            return Promise.resolve(null);
+          }),
+          run: vi.fn().mockResolvedValue({ meta: { changes: 1 } })
+        })
+      };
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const { deleteColorTheme } = await import('./color-themes');
+      const result = await deleteColorTheme(mockDb, siteId, 'theme-1');
+
+      expect(result).toBe(false);
+    });
+
+    it('should return false when deleting active system dark theme', async () => {
+      let callCount = 0;
+      const mockStatement = {
+        bind: vi.fn().mockReturnValue({
+          first: vi.fn().mockImplementation(() => {
+            callCount++;
+            if (callCount === 1) return Promise.resolve({ setting_value: 'other-theme' });
+            if (callCount === 2) return Promise.resolve({ setting_value: 'theme-1' });
+            return Promise.resolve(null);
+          }),
+          run: vi.fn().mockResolvedValue({ meta: { changes: 1 } })
+        })
+      };
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const { deleteColorTheme } = await import('./color-themes');
+      const result = await deleteColorTheme(mockDb, siteId, 'theme-1');
+
+      expect(result).toBe(false);
+    });
+  });
 });

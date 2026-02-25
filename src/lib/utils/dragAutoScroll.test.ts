@@ -603,4 +603,81 @@ describe('createAutoScroll', () => {
       expect(state2.isActive).toBe(true);
     });
   });
+
+  describe('cancel zone handling', () => {
+    it('should stop scrolling when entering cancel zone while active', () => {
+      const autoScroll = createAutoScroll({
+        edgeThreshold: 80,
+        cancelZoneHeight: 50
+      });
+
+      // Start scrolling near top edge
+      autoScroll.update(30);
+      expect(autoScroll.getState().isActive).toBe(true);
+
+      // Move to cancel zone (near bottom of viewport, within cancelZoneHeight)
+      // innerHeight=800, cancelZoneHeight=50 → cancel zone starts at 750
+      autoScroll.update(770);
+      expect(autoScroll.getState().isActive).toBe(false);
+      expect(autoScroll.getState().direction).toBe(0);
+    });
+  });
+
+  describe('scroll bounds', () => {
+    it('should not scroll up when already at top', () => {
+      // Position at top of page
+      Object.defineProperty(window, 'scrollY', { value: 0, writable: true, configurable: true });
+
+      const autoScroll = createAutoScroll({ edgeThreshold: 80 });
+
+      // Touch near top edge
+      autoScroll.update(30);
+      expect(autoScroll.getState().isActive).toBe(true);
+      expect(autoScroll.getState().direction).toBe(-1);
+
+      // Trigger scrollLoop via rAF callback
+      if (animationFrameCallback) {
+        animationFrameCallback(performance.now());
+      }
+
+      // scrollBy should NOT have been called since we're at scrollY=0
+      expect(mockScrollBy).not.toHaveBeenCalled();
+    });
+
+    it('should not scroll down when already at max', () => {
+      // Position at bottom of page: scrollY = scrollHeight - innerHeight
+      Object.defineProperty(window, 'scrollY', { value: 1200, writable: true, configurable: true });
+      Object.defineProperty(document.documentElement, 'scrollHeight', {
+        value: 2000,
+        writable: true,
+        configurable: true
+      });
+      Object.defineProperty(window, 'innerHeight', {
+        value: 800,
+        writable: true,
+        configurable: true
+      });
+
+      const autoScroll = createAutoScroll({ edgeThreshold: 80 });
+
+      // Touch near bottom edge
+      autoScroll.update(770);
+
+      // If in cancel zone, scrolling won't start. Let's use a higher cancelZoneHeight=0
+      autoScroll.stop();
+
+      const autoScroll2 = createAutoScroll({ edgeThreshold: 80, cancelZoneHeight: 0 });
+      autoScroll2.update(770);
+      expect(autoScroll2.getState().isActive).toBe(true);
+      expect(autoScroll2.getState().direction).toBe(1);
+
+      // Trigger scrollLoop
+      if (animationFrameCallback) {
+        animationFrameCallback(performance.now());
+      }
+
+      // scrollBy should NOT be called since we're at max scroll
+      expect(mockScrollBy).not.toHaveBeenCalled();
+    });
+  });
 });

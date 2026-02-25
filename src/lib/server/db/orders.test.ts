@@ -402,4 +402,227 @@ describe('Orders Repository', () => {
       expect(result).toBe(false);
     });
   });
+
+  describe('getAllOrders - undefined results fallback', () => {
+    it('should return empty array when results is undefined', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ success: true });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getAllOrders(mockDB, siteId);
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getOrdersByUser - undefined results fallback', () => {
+    it('should return empty array when results is undefined', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ success: true });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getOrdersByUser(mockDB, siteId, 'user-1');
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getOrderItems - undefined results fallback', () => {
+    it('should return empty array when results is undefined', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ success: true });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getOrderItems(mockDB, 'order-1');
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('createOrder - null user_id branch', () => {
+    it('should handle order creation without user_id', async () => {
+      const orderData: CreateOrderData = {
+        user_id: '',
+        items: [
+          {
+            product_id: 'prod-1',
+            name: 'Test Product',
+            quantity: 1,
+            price: 100,
+            image: ''
+          }
+        ],
+        subtotal: 100,
+        shipping_cost: 0,
+        tax: 0,
+        total: 100,
+        shipping_address: { city: 'Test' },
+        billing_address: { city: 'Test' },
+        payment_method: { type: 'test' }
+      };
+
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockFirst = vi.fn().mockResolvedValue({
+        id: 'order-new',
+        site_id: siteId,
+        user_id: null,
+        status: 'pending',
+        total_amount: 100,
+        currency: 'USD',
+        shipping_address: '{"city":"Test"}',
+        billing_address: '{"city":"Test"}',
+        notes: null,
+        metadata: null,
+        created_at: 12345,
+        updated_at: 12345
+      });
+
+      const mockDB = {
+        prepare: vi.fn().mockReturnValue({
+          bind: vi.fn().mockReturnValue({
+            run: mockRun,
+            first: mockFirst
+          })
+        }),
+        batch: vi.fn().mockResolvedValue([])
+      } as unknown as D1Database;
+
+      const result = await createOrder(mockDB, siteId, orderData);
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('createOrder shipping_details branch', () => {
+    it('should use null when shipping_details is not provided', async () => {
+      const mockOrder = {
+        id: 'order-new',
+        site_id: siteId,
+        status: 'pending',
+        total: 100,
+        items: '[]',
+        shipping_details: null,
+        created_at: 1000,
+        updated_at: 1000
+      };
+      const mockFirst = vi.fn().mockResolvedValue(mockOrder);
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst });
+      const mockBatch = vi.fn().mockResolvedValue([{ results: [], success: true }]);
+
+      const mockDB = {
+        prepare: vi.fn().mockReturnValue({ bind: mockBind }),
+        batch: mockBatch
+      } as unknown as D1Database;
+
+      const orderData: CreateOrderData = {
+        total: 100,
+        subtotal: 90,
+        shipping_cost: 5,
+        tax: 5,
+        items: [],
+        shipping_address: { street: '123 Main St' },
+        billing_address: { street: '123 Main St' },
+        payment_method: { type: 'credit-card' }
+      };
+
+      const result = await createOrder(mockDB, siteId, orderData);
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('createOrder with shipping_details', () => {
+    it('should serialize shipping_details when present', async () => {
+      const mockOrder: DBOrder = {
+        id: 'order-2',
+        site_id: siteId,
+        user_id: null,
+        status: 'pending',
+        total: 100,
+        subtotal: 90,
+        shipping_cost: 5,
+        tax: 5,
+        shipping_address: '{}',
+        billing_address: '{}',
+        payment_method: '{}',
+        shipping_details: '{"carrier":"USPS"}',
+        created_at: 1000,
+        updated_at: 1000
+      };
+      const mockFirst = vi.fn().mockResolvedValue(mockOrder);
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst });
+      const mockBatch = vi.fn().mockResolvedValue([{ results: [], success: true }]);
+
+      const mockDB = {
+        prepare: vi.fn().mockReturnValue({ bind: mockBind }),
+        batch: mockBatch
+      } as unknown as D1Database;
+
+      const orderData: CreateOrderData = {
+        total: 100,
+        subtotal: 90,
+        shipping_cost: 5,
+        tax: 5,
+        items: [],
+        shipping_address: { street: '123 Main St' },
+        billing_address: { street: '123 Main St' },
+        payment_method: { type: 'credit-card' },
+        shipping_details: {
+          groups: [
+            {
+              id: 'g1',
+              shippingOptionId: 'so1',
+              shippingOptionName: 'USPS',
+              shippingCost: 5,
+              products: [{ id: 'p1', name: 'Test', quantity: 1 }]
+            }
+          ]
+        }
+      };
+
+      const result = await createOrder(mockDB, siteId, orderData);
+      expect(result).toBeDefined();
+    });
+
+    it('should serialize null shipping_details as null', async () => {
+      const mockOrder: DBOrder = {
+        id: 'order-3',
+        site_id: siteId,
+        user_id: null,
+        status: 'pending',
+        total: 100,
+        subtotal: 90,
+        shipping_cost: 5,
+        tax: 5,
+        shipping_address: '{}',
+        billing_address: '{}',
+        payment_method: '{}',
+        shipping_details: null,
+        created_at: 1000,
+        updated_at: 1000
+      };
+      const mockFirst = vi.fn().mockResolvedValue(mockOrder);
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst });
+      const mockBatch = vi.fn().mockResolvedValue([{ results: [], success: true }]);
+
+      const mockDB = {
+        prepare: vi.fn().mockReturnValue({ bind: mockBind }),
+        batch: mockBatch
+      } as unknown as D1Database;
+
+      const result = await createOrder(mockDB, siteId, {
+        status: 'pending',
+        total: 100,
+        subtotal: 90,
+        shipping_cost: 5,
+        tax: 5,
+        items: [],
+        shipping_address: { street: '123 Main St' },
+        billing_address: { street: '123 Main St' },
+        payment_method: { type: 'credit-card' }
+      } as CreateOrderData);
+      expect(result).toBeDefined();
+    });
+  });
 });

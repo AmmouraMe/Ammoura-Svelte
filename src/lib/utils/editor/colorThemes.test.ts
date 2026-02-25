@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   SYSTEM_THEMES,
   getAllThemes,
@@ -15,7 +15,10 @@ import {
   resolveThemeColor,
   getSystemTheme,
   setSystemTheme,
-  saveThemeOrder
+  saveThemeOrder,
+  setCurrentlyViewingTheme,
+  setActiveTheme,
+  getCurrentlyViewingTheme
 } from './colorThemes';
 import type { ColorThemeDefinition } from '$lib/types/pages';
 
@@ -455,6 +458,257 @@ describe('Color Themes', () => {
     it('should return false when setting non-existent theme', () => {
       const result = setSystemTheme('non-existent', 'light');
       expect(result).toBe(false);
+    });
+  });
+
+  describe('resolveThemeColor edge cases', () => {
+    it('should convert fallback color to CSS var when asCssVar is true and value is undefined', () => {
+      const result = resolveThemeColor(undefined, 'vibrant', 'theme:primary', true);
+      expect(result).toBe('var(--theme-primary)');
+    });
+
+    it('should return fallback string when asCssVar is true but fallback is plain color', () => {
+      const result = resolveThemeColor(undefined, 'vibrant', '#333333', true);
+      expect(result).toBe('#333333');
+    });
+
+    it('should return fallback for non-string non-object colorValue', () => {
+      // The function handles the last branch: return fallbackColor || ''
+      const result = resolveThemeColor(42 as unknown as string, 'vibrant', '#fallback');
+      expect(result).toBe('#fallback');
+    });
+
+    it('should return empty string for non-string non-object colorValue without fallback', () => {
+      const result = resolveThemeColor(42 as unknown as string, 'vibrant');
+      expect(result).toBe('');
+    });
+
+    it('should convert string color with asCssVar=true and color: prefix', () => {
+      const result = resolveThemeColor('color:accent', 'vibrant', '', true);
+      expect(result).toBe('var(--color-accent)');
+    });
+
+    it('should return plain string when asCssVar is false and no prefix', () => {
+      const result = resolveThemeColor('rgb(255,0,0)', 'vibrant', '', false);
+      expect(result).toBe('rgb(255,0,0)');
+    });
+
+    it('should convert object theme color to CSS var for same-mode default theme', () => {
+      const colorObj = {
+        vibrant: 'theme:accent'
+      };
+      const result = resolveThemeColor(colorObj, 'vibrant', '', true);
+      expect(result).toBe('var(--theme-accent)');
+    });
+
+    it('should return object value without CSS var conversion when asCssVar is false', () => {
+      const colorObj = {
+        vibrant: '#ff0000'
+      };
+      const result = resolveThemeColor(colorObj, 'vibrant', '', false);
+      expect(result).toBe('#ff0000');
+    });
+  });
+
+  describe('deleteCustomTheme edge cases', () => {
+    it('should return false for system theme deletion attempt', () => {
+      const result = deleteCustomTheme('vibrant');
+      expect(result).toBe(false);
+    });
+
+    it('should return false for non-existent theme', () => {
+      const result = deleteCustomTheme('does-not-exist');
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('saveThemeOrder edge cases', () => {
+    it('should handle localStorage error when saving theme order', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+        throw new Error('Storage quota exceeded');
+      });
+
+      expect(() => saveThemeOrder(['vibrant', 'midnight'])).not.toThrow();
+      expect(consoleSpy).toHaveBeenCalledWith('Failed to save theme order:', expect.any(Error));
+
+      setItemSpy.mockRestore();
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('resolveThemeColor edge cases', () => {
+    it('should return first available color from object when no theme match', () => {
+      const colorObj = {
+        'non-existent-theme': '#ff0000'
+      };
+      const result = resolveThemeColor(colorObj, 'vibrant', '#fallback', false);
+      expect(result).toBe('#ff0000');
+    });
+
+    it('should return fallback when object has no values', () => {
+      const colorObj = {};
+      const result = resolveThemeColor(colorObj, 'vibrant', '#fallback', false);
+      expect(result).toBe('#fallback');
+    });
+
+    it('should return empty string when object has no values and no fallback', () => {
+      const colorObj = {};
+      const result = resolveThemeColor(colorObj, 'vibrant', '', false);
+      expect(result).toBe('');
+    });
+  });
+
+  describe('getThemeOrder (via getAllThemes)', () => {
+    it('should return all themes in default order when no order stored in localStorage', () => {
+      // Ensure no theme order is stored (key is 'theme-order')
+      localStorage.removeItem('theme-order');
+      const themes = getAllThemes();
+      // With no saved order, getAllThemes returns allThemes in default order
+      expect(themes.length).toBeGreaterThan(0);
+      expect(Array.isArray(themes)).toBe(true);
+    });
+
+    it('should handle corrupted theme order in localStorage', () => {
+      localStorage.setItem('theme-order', 'not-valid-json{');
+      const themes = getAllThemes();
+      // Falls back to default order when JSON.parse fails
+      expect(themes.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('getSystemTheme error handling', () => {
+    it('should return fallback when localStorage throws', () => {
+      const spy = vi.spyOn(localStorage, 'getItem').mockImplementation((key: string) => {
+        if (key === 'system-theme-light' || key === 'system-theme-dark') {
+          throw new Error('Storage error');
+        }
+        return null;
+      });
+      // getSystemTheme catches and returns 'vibrant' for light mode
+      const lightTheme = getSystemTheme('light');
+      expect(lightTheme).toBe('vibrant');
+      spy.mockRestore();
+    });
+
+    it('should return midnight for dark mode when localStorage throws', () => {
+      const spy = vi.spyOn(localStorage, 'getItem').mockImplementation((key: string) => {
+        if (key === 'system-theme-dark') {
+          throw new Error('Storage error');
+        }
+        return null;
+      });
+      const darkTheme = getSystemTheme('dark');
+      expect(darkTheme).toBe('midnight');
+      spy.mockRestore();
+    });
+  });
+
+  describe('saveThemeOrder error handling', () => {
+    it('should handle localStorage setItem error gracefully', () => {
+      const spy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+        throw new Error('Quota exceeded');
+      });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      expect(() => saveThemeOrder(['vibrant', 'midnight'])).not.toThrow();
+      consoleSpy.mockRestore();
+      spy.mockRestore();
+    });
+  });
+
+  describe('setCurrentlyViewingTheme', () => {
+    it('should remove theme when null is passed', () => {
+      const removeSpy = vi.spyOn(localStorage, 'removeItem');
+      setCurrentlyViewingTheme(null);
+      expect(removeSpy).toHaveBeenCalled();
+      removeSpy.mockRestore();
+    });
+
+    it('should set theme when string is passed', () => {
+      const setSpy = vi.spyOn(localStorage, 'setItem');
+      setCurrentlyViewingTheme('vibrant');
+      expect(setSpy).toHaveBeenCalled();
+      setSpy.mockRestore();
+    });
+
+    it('should handle localStorage errors gracefully', () => {
+      const spy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+        throw new Error('Storage error');
+      });
+      expect(() => setCurrentlyViewingTheme('test-theme')).not.toThrow();
+      spy.mockRestore();
+    });
+  });
+
+  describe('resolveThemeColor asCssVar with mode fallback', () => {
+    it('should convert mode-fallback color to CSS var when asCssVar is true', () => {
+      // Save a custom light theme
+      saveCustomTheme({
+        id: 'custom-test-asCssVar',
+        name: 'Custom Test asCssVar',
+        mode: 'light',
+        isDefault: false,
+        isSystem: false,
+        colors: getThemeColors('vibrant')
+      });
+
+      const colorObj = {
+        vibrant: 'theme:accent',
+        midnight: '#0000ff'
+      };
+
+      // Resolve with a theme that shares the light mode — should fallback to vibrant's value
+      const result = resolveThemeColor(colorObj, 'custom-test-asCssVar', '', true);
+      expect(result).toBe('var(--theme-accent)');
+
+      // Cleanup
+      deleteCustomTheme('custom-test-asCssVar');
+    });
+  });
+
+  describe('setSystemTheme', () => {
+    it('should set system theme for light mode', () => {
+      setSystemTheme('vibrant', 'light');
+      const result = getSystemTheme('light');
+      expect(result).toBe('vibrant');
+    });
+
+    it('should set system theme for dark mode', () => {
+      setSystemTheme('midnight', 'dark');
+      const result = getSystemTheme('dark');
+      expect(result).toBe('midnight');
+    });
+  });
+
+  describe('setActiveTheme (deprecated wrapper)', () => {
+    it('should delegate to setSystemTheme', () => {
+      const result = setActiveTheme('vibrant', 'light');
+      expect(result).toBe(true);
+      expect(getSystemTheme('light')).toBe('vibrant');
+    });
+  });
+
+  describe('getCurrentlyViewingTheme', () => {
+    it('should return stored viewing theme', () => {
+      setCurrentlyViewingTheme('midnight');
+      const result = getCurrentlyViewingTheme();
+      expect(result).toBe('midnight');
+      setCurrentlyViewingTheme(null); // cleanup
+    });
+
+    it('should return null when no theme is set', () => {
+      setCurrentlyViewingTheme(null);
+      const result = getCurrentlyViewingTheme();
+      expect(result).toBeNull();
+    });
+
+    it('should return null when localStorage.getItem throws', () => {
+      const spy = vi.spyOn(localStorage, 'getItem').mockImplementation(() => {
+        throw new Error('Storage error');
+      });
+      const result = getCurrentlyViewingTheme();
+      expect(result).toBeNull();
+      spy.mockRestore();
     });
   });
 });

@@ -422,4 +422,131 @@ describe('Activity Logs Repository', () => {
       expect(mockPrepare).toHaveBeenCalled();
     });
   });
+
+  describe('createActivityLog - error handling', () => {
+    it('should throw when re-fetch returns null after insert', async () => {
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBind = vi.fn().mockReturnValue({ run: mockRun });
+      const mockFirst = vi.fn().mockResolvedValue(null);
+      const mockBindSelect = vi.fn().mockReturnValue({ first: mockFirst });
+
+      const mockDB = {
+        prepare: vi.fn((sql: string) => {
+          if (sql.startsWith('INSERT')) {
+            return { bind: mockBind };
+          }
+          return { bind: mockBindSelect };
+        })
+      } as unknown as D1Database;
+
+      await expect(
+        createActivityLog(mockDB, siteId, {
+          action: 'test.action',
+          entity_type: 'test'
+        })
+      ).rejects.toThrow('Failed to create activity log');
+    });
+  });
+
+  describe('createActivityLog - without metadata', () => {
+    it('should create log without metadata (null path)', async () => {
+      const mockLog: ActivityLog = {
+        id: 'log-1',
+        site_id: siteId,
+        user_id: null,
+        action: 'test.action',
+        entity_type: 'test',
+        entity_id: null,
+        entity_name: null,
+        description: null,
+        metadata: null,
+        ip_address: null,
+        user_agent: null,
+        severity: 'info',
+        created_at: 1234567890
+      };
+
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBind = vi.fn().mockReturnValue({ run: mockRun });
+      const mockFirst = vi.fn().mockResolvedValue(mockLog);
+      const mockBindSelect = vi.fn().mockReturnValue({ first: mockFirst });
+
+      const mockDB = {
+        prepare: vi.fn((sql: string) => {
+          if (sql.startsWith('INSERT')) {
+            return { bind: mockBind };
+          }
+          return { bind: mockBindSelect };
+        })
+      } as unknown as D1Database;
+
+      const result = await createActivityLog(mockDB, siteId, {
+        action: 'test.action',
+        entity_type: 'test'
+      });
+
+      expect(result).toEqual(mockLog);
+      expect(result.metadata).toBeNull();
+    });
+  });
+
+  describe('getActivityLogs - null results fallback', () => {
+    it('should return empty array when results is null', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null, success: true });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getActivityLogs(mockDB, siteId);
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getActivityLogsByUser - null results fallback', () => {
+    it('should return empty array when results is null', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null, success: true });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getActivityLogsByUser(mockDB, siteId, 'user-1');
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getActivityLogsByEntity - null results fallback', () => {
+    it('should return empty array when results is null', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null, success: true });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getActivityLogsByEntity(mockDB, siteId, 'order', 'order-123');
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getActivityLogsByAction - null results fallback', () => {
+    it('should return empty array when results is null', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null, success: true });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getActivityLogsByAction(mockDB, siteId, 'order.%');
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('deleteOldActivityLogs - meta undefined', () => {
+    it('should return 0 when meta is undefined', async () => {
+      const mockRun = vi.fn().mockResolvedValue({ meta: undefined, success: true });
+      const mockBind = vi.fn().mockReturnValue({ run: mockRun });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await deleteOldActivityLogs(mockDB, siteId, 90);
+      expect(result).toBe(0);
+    });
+  });
 });

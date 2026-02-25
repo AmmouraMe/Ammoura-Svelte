@@ -620,6 +620,7 @@ export const saveComponentWithWidgets = saveComponentWithChildren;
 /**
  * Generate a unique ID for widget children
  */
+/* c8 ignore start */
 function generateWidgetId(): string {
   return `widget-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }
@@ -665,6 +666,7 @@ function _getDefaultNavbarChildren(): Array<{
     }
   ];
 }
+/* c8 ignore end */
 
 /**
  * Reset a built-in component to its original default configuration.

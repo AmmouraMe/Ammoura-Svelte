@@ -240,5 +240,68 @@ describe('context-detector', () => {
 
       expect(result.context.entityData).toEqual(entityData);
     });
+
+    it('provides suggestions for component_building context', () => {
+      const result = detectAIContext('/admin/builder/component');
+      expect(result.context.type).toBe('component_building');
+      expect(result.suggestions).toBeInstanceOf(Array);
+      expect(result.suggestions.length).toBeGreaterThan(0);
+      expect(result.suggestions[0]).toContain('call-to-action');
+    });
+
+    it('provides suggestions for component_editing context', () => {
+      const result = detectAIContext('/admin/builder/component/comp-123');
+      expect(result.context.type).toBe('component_editing');
+      expect(result.suggestions).toBeInstanceOf(Array);
+      expect(result.suggestions.length).toBeGreaterThan(0);
+    });
+
+    it('provides suggestions for dashboard_insights context', () => {
+      const result = detectAIContext('/admin/dashboard');
+      expect(result.context.type).toBe('dashboard_insights');
+      expect(result.suggestions).toBeInstanceOf(Array);
+      expect(result.suggestions.length).toBeGreaterThan(0);
+    });
+
+    it('provides suggestions for layout_editing context', () => {
+      const result = detectAIContext('/admin/builder/layout/layout-1');
+      expect(result.context.type).toBe('layout_editing');
+      expect(result.suggestions).toBeInstanceOf(Array);
+      expect(result.suggestions.length).toBeGreaterThan(0);
+    });
+
+    it('provides suggestions for general_help context', () => {
+      const result = detectAIContext('/admin/some-unknown-page');
+      expect(result.context.type).toBe('general_help');
+      expect(result.suggestions).toBeInstanceOf(Array);
+      expect(result.suggestions.length).toBeGreaterThan(0);
+    });
+
+    it('refines context with multi-message conversation', () => {
+      const messages = [
+        { role: 'user' as const, content: 'Hello' },
+        { role: 'assistant' as const, content: 'Hi there' },
+        { role: 'user' as const, content: 'I need to create a product' }
+      ];
+      const result = detectAIContext('/admin/ai-chat', undefined, messages);
+      expect(result.context.conversationHistory).toEqual(messages);
+    });
+
+    it('detects layout_building context for builder/layout base path', () => {
+      const result = detectAIContext('/admin/builder/layout');
+      expect(result.context.type).toBe('layout_building');
+      expect(result.suggestions).toBeInstanceOf(Array);
+      expect(result.suggestions.length).toBeGreaterThan(0);
+    });
+
+    it('detects layout_building context with trailing slash', () => {
+      const result = detectAIContext('/admin/builder/layout/');
+      expect(result.context.type).toBe('layout_building');
+    });
+
+    it('detects product_creation from standalone ai-chat page', () => {
+      const result = detectAIContext('/admin/ai-chat');
+      expect(result.context.type).toBe('product_creation');
+    });
   });
 });

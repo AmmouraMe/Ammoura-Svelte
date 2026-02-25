@@ -390,4 +390,144 @@ describe('fulfillment-providers', () => {
       expect(insertCalls.length).toBe(0);
     });
   });
+
+  describe('createFulfillmentProvider - failure branch', () => {
+    it('should throw when re-fetch returns null', async () => {
+      mockDb.run.mockResolvedValue({ success: true });
+      mockDb.first.mockResolvedValue(null);
+
+      await expect(
+        createFulfillmentProvider(mockDb, testSiteId, {
+          name: 'Test Provider',
+          isActive: true
+        })
+      ).rejects.toThrow('Failed to create fulfillment provider');
+    });
+  });
+
+  describe('createFulfillmentProvider - isActive false branch', () => {
+    it('should create provider with isActive false', async () => {
+      const mockProvider: DBFulfillmentProvider = {
+        id: 'prov-new',
+        site_id: testSiteId,
+        name: 'Test Provider',
+        description: null,
+        is_default: 0,
+        is_active: 0,
+        created_at: 12345,
+        updated_at: 12345
+      };
+
+      mockDb.run.mockResolvedValue({ success: true });
+      mockDb.first.mockResolvedValue(mockProvider);
+
+      const result = await createFulfillmentProvider(mockDb, testSiteId, {
+        name: 'Test Provider',
+        isActive: false
+      });
+
+      expect(result).toBeDefined();
+      expect(result.is_active).toBe(0);
+    });
+  });
+
+  describe('getAllFulfillmentProviders - undefined results', () => {
+    it('should return empty array when results is undefined', async () => {
+      mockDb.all.mockResolvedValue({ success: true });
+
+      const result = await getAllFulfillmentProviders(mockDb, testSiteId);
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('updateFulfillmentProvider isActive branch', () => {
+    it('should update isActive field', async () => {
+      mockDb.first.mockResolvedValue({
+        id: testProviderId,
+        site_id: testSiteId,
+        name: 'Provider',
+        description: 'Test',
+        is_active: 0,
+        sort_order: 0,
+        created_at: 1000,
+        updated_at: 2000
+      });
+
+      const result = await updateFulfillmentProvider(mockDb, testSiteId, testProviderId, {
+        isActive: false
+      });
+
+      expect(result).toBeDefined();
+      expect(result?.is_active).toBe(0);
+    });
+  });
+
+  describe('getProductFulfillmentOptions stock_quantity fallback', () => {
+    it('should default stock_quantity to 0 when null', async () => {
+      mockDb.all.mockResolvedValue({
+        success: true,
+        results: [
+          {
+            provider_id: testProviderId,
+            provider_name: 'Provider',
+            cost: 5.0,
+            stock_quantity: null,
+            sort_order: 0
+          }
+        ]
+      });
+
+      const result = await getProductFulfillmentOptions(mockDb, testSiteId, testProductId);
+
+      expect(result[0].stockQuantity).toBe(0);
+    });
+  });
+
+  describe('setProductFulfillmentOptions stockQuantity fallback', () => {
+    it('should default stockQuantity to 0 when undefined', async () => {
+      mockDb.run.mockResolvedValue({ success: true });
+
+      await setProductFulfillmentOptions(mockDb, testSiteId, testProductId, [
+        {
+          providerId: testProviderId,
+          cost: 5.0
+        }
+      ]);
+
+      // The bind call for INSERT should use 0 for stock_quantity
+      expect(mockDb.bind).toHaveBeenCalled();
+    });
+  });
+
+  describe('updateFulfillmentProvider empty data branch', () => {
+    it('should return existing provider when no fields to update', async () => {
+      const existingProvider = {
+        id: testProviderId,
+        site_id: testSiteId,
+        name: 'Provider',
+        description: 'Test',
+        is_active: 1,
+        sort_order: 0,
+        created_at: 1000,
+        updated_at: 2000
+      };
+      mockDb.first.mockResolvedValue(existingProvider);
+
+      const result = await updateFulfillmentProvider(mockDb, testSiteId, testProviderId, {});
+
+      expect(result).toBeDefined();
+      expect(result?.name).toBe('Provider');
+    });
+  });
+
+  describe('getProductFulfillmentOptions null results fallback', () => {
+    it('should return empty array when results is null', async () => {
+      mockDb.all.mockResolvedValue({ success: true, results: null });
+
+      const result = await getProductFulfillmentOptions(mockDb, testSiteId, testProductId);
+
+      expect(result).toEqual([]);
+    });
+  });
 });

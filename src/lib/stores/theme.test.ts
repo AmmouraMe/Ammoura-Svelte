@@ -152,6 +152,22 @@ describe('Theme Store', () => {
       expect(get(themeStore)).toBe('dark');
       expect(localStorageMock.getItem('theme')).toBe('dark');
     });
+
+    it('should toggle from system to light when system prefers dark', () => {
+      // Mock system preference as dark (matches: true)
+      mockMatchMedia.mockReturnValue({
+        matches: true, // dark mode
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn()
+      });
+
+      themeStore.setTheme('system');
+      themeStore.toggleTheme();
+
+      // Should toggle to light (opposite of system dark)
+      expect(get(themeStore)).toBe('light');
+      expect(localStorageMock.getItem('theme')).toBe('light');
+    });
   });
 
   describe('initTheme', () => {
@@ -285,6 +301,222 @@ describe('Theme Store', () => {
       themeStore.setTheme('system');
       expect(get(themeStore)).toBe('system');
       // The actual theme applied would be light (tested through integration)
+    });
+  });
+
+  describe('media query change listener', () => {
+    it('should apply system theme when media query changes and theme is system', () => {
+      const addEventListenerFn = vi.fn();
+      mockMatchMedia.mockReturnValue({
+        matches: false,
+        addEventListener: addEventListenerFn,
+        removeEventListener: vi.fn()
+      });
+
+      localStorageMock.setItem('theme', 'system');
+      themeStore.initTheme();
+
+      expect(addEventListenerFn).toHaveBeenCalledWith('change', expect.any(Function));
+      const changeCallback = addEventListenerFn.mock.calls[0][1];
+
+      mockSetAttribute.mockClear();
+      changeCallback();
+
+      expect(mockSetAttribute).toHaveBeenCalledWith('data-theme', 'light');
+    });
+
+    it('should not reapply theme when media query changes and theme is not system', () => {
+      const addEventListenerFn = vi.fn();
+      mockMatchMedia.mockReturnValue({
+        matches: false,
+        addEventListener: addEventListenerFn,
+        removeEventListener: vi.fn()
+      });
+
+      localStorageMock.setItem('theme', 'dark');
+      themeStore.initTheme();
+
+      const changeCallback = addEventListenerFn.mock.calls[0][1];
+      mockSetAttribute.mockClear();
+
+      changeCallback();
+      expect(mockSetAttribute).not.toHaveBeenCalled();
+    });
+
+    it('should apply dark theme when system prefers dark', () => {
+      const addEventListenerFn = vi.fn();
+      mockMatchMedia.mockReturnValue({
+        matches: true,
+        addEventListener: addEventListenerFn,
+        removeEventListener: vi.fn()
+      });
+
+      localStorageMock.clear();
+      themeStore.initTheme();
+
+      const changeCallback = addEventListenerFn.mock.calls[0][1];
+      mockSetAttribute.mockClear();
+
+      changeCallback();
+      expect(mockSetAttribute).toHaveBeenCalledWith('data-theme', 'dark');
+    });
+  });
+
+  describe('cleanup with active listener', () => {
+    it('should call removeEventListener when mediaQuery and listener exist', () => {
+      const removeEventListenerFn = vi.fn();
+      mockMatchMedia.mockReturnValue({
+        matches: false,
+        addEventListener: vi.fn(),
+        removeEventListener: removeEventListenerFn
+      });
+
+      themeStore.initTheme();
+      themeStore.cleanup();
+
+      expect(removeEventListenerFn).toHaveBeenCalledWith('change', expect.any(Function));
+    });
+
+    it('should handle removeEventListener throwing during cleanup', () => {
+      const removeEventListenerFn = vi.fn().mockImplementation(() => {
+        throw new Error('removeEventListener failed');
+      });
+      mockMatchMedia.mockReturnValue({
+        matches: false,
+        addEventListener: vi.fn(),
+        removeEventListener: removeEventListenerFn
+      });
+
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      themeStore.initTheme();
+      expect(() => themeStore.cleanup()).not.toThrow();
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Failed to cleanup media query listener:',
+        expect.any(Error)
+      );
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('applyTheme error handling', () => {
+    it('should handle document.documentElement error gracefully', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const origSetAttribute = document.documentElement.setAttribute;
+      document.documentElement.setAttribute = vi.fn().mockImplementation(() => {
+        throw new Error('setAttribute failed');
+      });
+
+      // setTheme calls applyTheme internally
+      expect(() => themeStore.setTheme('dark')).not.toThrow();
+      expect(consoleSpy).toHaveBeenCalledWith('Failed to apply theme:', expect.any(Error));
+
+      document.documentElement.setAttribute = origSetAttribute;
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('initTheme - media query listener error handling', () => {
+    it('should handle localStorage throwing in media query listener callback', () => {
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      let listenerCallback: ((e: MediaQueryListEvent) => void) | null = null;
+
+      mockMatchMedia.mockReturnValue({
+        matches: false,
+        addEventListener: vi
+          .fn()
+          .mockImplementation((_event: string, cb: (e: MediaQueryListEvent) => void) => {
+            listenerCallback = cb;
+          }),
+        removeEventListener: vi.fn()
+      });
+
+      themeStore.initTheme();
+
+      // Now make localStorage throw and trigger the listener to cover the catch block
+      const getItemSpy = vi.spyOn(localStorage, 'getItem').mockImplementation(() => {
+        throw new Error('localStorage failed');
+      });
+
+      // Trigger media query change
+      if (listenerCallback) {
+        (listenerCallback as (e: MediaQueryListEvent) => void)({
+          matches: true
+        } as MediaQueryListEvent);
+      }
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Failed to handle system theme change:',
+        expect.any(Error)
+      );
+
+      getItemSpy.mockRestore();
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('SSR environment', () => {
+    it('should default to system theme in SSR (non-browser) environment', async () => {
+      vi.resetModules();
+      vi.doMock('$app/environment', () => ({
+        browser: false,
+        building: false,
+        dev: true,
+        version: 'test'
+      }));
+
+      const { themeStore: ssrThemeStore } = await import('./theme');
+      const { get: getValue } = await import('svelte/store');
+
+      // In SSR, the theme should default to 'system'
+      const theme = getValue(ssrThemeStore);
+      expect(theme).toBe('system');
+
+      // Calling toggleTheme in SSR should be a no-op (L109)
+      ssrThemeStore.toggleTheme();
+      expect(getValue(ssrThemeStore)).toBe('system');
+
+      // Calling initTheme in SSR should be a no-op (L138)
+      ssrThemeStore.initTheme();
+      expect(getValue(ssrThemeStore)).toBe('system');
+
+      // Calling reloadThemeColors in SSR should be a no-op (L176)
+      await ssrThemeStore.reloadThemeColors();
+      expect(getValue(ssrThemeStore)).toBe('system');
+
+      // Calling setTheme in SSR should be a no-op (L92)
+      ssrThemeStore.setTheme('dark');
+      expect(getValue(ssrThemeStore)).toBe('system');
+
+      vi.doUnmock('$app/environment');
+    });
+
+    it('should handle localStorage warning during init', async () => {
+      vi.resetModules();
+      vi.doMock('$app/environment', () => ({
+        browser: true,
+        building: false,
+        dev: true,
+        version: 'test'
+      }));
+
+      // Make localStorage throw during init
+      const getItemSpy = vi.spyOn(localStorage, 'getItem').mockImplementation(() => {
+        throw new Error('SecurityError');
+      });
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const { themeStore: failThemeStore } = await import('./theme');
+      const { get: getValue } = await import('svelte/store');
+
+      const theme = getValue(failThemeStore);
+      // Should fall back to default even when localStorage fails
+      expect(theme).toBe('system');
+
+      getItemSpy.mockRestore();
+      consoleSpy.mockRestore();
+      vi.doUnmock('$app/environment');
     });
   });
 });

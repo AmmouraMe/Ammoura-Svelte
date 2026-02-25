@@ -880,4 +880,159 @@ describe('Site Settings Database Functions', () => {
       );
     });
   });
+
+  describe('updateTaxSettings additional branches', () => {
+    it('should update pricesIncludeTax setting', async () => {
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        run: vi.fn().mockResolvedValue({ success: true })
+      };
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const { updateTaxSettings } = await import('./site-settings');
+      await updateTaxSettings(mockDb, siteId, {
+        pricesIncludeTax: true
+      });
+
+      expect(mockDb.prepare).toHaveBeenCalled();
+    });
+
+    it('should update displayPricesWithTax setting', async () => {
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        run: vi.fn().mockResolvedValue({ success: true })
+      };
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const { updateTaxSettings } = await import('./site-settings');
+      await updateTaxSettings(mockDb, siteId, {
+        displayPricesWithTax: false
+      });
+
+      expect(mockDb.prepare).toHaveBeenCalled();
+    });
+
+    it('should update both pricesIncludeTax and displayPricesWithTax', async () => {
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        run: vi.fn().mockResolvedValue({ success: true })
+      };
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const { updateTaxSettings } = await import('./site-settings');
+      await updateTaxSettings(mockDb, siteId, {
+        pricesIncludeTax: true,
+        displayPricesWithTax: true
+      });
+
+      expect(mockDb.prepare).toHaveBeenCalled();
+    });
+  });
+
+  describe('getEmailSettings with populated values', () => {
+    it('should use DB values when settings exist', async () => {
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        all: vi.fn().mockResolvedValue({
+          results: [
+            { setting_key: 'email_provider', setting_value: 'smtp' },
+            { setting_key: 'email_smtp_host', setting_value: 'smtp.example.com' },
+            { setting_key: 'email_smtp_port', setting_value: '465' }
+          ]
+        })
+      };
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const { getEmailSettings } = await import('./site-settings');
+      const result = await getEmailSettings(mockDb, siteId);
+
+      expect(result.provider).toBe('smtp');
+      expect(result.smtpHost).toBe('smtp.example.com');
+      expect(result.smtpPort).toBe(465);
+    });
+  });
+
+  describe('getApiSettings with populated values', () => {
+    it('should use DB values when settings exist', async () => {
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        all: vi.fn().mockResolvedValue({
+          results: [
+            { setting_key: 'api_rate_limit', setting_value: '200' },
+            { setting_key: 'api_rate_limit_window', setting_value: '120' },
+            { setting_key: 'api_rest_enabled', setting_value: 'true' }
+          ]
+        })
+      };
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const { getApiSettings } = await import('./site-settings');
+      const result = await getApiSettings(mockDb, siteId);
+
+      expect(result.rateLimit).toBe(200);
+      expect(result.rateLimitWindow).toBe(120);
+      expect(result.restEnabled).toBe(true);
+    });
+  });
+
+  describe('getSiteSettings null results fallback', () => {
+    it('should return empty array when results is null', async () => {
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        all: vi.fn().mockResolvedValue({ results: null })
+      };
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const { getSiteSettings } = await import('./site-settings');
+      const result = await getSiteSettings(mockDb, siteId);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should return payment settings with defaults when empty', async () => {
+      const mockStatement = {
+        bind: vi.fn().mockReturnValue({
+          all: vi.fn().mockResolvedValue({ results: [] })
+        })
+      };
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const { getPaymentSettings } = await import('./site-settings');
+      const result = await getPaymentSettings(mockDb, siteId);
+
+      expect(result.stripeMode).toBe('test');
+    });
+
+    it('should skip undefined values in updatePaymentSettings', async () => {
+      const mockStatement = {
+        bind: vi.fn().mockReturnValue({
+          run: vi.fn().mockResolvedValue({ meta: { changes: 1 } })
+        })
+      };
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const { updatePaymentSettings } = await import('./site-settings');
+      await updatePaymentSettings(mockDb, siteId, {
+        stripeMode: 'live',
+        stripePublicKey: undefined as unknown as string
+      });
+
+      // Should have called prepare for stripeMode but not for stripePublishableKey
+      expect(mockDb.prepare).toHaveBeenCalled();
+    });
+
+    it('should return API settings with defaults when empty', async () => {
+      const mockStatement = {
+        bind: vi.fn().mockReturnValue({
+          all: vi.fn().mockResolvedValue({ results: [] })
+        })
+      };
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const { getApiSettings } = await import('./site-settings');
+      const result = await getApiSettings(mockDb, siteId);
+
+      expect(result.rateLimit).toBe(100);
+    });
+  });
 });

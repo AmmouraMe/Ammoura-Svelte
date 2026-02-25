@@ -16,7 +16,8 @@ import {
   deleteOAuthSession,
   createAuthAuditLog,
   getUserAuthLogs,
-  getAuthLogsByEvent
+  getAuthLogsByEvent,
+  cleanupExpiredOAuthSessions
 } from './oauth.js';
 
 // Mock D1Database
@@ -351,6 +352,150 @@ describe('OAuth Database Functions', () => {
 
       expect(session).toBeDefined();
       expect(session.provider).toBe('microsoft');
+    });
+  });
+
+  describe('getUserProviderAccounts - null results fallback', () => {
+    it('should return empty array when results is null', async () => {
+      const mockDB = {
+        prepare: () => ({
+          bind: () => ({
+            all: async () => ({ results: null })
+          })
+        })
+      } as unknown as D1Database;
+
+      const accounts = await getUserProviderAccounts(mockDB, 'site-1', 'user-1');
+      expect(accounts).toEqual([]);
+    });
+  });
+
+  describe('findProviderAccountsByEmail - null results fallback', () => {
+    it('should return empty array when results is null', async () => {
+      const mockDB = {
+        prepare: () => ({
+          bind: () => ({
+            all: async () => ({ results: null })
+          })
+        })
+      } as unknown as D1Database;
+
+      const accounts = await findProviderAccountsByEmail(mockDB, 'site-1', 'test@example.com');
+      expect(accounts).toEqual([]);
+    });
+  });
+
+  describe('createProviderAccount - error when re-fetch returns null', () => {
+    it('should throw when re-fetch returns null after insert', async () => {
+      const mockDB = {
+        prepare: () => ({
+          bind: () => ({
+            run: async () => ({ meta: { changes: 1 } }),
+            first: async () => null
+          })
+        })
+      } as unknown as D1Database;
+
+      await expect(
+        createProviderAccount(mockDB, 'site-1', 'user-1', 'google', {
+          provider_account_id: 'google-123',
+          email: 'test@example.com'
+        })
+      ).rejects.toThrow('Failed to create provider account');
+    });
+  });
+
+  describe('createOAuthSession - error when re-fetch returns null', () => {
+    it('should throw when re-fetch returns null after insert', async () => {
+      const mockDB = {
+        prepare: () => ({
+          bind: () => ({
+            run: async () => ({ meta: { changes: 1 } }),
+            first: async () => null
+          })
+        })
+      } as unknown as D1Database;
+
+      await expect(
+        createOAuthSession(mockDB, 'site-1', 'google', {
+          state: 'state-999',
+          code_verifier: 'verifier',
+          code_challenge: 'challenge',
+          redirect_uri: 'http://localhost/callback'
+        })
+      ).rejects.toThrow('Failed to create OAuth session');
+    });
+  });
+
+  describe('getOAuthSession - expired session handling', () => {
+    it('should delete and return null for an expired session', async () => {
+      const expiredSession = {
+        id: 'session-1',
+        site_id: 'site-1',
+        state: 'expired-state',
+        code_verifier: 'v',
+        code_challenge: 'c',
+        nonce: null,
+        provider: 'google',
+        redirect_uri: 'http://localhost/callback',
+        created_at: 1000,
+        expires_at: 1
+      };
+
+      const mockDB = {
+        prepare: () => ({
+          bind: () => ({
+            first: async () => expiredSession,
+            run: async () => ({ meta: { changes: 1 } })
+          })
+        })
+      } as unknown as D1Database;
+
+      const session = await getOAuthSession(mockDB, 'expired-state');
+      expect(session).toBeNull();
+    });
+  });
+
+  describe('deleteProviderAccount - no changes', () => {
+    it('should return false when no rows deleted', async () => {
+      const mockDB = {
+        prepare: () => ({
+          bind: () => ({
+            run: async () => ({ meta: { changes: 0 } })
+          })
+        })
+      } as unknown as D1Database;
+
+      const result = await deleteProviderAccount(mockDB, 'site-1', 'user-1', 'google');
+      expect(result).toBe(false);
+    });
+
+    it('should return false when meta is undefined', async () => {
+      const mockDB = {
+        prepare: () => ({
+          bind: () => ({
+            run: async () => ({ meta: undefined })
+          })
+        })
+      } as unknown as D1Database;
+
+      const result = await deleteProviderAccount(mockDB, 'site-1', 'user-1', 'google');
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('cleanupExpiredOAuthSessions - meta undefined', () => {
+    it('should return 0 when meta is undefined', async () => {
+      const mockDB = {
+        prepare: () => ({
+          bind: () => ({
+            run: async () => ({ meta: undefined })
+          })
+        })
+      } as unknown as D1Database;
+
+      const result = await cleanupExpiredOAuthSessions(mockDB);
+      expect(result).toBe(0);
     });
   });
 });

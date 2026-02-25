@@ -137,4 +137,20 @@ describe('generateUniqueRevisionHash', () => {
 
     vi.doUnmock('./revisionHash');
   });
+
+  it('throws error when Math.random/Date.now produce constant output (guaranteed collisions)', () => {
+    const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(1000000);
+    const mathRandomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+    // With constant Math.random and Date.now, generateRevisionHash always returns the same hash
+    const alwaysHash = generateRevisionHash();
+    const existingHashes = [alwaysHash];
+
+    expect(() => generateUniqueRevisionHash(existingHashes)).toThrow(
+      'Failed to generate unique revision hash after maximum attempts'
+    );
+
+    dateNowSpy.mockRestore();
+    mathRandomSpy.mockRestore();
+  });
 });

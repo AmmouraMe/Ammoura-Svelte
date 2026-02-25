@@ -818,5 +818,145 @@ describe('Checkout Store', () => {
       expect(result.success).toBe(false);
       expect(result.error).toBe('Network error');
     }, 10000);
+
+    it('should use billing address when sameAsShipping is false', async () => {
+      checkoutStore.updateFormData({
+        shippingAddress: {
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john@example.com',
+          phone: '1234567890',
+          address: '123 Main Street',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          country: 'United States'
+        },
+        billingAddress: {
+          firstName: 'Jane',
+          lastName: 'Smith',
+          address: '456 Oak Avenue',
+          city: 'Chicago',
+          state: 'IL',
+          zipCode: '60601',
+          country: 'United States'
+        },
+        paymentMethod: {
+          type: 'credit-card',
+          cardNumber: '4532015112830366',
+          cardHolderName: 'John Doe',
+          expiryMonth: '12',
+          expiryYear: '2027',
+          cvv: '123'
+        },
+        sameAsShipping: false
+      });
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, orderId: 'order-billing-test' })
+      });
+
+      const mockCartItems = [
+        { id: 'prod-1', name: 'Product 1', price: 29.99, quantity: 1, image: '/test.jpg' }
+      ];
+
+      const result = await checkoutStore.submitOrder(mockCartItems, 29.99, 5.99, 2.0, 37.98);
+      expect(result.success).toBe(true);
+
+      const fetchCall = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      const body = JSON.parse(fetchCall[1].body);
+      expect(body.billing_address.firstName).toBe('Jane');
+      expect(body.billing_address.city).toBe('Chicago');
+    }, 10000);
+
+    it('should handle API returning success false with error message', async () => {
+      checkoutStore.updateFormData({
+        shippingAddress: {
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john@example.com',
+          phone: '1234567890',
+          address: '123 Main Street',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          country: 'United States'
+        },
+        billingAddress: {
+          firstName: 'John',
+          lastName: 'Doe',
+          address: '123 Main Street',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          country: 'United States'
+        },
+        paymentMethod: {
+          type: 'credit-card',
+          cardNumber: '4532015112830366',
+          cardHolderName: 'John Doe',
+          expiryMonth: '12',
+          expiryYear: '2027',
+          cvv: '123'
+        }
+      });
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: false, error: 'Inventory unavailable' })
+      });
+
+      const mockCartItems = [
+        { id: 'prod-1', name: 'Product 1', price: 29.99, quantity: 1, image: '/test.jpg' }
+      ];
+
+      const result = await checkoutStore.submitOrder(mockCartItems, 29.99, 5.99, 2.0, 37.98);
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Inventory unavailable');
+    }, 10000);
+
+    it('should handle non-Error exception in submitOrder catch', async () => {
+      checkoutStore.updateFormData({
+        shippingAddress: {
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john@example.com',
+          phone: '1234567890',
+          address: '123 Main Street',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          country: 'United States'
+        },
+        billingAddress: {
+          firstName: 'John',
+          lastName: 'Doe',
+          address: '123 Main Street',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          country: 'United States'
+        },
+        paymentMethod: {
+          type: 'credit-card',
+          cardNumber: '4532015112830366',
+          cardHolderName: 'John Doe',
+          expiryMonth: '12',
+          expiryYear: '2027',
+          cvv: '123'
+        }
+      });
+
+      global.fetch = vi.fn().mockRejectedValue('string error');
+
+      const mockCartItems = [
+        { id: 'prod-1', name: 'Product 1', price: 29.99, quantity: 1, image: '/test.jpg' }
+      ];
+
+      const result = await checkoutStore.submitOrder(mockCartItems, 29.99, 5.99, 2.0, 37.98);
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Failed to process order');
+    }, 10000);
   });
 });

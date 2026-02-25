@@ -634,4 +634,92 @@ Done!
       expect(widget.updated_at).toBe(widget.created_at);
     });
   });
+
+  describe('parseWidgetChanges edge cases', () => {
+    it('should return null for raw JSON where type is not widget_changes', () => {
+      const response = JSON.stringify({ type: 'other_type', data: {} });
+      const result = parseWidgetChanges(response);
+      expect(result).toBeNull();
+    });
+
+    it('should return null when changes is null', () => {
+      const response = JSON.stringify({ type: 'widget_changes', changes: null });
+      const result = parseWidgetChanges(response);
+      expect(result).toBeNull();
+    });
+
+    it('should return null when changes is not an object', () => {
+      const response = JSON.stringify({ type: 'widget_changes', changes: 'invalid' });
+      const result = parseWidgetChanges(response);
+      expect(result).toBeNull();
+    });
+
+    it('should return null when action is invalid', () => {
+      const response = JSON.stringify({
+        type: 'widget_changes',
+        changes: { action: 'invalid_action' }
+      });
+      const result = parseWidgetChanges(response);
+      expect(result).toBeNull();
+    });
+
+    it('should return null for JSON in code block with non-widget_changes type', () => {
+      const response = '```json\n{"type": "something_else", "data": {}}\n```';
+      const result = parseWidgetChanges(response);
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('applyWidgetChanges edge cases', () => {
+    it('should return current widgets for unknown action', () => {
+      const widgets = [
+        {
+          id: 'w1',
+          type: 'text' as PageWidget['type'],
+          position: 0,
+          page_id: 'p1',
+          config: {},
+          created_at: Date.now(),
+          updated_at: Date.now()
+        }
+      ];
+      const change: WidgetChange = {
+        type: 'widget_changes',
+        changes: { action: 'unknown' as 'add' }
+      };
+      const result = applyWidgetChanges(widgets, change);
+      expect(result).toEqual(widgets);
+    });
+  });
+
+  describe('validateWidgetChange edge cases', () => {
+    it('should return null for non-object data (string)', () => {
+      const result = parseWidgetChanges('"just a string"');
+      expect(result).toBeNull();
+    });
+
+    it('should return null for null data', () => {
+      const result = parseWidgetChanges('null');
+      expect(result).toBeNull();
+    });
+
+    it('should return null for data with wrong type field', () => {
+      const result = parseWidgetChanges(
+        JSON.stringify({ type: 'not_widget_changes', changes: { action: 'add' } })
+      );
+      expect(result).toBeNull();
+    });
+
+    it('should return null when changes is not an object', () => {
+      const result = parseWidgetChanges(
+        JSON.stringify({ type: 'widget_changes', changes: 'not-object' })
+      );
+      expect(result).toBeNull();
+    });
+
+    it('should return null when changes is null', () => {
+      const result = parseWidgetChanges(JSON.stringify({ type: 'widget_changes', changes: null }));
+      expect(result).toBeNull();
+    });
+  });
 });

@@ -716,4 +716,334 @@ describe('SSO Providers Database Functions', () => {
       expect(result[1].client_secret).toBe('secret2');
     });
   });
+
+  describe('getEnabledSSOProviders - additional branch coverage', () => {
+    it('should return providers without decryption when no encryption key', async () => {
+      const mockProviders: SSOProvider[] = [
+        {
+          id: 'sso-1',
+          site_id: siteId,
+          provider: 'google',
+          enabled: 1,
+          client_id: 'google-client-id',
+          client_secret: 'raw-encrypted-text',
+          tenant: null,
+          display_name: 'Google',
+          icon: null,
+          sort_order: 0,
+          created_at: 1234567890,
+          updated_at: 1234567890
+        }
+      ];
+
+      const mockAll = vi.fn().mockResolvedValue({ results: mockProviders });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({ bind: mockBind });
+
+      const result = await getEnabledSSOProviders(mockDb, siteId);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].client_secret).toBe('raw-encrypted-text');
+    });
+
+    it('should skip decryption for provider with empty client_secret', async () => {
+      const mockProviders: SSOProvider[] = [
+        {
+          id: 'sso-1',
+          site_id: siteId,
+          provider: 'google',
+          enabled: 1,
+          client_id: 'google-client-id',
+          client_secret: '',
+          tenant: null,
+          display_name: 'Google',
+          icon: null,
+          sort_order: 0,
+          created_at: 1234567890,
+          updated_at: 1234567890
+        }
+      ];
+
+      const mockAll = vi.fn().mockResolvedValue({ results: mockProviders });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({ bind: mockBind });
+
+      const result = await getEnabledSSOProviders(mockDb, siteId, testEncryptionKey);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].client_secret).toBe('');
+    });
+
+    it('should throw when decryption fails for an enabled provider', async () => {
+      const mockProviders: SSOProvider[] = [
+        {
+          id: 'sso-1',
+          site_id: siteId,
+          provider: 'google',
+          enabled: 1,
+          client_id: 'google-client-id',
+          client_secret: 'invalid-encrypted-data',
+          tenant: null,
+          display_name: 'Google',
+          icon: null,
+          sort_order: 0,
+          created_at: 1234567890,
+          updated_at: 1234567890
+        }
+      ];
+
+      const mockAll = vi.fn().mockResolvedValue({ results: mockProviders });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({ bind: mockBind });
+
+      await expect(getEnabledSSOProviders(mockDb, siteId, testEncryptionKey)).rejects.toThrow(
+        'Failed to decrypt SSO provider credentials'
+      );
+    });
+  });
+
+  describe('getSSOProvider - without encryption key', () => {
+    it('should return provider with raw client_secret when no encryption key', async () => {
+      const mockProvider: SSOProvider = {
+        id: 'sso-1',
+        site_id: siteId,
+        provider: 'google',
+        enabled: 1,
+        client_id: 'google-client-id',
+        client_secret: 'raw-encrypted-text',
+        tenant: null,
+        display_name: 'Google',
+        icon: null,
+        sort_order: 0,
+        created_at: 1234567890,
+        updated_at: 1234567890
+      };
+
+      const mockFirst = vi.fn().mockResolvedValue(mockProvider);
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst });
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({ bind: mockBind });
+
+      const result = await getSSOProvider(mockDb, siteId, 'google');
+
+      expect(result).toBeTruthy();
+      expect(result?.client_secret).toBe('raw-encrypted-text');
+    });
+  });
+
+  describe('updateSsoProvider additional branches', () => {
+    it('should update client_id field', async () => {
+      const mockFirst = vi.fn().mockResolvedValue({
+        provider: 'google',
+        site_id: siteId,
+        enabled: 1,
+        client_id: 'new-client-id',
+        client_secret: 'encrypted',
+        tenant: null,
+        display_name: null,
+        icon: null,
+        sort_order: 0,
+        created_at: 1000,
+        updated_at: 2000
+      });
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst, run: mockRun });
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({ bind: mockBind });
+
+      const result = await updateSSOProvider(mockDb, siteId, 'google', {
+        client_id: 'new-client-id'
+      });
+
+      expect(result).toBeTruthy();
+    });
+
+    it('should update tenant field', async () => {
+      const mockFirst = vi.fn().mockResolvedValue({
+        provider: 'microsoft',
+        site_id: siteId,
+        enabled: 1,
+        client_id: 'cid',
+        client_secret: 'encrypted',
+        tenant: 'my-tenant',
+        display_name: null,
+        icon: null,
+        sort_order: 0,
+        created_at: 1000,
+        updated_at: 2000
+      });
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst, run: mockRun });
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({ bind: mockBind });
+
+      const result = await updateSSOProvider(mockDb, siteId, 'microsoft', {
+        tenant: 'my-tenant'
+      });
+
+      expect(result).toBeTruthy();
+    });
+
+    it('should update display_name and icon fields', async () => {
+      const mockFirst = vi.fn().mockResolvedValue({
+        provider: 'google',
+        site_id: siteId,
+        enabled: 1,
+        client_id: 'cid',
+        client_secret: 'encrypted',
+        tenant: null,
+        display_name: 'Google Login',
+        icon: 'google-icon',
+        sort_order: 0,
+        created_at: 1000,
+        updated_at: 2000
+      });
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst, run: mockRun });
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({ bind: mockBind });
+
+      const result = await updateSSOProvider(mockDb, siteId, 'google', {
+        display_name: 'Google Login',
+        icon: 'google-icon'
+      });
+
+      expect(result).toBeTruthy();
+    });
+
+    it('should update client_secret with encryption when encryptionKey provided', async () => {
+      const mockFirst = vi.fn().mockResolvedValue({
+        id: 'sso-1',
+        provider: 'google',
+        site_id: siteId,
+        enabled: 1,
+        client_id: 'cid',
+        client_secret: null,
+        tenant: null,
+        display_name: null,
+        icon: null,
+        sort_order: 0,
+        created_at: 1000,
+        updated_at: 2000
+      });
+      const mockRun = vi.fn().mockResolvedValue({ meta: { changes: 1 } });
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst, run: mockRun });
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({ bind: mockBind });
+
+      const result = await updateSSOProvider(
+        mockDb,
+        siteId,
+        'google',
+        { client_secret: 'new-secret' },
+        testEncryptionKey
+      );
+
+      expect(result).toBeTruthy();
+    });
+
+    it('should update sort_order field', async () => {
+      const mockFirst = vi.fn().mockResolvedValue({
+        id: 'sso-1',
+        provider: 'google',
+        site_id: siteId,
+        enabled: 1,
+        client_id: 'cid',
+        client_secret: 'encrypted',
+        tenant: null,
+        display_name: null,
+        icon: null,
+        sort_order: 5,
+        created_at: 1000,
+        updated_at: 2000
+      });
+      const mockRun = vi.fn().mockResolvedValue({ meta: { changes: 1 } });
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst, run: mockRun });
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({ bind: mockBind });
+
+      const result = await updateSSOProvider(mockDb, siteId, 'google', {
+        sort_order: 5
+      });
+
+      expect(result).toBeTruthy();
+    });
+
+    it('should convert empty string tenant to null', async () => {
+      const mockFirst = vi.fn().mockResolvedValue({
+        id: 'sso-1',
+        provider: 'microsoft',
+        site_id: siteId,
+        enabled: 1,
+        client_id: 'cid',
+        client_secret: null,
+        tenant: null,
+        display_name: null,
+        icon: null,
+        sort_order: 0,
+        created_at: 1000,
+        updated_at: 2000
+      });
+      const mockRun = vi.fn().mockResolvedValue({ meta: { changes: 1 } });
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst, run: mockRun });
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({ bind: mockBind });
+
+      const result = await updateSSOProvider(mockDb, siteId, 'microsoft', {
+        tenant: ''
+      });
+
+      expect(result).toBeTruthy();
+      // Empty string should be converted to null via || null
+      // bind receives: (null, timestamp, siteId, provider) = 4 args
+      expect(mockBind).toHaveBeenCalledWith(
+        null,
+        expect.anything(),
+        expect.anything(),
+        expect.anything()
+      );
+    });
+
+    it('should convert empty string display_name to null', async () => {
+      const mockFirst = vi.fn().mockResolvedValue({
+        id: 'sso-1',
+        provider: 'google',
+        site_id: siteId,
+        enabled: 1,
+        client_id: 'cid',
+        client_secret: null,
+        tenant: null,
+        display_name: null,
+        icon: null,
+        sort_order: 0,
+        created_at: 1000,
+        updated_at: 2000
+      });
+      const mockRun = vi.fn().mockResolvedValue({ meta: { changes: 1 } });
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst, run: mockRun });
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({ bind: mockBind });
+
+      const result = await updateSSOProvider(mockDb, siteId, 'google', {
+        display_name: '',
+        icon: ''
+      });
+
+      expect(result).toBeTruthy();
+    });
+  });
+
+  describe('null results fallbacks', () => {
+    it('getSSOProviders should return empty array when results is null', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({ bind: mockBind });
+
+      const { getSSOProviders } = await import('./sso-providers');
+      const result = await getSSOProviders(mockDb, siteId);
+      expect(result).toEqual([]);
+    });
+
+    it('getEnabledSSOProviders should return empty array when results is null', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue({ bind: mockBind });
+
+      const { getEnabledSSOProviders } = await import('./sso-providers');
+      const result = await getEnabledSSOProviders(mockDb, siteId);
+      expect(result).toEqual([]);
+    });
+  });
 });

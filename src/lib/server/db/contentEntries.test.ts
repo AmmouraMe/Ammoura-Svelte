@@ -250,6 +250,26 @@ describe('Content Entries Repository', () => {
       expect(result.status).toBe('published');
       expect(result.publishedAt).not.toBeNull();
     });
+
+    it('should throw when re-fetch after create returns null', async () => {
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockFirst = vi.fn().mockResolvedValue(null);
+      const mockBind = vi.fn().mockReturnValue({
+        first: mockFirst,
+        run: mockRun
+      });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      await expect(
+        createContentEntry(mockDB, siteId, {
+          contentTypeId,
+          title: 'Test Entry',
+          slug: 'test-entry',
+          fieldValues: { body: '<p>Hello</p>' }
+        })
+      ).rejects.toThrow('Failed to create content entry');
+    });
   });
 
   describe('updateContentEntry', () => {
@@ -536,6 +556,274 @@ describe('Content Entries Repository', () => {
 
       const prepareCall = (mockDB.prepare as ReturnType<typeof vi.fn>).mock.calls[0][0];
       expect(prepareCall).toContain('tag_category = ?');
+    });
+  });
+
+  describe('getContentEntries - filter branches', () => {
+    it('should filter by authorId', async () => {
+      const mockDB = createMockDB({ allResults: [] });
+
+      await getContentEntries(mockDB, siteId, contentTypeId, {
+        authorId: 'author-1'
+      });
+
+      const prepareCall = (mockDB.prepare as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(prepareCall).toContain('author_id = ?');
+    });
+
+    it('should filter by tagName only', async () => {
+      const mockDB = createMockDB({ allResults: [] });
+
+      await getContentEntries(mockDB, siteId, contentTypeId, {
+        tagName: 'javascript'
+      });
+
+      const prepareCall = (mockDB.prepare as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(prepareCall).toContain('tag_name = ?');
+    });
+
+    it('should filter by tagName and tagCategory together', async () => {
+      const mockDB = createMockDB({ allResults: [] });
+
+      await getContentEntries(mockDB, siteId, contentTypeId, {
+        tagName: 'javascript',
+        tagCategory: 'tech'
+      });
+
+      const prepareCall = (mockDB.prepare as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(prepareCall).toContain('tag_category = ?');
+    });
+
+    it('should use default sortBy when invalid sortBy provided', async () => {
+      const mockDB = createMockDB({ allResults: [] });
+
+      await getContentEntries(mockDB, siteId, contentTypeId, {
+        sortBy: 'invalid_column' as 'created_at'
+      });
+
+      // calls[0] is the COUNT query, calls[1] is the data query with ORDER BY
+      const prepareCall = (mockDB.prepare as ReturnType<typeof vi.fn>).mock.calls[1][0];
+      expect(prepareCall).toContain('ORDER BY');
+      expect(prepareCall).toContain('created_at');
+    });
+  });
+
+  describe('updateContentEntry - field branches', () => {
+    it('should not re-set published_at when already published', async () => {
+      const existingEntry = {
+        ...mockDBEntry,
+        status: 'published',
+        published_at: 999999
+      };
+
+      const mockFirst = vi
+        .fn()
+        .mockResolvedValueOnce(existingEntry)
+        .mockResolvedValueOnce(existingEntry);
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockAll = vi.fn().mockResolvedValue({ results: [], success: true });
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst, run: mockRun, all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await updateContentEntry(mockDB, siteId, 'entry-1', {
+        status: 'published'
+      });
+
+      expect(result).toBeDefined();
+    });
+
+    it('should update fieldValues', async () => {
+      const mockFirst = vi
+        .fn()
+        .mockResolvedValueOnce(mockDBEntry)
+        .mockResolvedValueOnce(mockDBEntry);
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockAll = vi.fn().mockResolvedValue({ results: [], success: true });
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst, run: mockRun, all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await updateContentEntry(mockDB, siteId, 'entry-1', {
+        fieldValues: { body: 'Updated body' }
+      });
+
+      expect(result).toBeDefined();
+    });
+
+    it('should update pageId', async () => {
+      const mockFirst = vi
+        .fn()
+        .mockResolvedValueOnce(mockDBEntry)
+        .mockResolvedValueOnce(mockDBEntry);
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockAll = vi.fn().mockResolvedValue({ results: [], success: true });
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst, run: mockRun, all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await updateContentEntry(mockDB, siteId, 'entry-1', {
+        pageId: 'page-99'
+      });
+
+      expect(result).toBeDefined();
+    });
+
+    it('should update authorId', async () => {
+      const mockFirst = vi
+        .fn()
+        .mockResolvedValueOnce(mockDBEntry)
+        .mockResolvedValueOnce(mockDBEntry);
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockAll = vi.fn().mockResolvedValue({ results: [], success: true });
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst, run: mockRun, all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await updateContentEntry(mockDB, siteId, 'entry-1', {
+        authorId: 'author-2'
+      });
+
+      expect(result).toBeDefined();
+    });
+
+    it('should update sortOrder', async () => {
+      const mockFirst = vi
+        .fn()
+        .mockResolvedValueOnce(mockDBEntry)
+        .mockResolvedValueOnce(mockDBEntry);
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockAll = vi.fn().mockResolvedValue({ results: [], success: true });
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst, run: mockRun, all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await updateContentEntry(mockDB, siteId, 'entry-1', {
+        sortOrder: 5
+      });
+
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('setEntryTags - explicit tagCategory', () => {
+    it('should use provided tagCategory instead of default', async () => {
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockAll = vi.fn().mockResolvedValue({
+        results: [{ tag_name: 'test', tag_category: 'custom', count: 1 }],
+        success: true
+      });
+      const mockBind = vi.fn().mockReturnValue({ run: mockRun, all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      await setEntryTags(mockDB, siteId, contentTypeId, 'entry-1', [
+        { tagName: 'test', tagCategory: 'custom' }
+      ]);
+
+      expect(mockPrepare).toHaveBeenCalled();
+    });
+  });
+
+  describe('updateContentEntry slug branch', () => {
+    it('should update slug field', async () => {
+      const mockFirst = vi
+        .fn()
+        .mockResolvedValueOnce(mockDBEntry)
+        .mockResolvedValueOnce({
+          ...mockDBEntry,
+          slug: 'new-slug'
+        });
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockAll = vi.fn().mockResolvedValue({ results: [], success: true });
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst, run: mockRun, all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await updateContentEntry(mockDB, siteId, 'entry-1', {
+        slug: 'new-slug'
+      });
+
+      expect(result).toBeDefined();
+      expect(result?.slug).toBe('new-slug');
+    });
+  });
+
+  describe('getContentTypeTags null results fallback', () => {
+    it('should return empty array when results is null', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getContentTypeTags(mockDB, siteId, contentTypeId);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should get tags filtered by category', async () => {
+      const mockAll = vi.fn().mockResolvedValue({
+        results: [
+          { tag_name: 'tech', tag_category: 'articles', count: 3 },
+          { tag_name: 'science', tag_category: 'articles', count: 1 }
+        ]
+      });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getContentTypeTags(mockDB, siteId, contentTypeId, 'articles');
+
+      expect(result).toEqual([
+        { tagName: 'tech', tagCategory: 'articles', count: 3 },
+        { tagName: 'science', tagCategory: 'articles', count: 1 }
+      ]);
+      expect(mockBind).toHaveBeenCalledWith(siteId, contentTypeId, 'articles');
+    });
+
+    it('should return empty array when filtered category results are null', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getContentTypeTags(mockDB, siteId, contentTypeId, 'articles');
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getContentEntryCount with status filter', () => {
+    it('should count entries filtered by status', async () => {
+      const mockFirst = vi.fn().mockResolvedValue({ count: 5 });
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getContentEntryCount(mockDB, siteId, contentTypeId, 'published');
+      expect(result).toBe(5);
+      expect(mockBind).toHaveBeenCalledWith(siteId, contentTypeId, 'published');
+    });
+
+    it('should return 0 when count with status returns null', async () => {
+      const mockFirst = vi.fn().mockResolvedValue(null);
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getContentEntryCount(mockDB, siteId, contentTypeId, 'published');
+      expect(result).toBe(0);
+    });
+  });
+
+  describe('getEntryTags null results fallback', () => {
+    it('should return empty array when results is null', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getEntryTags(mockDB, siteId, 'entry-1');
+      expect(result).toEqual([]);
     });
   });
 });

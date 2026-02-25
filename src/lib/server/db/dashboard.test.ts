@@ -277,4 +277,144 @@ describe('Dashboard Statistics', () => {
       expect(data).toEqual([]);
     });
   });
+
+  describe('getDashboardMetrics - null query results', () => {
+    it('handles null results from all queries', async () => {
+      const nullDb = {
+        prepare: () => ({
+          bind: () => ({
+            first: async () => null,
+            all: async () => ({ success: true, results: null, meta: {} })
+          })
+        })
+      } as unknown as D1Database;
+
+      const metrics = await getDashboardMetrics(nullDb, siteId);
+
+      expect(metrics.totalRevenue).toBe(0);
+      expect(metrics.totalOrders).toBe(0);
+      expect(metrics.totalCustomers).toBe(0);
+      expect(metrics.totalProducts).toBe(0);
+      expect(metrics.pendingOrders).toBe(0);
+      expect(metrics.processingOrders).toBe(0);
+      expect(metrics.completedOrders).toBe(0);
+      expect(metrics.cancelledOrders).toBe(0);
+    });
+  });
+
+  describe('getRecentOrders - edge cases', () => {
+    it('handles user lookup returning null (guest order)', async () => {
+      const guestDb = {
+        prepare: () => ({
+          bind: () => ({
+            all: async () => ({
+              success: true,
+              results: [
+                {
+                  id: 'order-1',
+                  user_id: 'user-1',
+                  status: 'pending',
+                  total_amount: 99.99,
+                  created_at: 1234567890
+                }
+              ],
+              meta: {}
+            }),
+            first: async () => null
+          })
+        })
+      } as unknown as D1Database;
+
+      const orders = await getRecentOrders(guestDb, siteId);
+
+      expect(orders).toHaveLength(1);
+      expect(orders[0].customer_name).toBe('Guest');
+      expect(orders[0].customer_email).toBe('guest@example.com');
+    });
+
+    it('returns empty array when results is null', async () => {
+      const nullDb = {
+        prepare: () => ({
+          bind: () => ({
+            all: async () => ({ success: true, results: null, meta: {} }),
+            first: async () => null
+          })
+        })
+      } as unknown as D1Database;
+
+      const orders = await getRecentOrders(nullDb, siteId);
+      expect(orders).toEqual([]);
+    });
+  });
+
+  describe('getTopProducts - edge cases', () => {
+    it('handles null product_id in results', async () => {
+      const nullIdDb = {
+        prepare: () => ({
+          bind: () => ({
+            all: async () => ({
+              success: true,
+              results: [
+                {
+                  product_id: null,
+                  name: 'Unknown Product',
+                  image: '/img.jpg',
+                  total_quantity: 10,
+                  total_revenue: 100.0
+                }
+              ],
+              meta: {}
+            })
+          })
+        })
+      } as unknown as D1Database;
+
+      const products = await getTopProducts(nullIdDb, siteId);
+      expect(products).toHaveLength(1);
+      expect(products[0].id).toBe('');
+    });
+
+    it('returns empty array when results is null', async () => {
+      const nullDb = {
+        prepare: () => ({
+          bind: () => ({
+            all: async () => ({ success: true, results: null, meta: {} })
+          })
+        })
+      } as unknown as D1Database;
+
+      const products = await getTopProducts(nullDb, siteId);
+      expect(products).toEqual([]);
+    });
+  });
+
+  describe('getLowStockProducts - null results', () => {
+    it('returns empty array when results is null', async () => {
+      const nullDb = {
+        prepare: () => ({
+          bind: () => ({
+            all: async () => ({ success: true, results: null, meta: {} })
+          })
+        })
+      } as unknown as D1Database;
+
+      const products = await getLowStockProducts(nullDb, siteId);
+      expect(products).toEqual([]);
+    });
+  });
+
+  describe('getSalesChartData - null results', () => {
+    it('returns empty array when results is null', async () => {
+      const nullDb = {
+        prepare: () => ({
+          bind: () => ({
+            all: async () => ({ success: true, results: null, meta: {} })
+          })
+        })
+      } as unknown as D1Database;
+
+      const data = await getSalesChartData(nullDb, siteId);
+      expect(data).toEqual([]);
+    });
+  });
 });

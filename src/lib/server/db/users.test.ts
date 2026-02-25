@@ -13,6 +13,9 @@ import {
   getExpiredUsers,
   getUsersExpiringSoon,
   deactivateExpiredUsers,
+  getAdminUsers,
+  getCustomerUsers,
+  getPurchasingCustomers,
   type DBUser,
   type CreateUserData,
   type UpdateUserData
@@ -481,6 +484,409 @@ describe('Users Repository', () => {
       const result = await deactivateExpiredUsers(mockDB, siteId);
 
       expect(result).toBe(0);
+    });
+  });
+
+  describe('updateUser - additional field branches', () => {
+    it('should update permissions field', async () => {
+      const updateData: UpdateUserData = {
+        permissions: ['read', 'write']
+      };
+
+      const mockFirst = vi.fn().mockResolvedValue(mockUser);
+      const mockBindGet = vi.fn().mockReturnValue({ first: mockFirst });
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBindUpdate = vi.fn().mockReturnValue({ run: mockRun });
+
+      const mockDB = {
+        prepare: vi
+          .fn()
+          .mockReturnValueOnce({ bind: mockBindGet })
+          .mockReturnValueOnce({ bind: mockBindUpdate })
+          .mockReturnValueOnce({ bind: mockBindGet })
+      } as unknown as D1Database;
+
+      const result = await updateUser(mockDB, siteId, 'user-1', updateData);
+
+      expect(result).toEqual(mockUser);
+    });
+
+    it('should update status field', async () => {
+      const updateData: UpdateUserData = {
+        status: 'suspended'
+      };
+
+      const mockFirst = vi.fn().mockResolvedValue(mockUser);
+      const mockBindGet = vi.fn().mockReturnValue({ first: mockFirst });
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBindUpdate = vi.fn().mockReturnValue({ run: mockRun });
+
+      const mockDB = {
+        prepare: vi
+          .fn()
+          .mockReturnValueOnce({ bind: mockBindGet })
+          .mockReturnValueOnce({ bind: mockBindUpdate })
+          .mockReturnValueOnce({ bind: mockBindGet })
+      } as unknown as D1Database;
+
+      const result = await updateUser(mockDB, siteId, 'user-1', updateData);
+
+      expect(result).toEqual(mockUser);
+    });
+
+    it('should update expiration_date field', async () => {
+      const updateData: UpdateUserData = {
+        expiration_date: 9999999999
+      };
+
+      const mockFirst = vi.fn().mockResolvedValue(mockUser);
+      const mockBindGet = vi.fn().mockReturnValue({ first: mockFirst });
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBindUpdate = vi.fn().mockReturnValue({ run: mockRun });
+
+      const mockDB = {
+        prepare: vi
+          .fn()
+          .mockReturnValueOnce({ bind: mockBindGet })
+          .mockReturnValueOnce({ bind: mockBindUpdate })
+          .mockReturnValueOnce({ bind: mockBindGet })
+      } as unknown as D1Database;
+
+      const result = await updateUser(mockDB, siteId, 'user-1', updateData);
+
+      expect(result).toEqual(mockUser);
+    });
+
+    it('should update grace_period_days field', async () => {
+      const updateData: UpdateUserData = {
+        grace_period_days: 14
+      };
+
+      const mockFirst = vi.fn().mockResolvedValue(mockUser);
+      const mockBindGet = vi.fn().mockReturnValue({ first: mockFirst });
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBindUpdate = vi.fn().mockReturnValue({ run: mockRun });
+
+      const mockDB = {
+        prepare: vi
+          .fn()
+          .mockReturnValueOnce({ bind: mockBindGet })
+          .mockReturnValueOnce({ bind: mockBindUpdate })
+          .mockReturnValueOnce({ bind: mockBindGet })
+      } as unknown as D1Database;
+
+      const result = await updateUser(mockDB, siteId, 'user-1', updateData);
+
+      expect(result).toEqual(mockUser);
+    });
+
+    it('should update last_login_at field', async () => {
+      const updateData: UpdateUserData = {
+        last_login_at: 1234567890
+      };
+
+      const mockFirst = vi.fn().mockResolvedValue(mockUser);
+      const mockBindGet = vi.fn().mockReturnValue({ first: mockFirst });
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBindUpdate = vi.fn().mockReturnValue({ run: mockRun });
+
+      const mockDB = {
+        prepare: vi
+          .fn()
+          .mockReturnValueOnce({ bind: mockBindGet })
+          .mockReturnValueOnce({ bind: mockBindUpdate })
+          .mockReturnValueOnce({ bind: mockBindGet })
+      } as unknown as D1Database;
+
+      const result = await updateUser(mockDB, siteId, 'user-1', updateData);
+
+      expect(result).toEqual(mockUser);
+    });
+
+    it('should update last_login_ip field', async () => {
+      const updateData: UpdateUserData = {
+        last_login_ip: '10.0.0.1'
+      };
+
+      const mockFirst = vi.fn().mockResolvedValue(mockUser);
+      const mockBindGet = vi.fn().mockReturnValue({ first: mockFirst });
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBindUpdate = vi.fn().mockReturnValue({ run: mockRun });
+
+      const mockDB = {
+        prepare: vi
+          .fn()
+          .mockReturnValueOnce({ bind: mockBindGet })
+          .mockReturnValueOnce({ bind: mockBindUpdate })
+          .mockReturnValueOnce({ bind: mockBindGet })
+      } as unknown as D1Database;
+
+      const result = await updateUser(mockDB, siteId, 'user-1', updateData);
+
+      expect(result).toEqual(mockUser);
+    });
+
+    it('should update updated_by field', async () => {
+      const updateData: UpdateUserData = {
+        updated_by: 'admin-1'
+      };
+
+      const mockFirst = vi.fn().mockResolvedValue(mockUser);
+      const mockBindGet = vi.fn().mockReturnValue({ first: mockFirst });
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBindUpdate = vi.fn().mockReturnValue({ run: mockRun });
+
+      const mockDB = {
+        prepare: vi
+          .fn()
+          .mockReturnValueOnce({ bind: mockBindGet })
+          .mockReturnValueOnce({ bind: mockBindUpdate })
+          .mockReturnValueOnce({ bind: mockBindGet })
+      } as unknown as D1Database;
+
+      const result = await updateUser(mockDB, siteId, 'user-1', updateData);
+
+      expect(result).toEqual(mockUser);
+    });
+  });
+
+  describe('getAdminUsers', () => {
+    it('should get users with admin roles', async () => {
+      const adminUser = { ...mockUser, role: 'admin' as const };
+      const mockResults = { results: [adminUser], success: true };
+      const mockAll = vi.fn().mockResolvedValue(mockResults);
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getAdminUsers(mockDB, siteId);
+
+      expect(mockPrepare).toHaveBeenCalledWith(
+        expect.stringContaining("role IN ('admin', 'user', 'platform_engineer')")
+      );
+      expect(result).toEqual([adminUser]);
+    });
+
+    it('should return empty array when no admin users', async () => {
+      const mockResults = { results: [], success: true };
+      const mockAll = vi.fn().mockResolvedValue(mockResults);
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getAdminUsers(mockDB, siteId);
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getCustomerUsers', () => {
+    it('should get users with customer role or orders', async () => {
+      const customerUser = { ...mockUser, role: 'customer' as const };
+      const mockResults = { results: [customerUser], success: true };
+      const mockAll = vi.fn().mockResolvedValue(mockResults);
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getCustomerUsers(mockDB, siteId);
+
+      expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('LEFT JOIN orders'));
+      expect(result).toEqual([customerUser]);
+    });
+
+    it('should return empty array when no customers', async () => {
+      const mockResults = { results: [], success: true };
+      const mockAll = vi.fn().mockResolvedValue(mockResults);
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getCustomerUsers(mockDB, siteId);
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getPurchasingCustomers', () => {
+    it('should get customers who have made purchases', async () => {
+      const purchasingUser = { ...mockUser, role: 'customer' as const };
+      const mockResults = { results: [purchasingUser], success: true };
+      const mockAll = vi.fn().mockResolvedValue(mockResults);
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getPurchasingCustomers(mockDB, siteId);
+
+      expect(mockPrepare).toHaveBeenCalledWith(expect.stringContaining('INNER JOIN orders'));
+      expect(result).toEqual([purchasingUser]);
+    });
+
+    it('should return empty array when no purchasing customers', async () => {
+      const mockResults = { results: [], success: true };
+      const mockAll = vi.fn().mockResolvedValue(mockResults);
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getPurchasingCustomers(mockDB, siteId);
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('createUser - all optional fields provided', () => {
+    it('should create user with status, expiration_date, grace_period_days, and created_by', async () => {
+      const userData: CreateUserData = {
+        email: 'full@example.com',
+        name: 'Full User',
+        password_hash: 'hashed_password',
+        role: 'admin',
+        permissions: ['read', 'write', 'delete'],
+        status: 'inactive',
+        expiration_date: 1700000000,
+        grace_period_days: 30,
+        created_by: 'admin-user-1'
+      };
+
+      const createdUser: DBUser = {
+        ...mockUser,
+        email: 'full@example.com',
+        name: 'Full User',
+        role: 'admin',
+        permissions: '["read","write","delete"]',
+        status: 'inactive',
+        expiration_date: 1700000000,
+        grace_period_days: 30,
+        created_by: 'admin-user-1'
+      };
+
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBind = vi.fn().mockReturnValue({ run: mockRun });
+      const mockFirst = vi.fn().mockResolvedValue(createdUser);
+      const mockBindGet = vi.fn().mockReturnValue({ first: mockFirst });
+
+      const mockDB = {
+        prepare: vi
+          .fn()
+          .mockReturnValueOnce({ bind: mockBind })
+          .mockReturnValueOnce({ bind: mockBindGet })
+      } as unknown as D1Database;
+
+      const result = await createUser(mockDB, siteId, userData);
+
+      expect(result).toEqual(createdUser);
+      expect(result.status).toBe('inactive');
+      expect(result.expiration_date).toBe(1700000000);
+      expect(result.grace_period_days).toBe(30);
+      expect(result.created_by).toBe('admin-user-1');
+    });
+  });
+
+  describe('null results fallback branches', () => {
+    it('getAllUsers should return empty array when results is null', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null, success: true });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getAllUsers(mockDB, siteId);
+      expect(result).toEqual([]);
+    });
+
+    it('getUsersByRole should return empty array when results is null', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null, success: true });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getUsersByRole(mockDB, siteId, 'admin');
+      expect(result).toEqual([]);
+    });
+
+    it('getUsersByStatus should return empty array when results is null', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null, success: true });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getUsersByStatus(mockDB, siteId, 'active');
+      expect(result).toEqual([]);
+    });
+
+    it('getUsersWithExpiration should return empty array when results is null', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null, success: true });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getUsersWithExpiration(mockDB, siteId);
+      expect(result).toEqual([]);
+    });
+
+    it('getExpiredUsers should return empty array when results is null', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null, success: true });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getExpiredUsers(mockDB, siteId);
+      expect(result).toEqual([]);
+    });
+
+    it('getUsersExpiringSoon should return empty array when results is null', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null, success: true });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getUsersExpiringSoon(mockDB, siteId, 7);
+      expect(result).toEqual([]);
+    });
+
+    it('getAdminUsers should return empty array when results is null', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null, success: true });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getAdminUsers(mockDB, siteId);
+      expect(result).toEqual([]);
+    });
+
+    it('getCustomerUsers should return empty array when results is null', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null, success: true });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getCustomerUsers(mockDB, siteId);
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('deactivateExpiredUsers - meta undefined', () => {
+    it('should return 0 when meta is undefined', async () => {
+      const mockRun = vi.fn().mockResolvedValue({ meta: undefined, success: true });
+      const mockBind = vi.fn().mockReturnValue({ run: mockRun });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await deactivateExpiredUsers(mockDB, siteId, 1000000);
+      expect(result).toBe(0);
+    });
+  });
+
+  describe('deleteUser - meta undefined', () => {
+    it('should return false when meta is undefined', async () => {
+      const mockRun = vi.fn().mockResolvedValue({ meta: undefined, success: true });
+      const mockBind = vi.fn().mockReturnValue({ run: mockRun });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await deleteUser(mockDB, siteId, 'user-1');
+      expect(result).toBe(false);
     });
   });
 });

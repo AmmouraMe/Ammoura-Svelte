@@ -321,4 +321,67 @@ describe('shippingGroups', () => {
       });
     });
   });
+
+  describe('groupCartItemsByShipping edge cases', () => {
+    it('should handle physical product with no shipping options', () => {
+      const items = [createMockCartItem({ id: 'prod-1', type: 'physical' })];
+      const productShippingMap = new Map<string, AvailableShippingOption[]>([]);
+
+      const result = groupCartItemsByShipping(items, productShippingMap);
+      expect(result).toHaveLength(1);
+    });
+
+    it('should group products with identical shipping options together', () => {
+      const shippingOptions: AvailableShippingOption[] = [
+        {
+          id: 'ship-1',
+          name: 'Standard',
+          price: 5.99,
+          description: null,
+          estimatedDaysMin: null,
+          estimatedDaysMax: null,
+          carrier: null,
+          isDefault: false,
+          isFreeShipping: false
+        }
+      ];
+      const items = [
+        createMockCartItem({ id: 'prod-1', type: 'physical' }),
+        createMockCartItem({ id: 'prod-2', type: 'physical' })
+      ];
+      const productShippingMap = new Map<string, AvailableShippingOption[]>([
+        ['prod-1', shippingOptions],
+        ['prod-2', shippingOptions]
+      ]);
+
+      const result = groupCartItemsByShipping(items, productShippingMap);
+      // Both products should be in the same group since they share the same shipping options
+      const physicalGroups = result.filter((g) => g.products.some((p) => p.type === 'physical'));
+      expect(physicalGroups.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should handle product with no shipping map entry', () => {
+      const items: CartItem[] = [
+        {
+          id: 'prod-orphan',
+          name: 'Orphan Product',
+          price: 10,
+          quantity: 1,
+          type: 'physical',
+          description: '',
+          image: '',
+          category: 'Test',
+          stock: 10,
+          tags: []
+        }
+      ];
+      const emptyMap = new Map<string, AvailableShippingOption[]>();
+
+      const result = groupCartItemsByShipping(items, emptyMap);
+
+      // Product should still appear in a group even without shipping options
+      const allProducts = result.flatMap((g) => g.products);
+      expect(allProducts.length).toBe(1);
+    });
+  });
 });

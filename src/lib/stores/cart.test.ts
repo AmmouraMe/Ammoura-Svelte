@@ -308,4 +308,103 @@ describe('Cart Store', () => {
       expect(cartStore).toBeDefined();
     });
   });
+
+  describe('clearCart alias', () => {
+    it('should clear cart using clearCart method (alias for clear)', () => {
+      cartStore.addItem(mockProduct);
+      expect(get(cartItems).length).toBe(1);
+
+      cartStore.clearCart();
+      expect(get(cartItems).length).toBe(0);
+    });
+  });
+
+  describe('localStorage error handling', () => {
+    it('should handle localStorage.setItem throwing during persist', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation((key: string) => {
+        if (key === 'cart') throw new Error('QuotaExceededError');
+      });
+
+      // Trigger a cart update to fire persistence subscription
+      cartStore.addItem(mockProduct);
+
+      // Should not crash the app
+      expect(get(cartItems).length).toBe(1);
+
+      setItemSpy.mockRestore();
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('logCartAction error handling', () => {
+    it('should handle fetch rejection gracefully in logCartAction', async () => {
+      const consoleSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+      const _fetchSpy = vi.stubGlobal(
+        'fetch',
+        vi.fn().mockRejectedValue(new Error('Network error'))
+      );
+
+      // Add item triggers logCartAction internally
+      cartStore.addItem(mockProduct);
+      // Wait for async logCartAction to settle
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      consoleSpy.mockRestore();
+      vi.unstubAllGlobals();
+    });
+  });
+
+  describe('getInitialCartItems error handling', () => {
+    it('should return empty array when localStorage has invalid JSON', async () => {
+      vi.resetModules();
+      vi.doMock('$app/environment', () => ({
+        browser: true,
+        building: false,
+        dev: true,
+        version: 'test'
+      }));
+
+      // Set invalid JSON before import
+      localStorage.setItem('cart', '{invalid json{{{');
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const { cartItems: freshCartItems } = await import('./cart');
+      const { get: getValue } = await import('svelte/store');
+
+      const items = getValue(freshCartItems);
+      expect(items).toEqual([]);
+
+      consoleSpy.mockRestore();
+      localStorage.removeItem('cart');
+      vi.doUnmock('$app/environment');
+    });
+
+    it('should return empty array in SSR (non-browser) environment', async () => {
+      vi.resetModules();
+      vi.doMock('$app/environment', () => ({
+        browser: false,
+        building: false,
+        dev: true,
+        version: 'test'
+      }));
+      vi.doMock('./toast', () => ({
+        toastStore: {
+          success: vi.fn(),
+          error: vi.fn(),
+          warning: vi.fn(),
+          info: vi.fn()
+        }
+      }));
+
+      const { cartItems: ssrCartItems } = await import('./cart');
+      const { get: getValue } = await import('svelte/store');
+
+      const items = getValue(ssrCartItems);
+      expect(items).toEqual([]);
+
+      vi.doUnmock('$app/environment');
+      vi.doUnmock('./toast');
+    });
+  });
 });

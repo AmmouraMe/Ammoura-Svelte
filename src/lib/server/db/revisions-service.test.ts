@@ -177,6 +177,35 @@ describe('Generic Revision Service', () => {
       expect(prepareCall).toContain('is_current = 1');
     });
 
+    it('should apply offset option', async () => {
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        all: vi.fn().mockResolvedValue({ results: [] })
+      };
+
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      await getRevisions(mockDb, siteId, 'product', entityId, { offset: 20 });
+
+      const prepareCall = (mockDb.prepare as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(prepareCall).toContain('OFFSET');
+    });
+
+    it('should apply limit and offset together', async () => {
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        all: vi.fn().mockResolvedValue({ results: [] })
+      };
+
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      await getRevisions(mockDb, siteId, 'product', entityId, { limit: 10, offset: 5 });
+
+      const prepareCall = (mockDb.prepare as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(prepareCall).toContain('LIMIT');
+      expect(prepareCall).toContain('OFFSET');
+    });
+
     it('should return empty array when no revisions exist', async () => {
       const mockStatement = {
         bind: vi.fn().mockReturnThis(),
@@ -412,6 +441,50 @@ describe('Generic Revision Service', () => {
 
       expect(result).toEqual([]);
     });
+
+    it('should handle branching revisions with multiple children', async () => {
+      // rev-1 has two children (rev-2 and rev-3), creating a branch
+      const revisions = [
+        { ...mockRevisionData, id: 'rev-1', parent_revision_id: undefined, created_at: 1000 },
+        { ...mockRevisionData, id: 'rev-2', parent_revision_id: 'rev-1', created_at: 2000 },
+        { ...mockRevisionData, id: 'rev-3', parent_revision_id: 'rev-1', created_at: 3000 }
+      ];
+
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        all: vi.fn().mockResolvedValue({ results: revisions })
+      };
+
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const result = await buildRevisionTree(mockDb, siteId, 'product', entityId);
+
+      expect(result).toHaveLength(3);
+      // First child continues on same branch, second child creates new branch
+      const branches = new Set(result.map((r) => r.branch));
+      expect(branches.size).toBeGreaterThanOrEqual(2);
+    });
+
+    it('should sort by created_at when depths are equal', async () => {
+      // Two root revisions at same depth
+      const revisions = [
+        { ...mockRevisionData, id: 'rev-1', parent_revision_id: undefined, created_at: 5000 },
+        { ...mockRevisionData, id: 'rev-2', parent_revision_id: undefined, created_at: 1000 }
+      ];
+
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        all: vi.fn().mockResolvedValue({ results: revisions })
+      };
+
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const result = await buildRevisionTree(mockDb, siteId, 'product', entityId);
+
+      expect(result).toHaveLength(2);
+      // Both at depth 0, sorted by created_at ascending
+      expect(result[0].created_at).toBeLessThanOrEqual(result[1].created_at);
+    });
   });
 
   describe('getHeadRevisions', () => {
@@ -467,6 +540,33 @@ describe('Generic Revision Service', () => {
 
       const prepareCall = (mockDb.prepare as ReturnType<typeof vi.fn>).mock.calls[0][0];
       expect(prepareCall).toContain('is_current = 0');
+    });
+  });
+
+  describe('buildRevisionTree parent not found', () => {
+    it('should treat revision as parentless when parent is not in nodeMap', async () => {
+      // Revision references a parent that doesn't exist in the result set
+      const revisions = [
+        {
+          ...mockRevisionData,
+          id: 'rev-1',
+          parent_revision_id: 'nonexistent-parent',
+          created_at: 1000
+        }
+      ];
+
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        all: vi.fn().mockResolvedValue({ results: revisions })
+      };
+
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const result = await buildRevisionTree(mockDb, siteId, 'product', entityId);
+
+      // Should still return the revision, treated as parentless
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('rev-1');
     });
   });
 });

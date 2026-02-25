@@ -175,6 +175,139 @@ describe('Pages Repository', () => {
 
       expect(updated).toBeNull();
     });
+
+    it('should update page slug', async () => {
+      const updatedPage = { ...mockPage, slug: '/new-slug' };
+      // First call: getPageById for the page being updated
+      // Second call: getPageBySlug to check for conflicts (returns null = no conflict)
+      // Third call: run the update
+      // Fourth call: getPageById for the result
+      const mockFirst = vi
+        .fn()
+        .mockResolvedValueOnce(mockPage) // getPageById
+        .mockResolvedValueOnce(null) // getPageBySlug (no conflict)
+        .mockResolvedValueOnce(updatedPage); // getPageById after update
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBind = vi
+        .fn()
+        .mockReturnValueOnce({ first: mockFirst }) // getPageById
+        .mockReturnValueOnce({ first: mockFirst }) // getPageBySlug
+        .mockReturnValueOnce({ run: mockRun }) // update
+        .mockReturnValueOnce({ first: mockFirst }); // getPageById after
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const updated = await db.updatePage(mockDB, testSiteId, 'page-1', {
+        slug: '/new-slug'
+      });
+
+      expect(updated?.slug).toBe('/new-slug');
+    });
+
+    it('should throw error when updating to existing slug', async () => {
+      const existingPage = { ...mockPage, id: 'page-2', slug: '/existing' };
+      const mockFirst = vi
+        .fn()
+        .mockResolvedValueOnce(mockPage) // getPageById
+        .mockResolvedValueOnce(existingPage); // getPageBySlug (conflict found)
+      const mockBind = vi
+        .fn()
+        .mockReturnValueOnce({ first: mockFirst })
+        .mockReturnValueOnce({ first: mockFirst });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      await expect(
+        db.updatePage(mockDB, testSiteId, 'page-1', { slug: '/existing' })
+      ).rejects.toThrow('Page with slug "/existing" already exists');
+    });
+
+    it('should update page status', async () => {
+      const updatedPage = { ...mockPage, status: 'published' as const };
+      const mockFirst = vi.fn().mockResolvedValueOnce(mockPage).mockResolvedValueOnce(updatedPage);
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBind = vi
+        .fn()
+        .mockReturnValueOnce({ first: mockFirst })
+        .mockReturnValueOnce({ run: mockRun })
+        .mockReturnValueOnce({ first: mockFirst });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const updated = await db.updatePage(mockDB, testSiteId, 'page-1', {
+        status: 'published'
+      });
+
+      expect(updated?.status).toBe('published');
+    });
+
+    it('should update page content', async () => {
+      const updatedPage = { ...mockPage, content: 'new content' };
+      const mockFirst = vi.fn().mockResolvedValueOnce(mockPage).mockResolvedValueOnce(updatedPage);
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBind = vi
+        .fn()
+        .mockReturnValueOnce({ first: mockFirst })
+        .mockReturnValueOnce({ run: mockRun })
+        .mockReturnValueOnce({ first: mockFirst });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const updated = await db.updatePage(mockDB, testSiteId, 'page-1', {
+        content: 'new content'
+      });
+
+      expect(updated?.content).toBe('new content');
+    });
+
+    it('should update page colorTheme', async () => {
+      const updatedPage = { ...mockPage, colorTheme: 'dark' };
+      const mockFirst = vi.fn().mockResolvedValueOnce(mockPage).mockResolvedValueOnce(updatedPage);
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBind = vi
+        .fn()
+        .mockReturnValueOnce({ first: mockFirst })
+        .mockReturnValueOnce({ run: mockRun })
+        .mockReturnValueOnce({ first: mockFirst });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const updated = await db.updatePage(mockDB, testSiteId, 'page-1', {
+        colorTheme: 'dark'
+      });
+
+      expect(updated?.colorTheme).toBe('dark');
+    });
+
+    it('should update page layout_id', async () => {
+      const updatedPage = { ...mockPage, layout_id: 5 };
+      const mockFirst = vi.fn().mockResolvedValueOnce(mockPage).mockResolvedValueOnce(updatedPage);
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockBind = vi
+        .fn()
+        .mockReturnValueOnce({ first: mockFirst })
+        .mockReturnValueOnce({ run: mockRun })
+        .mockReturnValueOnce({ first: mockFirst });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const updated = await db.updatePage(mockDB, testSiteId, 'page-1', {
+        layout_id: 5
+      });
+
+      expect(updated?.layout_id).toBe(5);
+    });
+
+    it('should return page unchanged when no updates provided', async () => {
+      const mockFirst = vi.fn().mockResolvedValue(mockPage);
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const updated = await db.updatePage(mockDB, testSiteId, 'page-1', {});
+
+      expect(updated).toEqual(mockPage);
+    });
   });
 
   describe('deletePage', () => {
@@ -261,6 +394,74 @@ describe('Pages Repository', () => {
         expect(updated).toBeDefined();
         expect(updated!.config).toBe('{"text":"Updated"}');
       });
+
+      it('should return null for non-existent widget', async () => {
+        const mockFirst = vi.fn().mockResolvedValue(null);
+        const mockBind = vi.fn().mockReturnValue({ first: mockFirst });
+        const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+        const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+        const updated = await db.updateWidget(mockDB, 'nonexistent', {
+          config: { text: 'Test' }
+        });
+
+        expect(updated).toBeNull();
+      });
+
+      it('should update widget type', async () => {
+        const updatedWidget = { ...mockWidget, type: 'image' as const };
+        const mockFirst = vi
+          .fn()
+          .mockResolvedValueOnce(mockWidget)
+          .mockResolvedValueOnce(updatedWidget);
+        const mockRun = vi.fn().mockResolvedValue({ success: true });
+        const mockBind = vi
+          .fn()
+          .mockReturnValueOnce({ first: mockFirst })
+          .mockReturnValueOnce({ run: mockRun })
+          .mockReturnValueOnce({ first: mockFirst });
+        const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+        const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+        const updated = await db.updateWidget(mockDB, 'widget-1', {
+          type: 'image'
+        });
+
+        expect(updated?.type).toBe('image');
+      });
+
+      it('should update widget position', async () => {
+        const updatedWidget = { ...mockWidget, position: 5 };
+        const mockFirst = vi
+          .fn()
+          .mockResolvedValueOnce(mockWidget)
+          .mockResolvedValueOnce(updatedWidget);
+        const mockRun = vi.fn().mockResolvedValue({ success: true });
+        const mockBind = vi
+          .fn()
+          .mockReturnValueOnce({ first: mockFirst })
+          .mockReturnValueOnce({ run: mockRun })
+          .mockReturnValueOnce({ first: mockFirst });
+        const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+        const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+        const updated = await db.updateWidget(mockDB, 'widget-1', {
+          position: 5
+        });
+
+        expect(updated?.position).toBe(5);
+      });
+
+      it('should return widget unchanged when no updates provided', async () => {
+        const mockFirst = vi.fn().mockResolvedValue(mockWidget);
+        const mockBind = vi.fn().mockReturnValue({ first: mockFirst });
+        const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+        const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+        const updated = await db.updateWidget(mockDB, 'widget-1', {});
+
+        expect(updated).toEqual(mockWidget);
+      });
     });
 
     describe('deleteWidget', () => {
@@ -285,6 +486,29 @@ describe('Pages Repository', () => {
         await db.reorderWidgets(mockDB, 'page-1', ['widget-3', 'widget-2', 'widget-1']);
 
         expect(mockPrepare).toHaveBeenCalledTimes(3);
+      });
+    });
+
+    describe('deletePageWidgets', () => {
+      it('should delete all widgets for a page', async () => {
+        const mockRun = vi.fn().mockResolvedValue({ meta: { changes: 3 }, success: true });
+        const mockBind = vi.fn().mockReturnValue({ run: mockRun });
+        const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+        const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+        const deleted = await db.deletePageWidgets(mockDB, 'page-1');
+        expect(deleted).toBe(true);
+        expect(mockBind).toHaveBeenCalledWith('page-1');
+      });
+
+      it('should return false when no widgets to delete', async () => {
+        const mockRun = vi.fn().mockResolvedValue({ meta: { changes: 0 }, success: true });
+        const mockBind = vi.fn().mockReturnValue({ run: mockRun });
+        const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+        const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+        const deleted = await db.deletePageWidgets(mockDB, 'nonexistent-page');
+        expect(deleted).toBe(false);
       });
     });
   });
@@ -544,6 +768,98 @@ describe('Pages Repository', () => {
       expect(result).toHaveLength(1);
       expect(result[0].is_builtin).toBe(true);
       expect(typeof result[0].is_builtin).toBe('boolean');
+    });
+  });
+
+  describe('createPage error branch', () => {
+    it('should throw when getPageById returns null after insert', async () => {
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockFirst = vi.fn().mockResolvedValue(null);
+      const mockBind = vi.fn().mockReturnValue({ run: mockRun, first: mockFirst });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      await expect(
+        db.createPage(mockDB, testSiteId, {
+          title: 'Test Page',
+          slug: '/test-page',
+          status: 'draft'
+        })
+      ).rejects.toThrow('Failed to create page');
+    });
+  });
+
+  describe('createPageComponent error branch', () => {
+    it('should throw when getWidgetById returns null after insert', async () => {
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockFirst = vi.fn().mockResolvedValue(null);
+      const mockBind = vi.fn().mockReturnValue({ run: mockRun, first: mockFirst });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      await expect(
+        db.createPageComponent(mockDB, 'page-1', {
+          type: 'text',
+          config: { text: 'Hello' },
+          position: 0
+        })
+      ).rejects.toThrow('Failed to create page component');
+    });
+  });
+
+  describe('getPublishedPages null results fallback', () => {
+    it('should return empty array when results is null', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await db.getPublishedPages(mockDB, testSiteId);
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getPageComponents null results fallback', () => {
+    it('should return empty array when results is null', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await db.getPageComponents(mockDB, 'page-1');
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('deletePageComponent meta fallback', () => {
+    it('should return false when meta.changes is undefined', async () => {
+      const mockRun = vi.fn().mockResolvedValue({ meta: {} });
+      const mockBind = vi.fn().mockReturnValue({ run: mockRun });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await db.deletePageComponent(mockDB, 'widget-1');
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('getAllPagesWithRevisionInfo hasDifferentRevisions branch', () => {
+    it('should set has_unpublished_changes false when revisions are equal', async () => {
+      const mockAll = vi.fn().mockResolvedValue({
+        results: [
+          {
+            ...mockPage,
+            draft_revision_id: 'rev-same',
+            published_revision_id: 'rev-same'
+          }
+        ]
+      });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await db.getAllPagesWithRevisionInfo(mockDB, testSiteId);
+      expect(result[0].has_unpublished_changes).toBe(false);
     });
   });
 });

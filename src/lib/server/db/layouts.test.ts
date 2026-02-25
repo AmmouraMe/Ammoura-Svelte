@@ -18,10 +18,8 @@ import {
 import type { Layout, LayoutWidget } from '$lib/types/pages';
 
 describe('layouts database operations', () => {
-  let mockDb: {
-    prepare: ReturnType<typeof vi.fn>;
-    batch: ReturnType<typeof vi.fn>;
-  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockDb: any;
 
   const mockLayout: Layout = {
     id: 1,
@@ -526,6 +524,113 @@ describe('layouts database operations', () => {
   describe('updateLayoutWidgets (deprecated)', () => {
     it('should be an alias for updateLayoutComponents', () => {
       expect(updateLayoutWidgets).toBe(updateLayoutComponents);
+    });
+  });
+
+  describe('updateLayout is_default false branch', () => {
+    it('should set is_default to 0 when false', async () => {
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        run: vi.fn().mockResolvedValue({ success: true }),
+        first: vi.fn().mockResolvedValue({
+          id: 'layout-1',
+          site_id: 'site-1',
+          name: 'Test Layout',
+          is_default: 0,
+          config: '{}',
+          created_at: 1000,
+          updated_at: 2000
+        })
+      };
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const result = await updateLayout(mockDb, 'site-1', 1, {
+        is_default: false
+      });
+
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('getLayoutComponents config as object branch', () => {
+    it('should pass through config when already an object', async () => {
+      const configObj = { text: 'Hello' };
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        all: vi.fn().mockResolvedValue({
+          results: [
+            {
+              id: 'widget-1',
+              layout_id: 'layout-1',
+              type: 'text',
+              config: configObj,
+              position: 0,
+              parent_id: null,
+              slot: null
+            }
+          ]
+        })
+      };
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const result = await getLayoutComponents(mockDb, 1);
+
+      expect(result[0].config).toEqual(configObj);
+    });
+  });
+
+  describe('createLayoutWidget config as object branch', () => {
+    it('should pass through config when result config is already an object', async () => {
+      const configObj = { text: 'New' };
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        run: vi.fn().mockResolvedValue({ success: true }),
+        first: vi.fn().mockResolvedValue({
+          id: 'widget-new',
+          layout_id: 'layout-1',
+          type: 'text',
+          config: configObj,
+          position: 0,
+          parent_id: null,
+          slot: null
+        })
+      };
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const result = await createLayoutWidget(mockDb, 1, {
+        id: 'widget-new',
+        type: 'text',
+        config: configObj,
+        position: 0
+      });
+
+      expect(result?.config).toEqual(configObj);
+    });
+  });
+
+  describe('updateLayoutWidget config as object branch', () => {
+    it('should pass through config when result config is already an object', async () => {
+      const configObj = { text: 'Updated' };
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        run: vi.fn().mockResolvedValue({ success: true }),
+        first: vi.fn().mockResolvedValue({
+          id: 'widget-1',
+          layout_id: 'layout-1',
+          type: 'text',
+          config: configObj,
+          position: 0,
+          parent_id: null,
+          slot: null
+        })
+      };
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const result = await updateLayoutWidget(mockDb, 'widget-1', {
+        config: configObj
+      });
+
+      expect(result?.config).toEqual(configObj);
     });
   });
 });

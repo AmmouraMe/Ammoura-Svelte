@@ -458,5 +458,81 @@ describe('Products Store', () => {
       expect(typeof id).toBe('string');
       expect(id.length).toBeGreaterThan(0);
     });
+
+    it('should use fallback ID when crypto.randomUUID is unavailable', () => {
+      const originalRandomUUID = crypto.randomUUID;
+      // @ts-expect-error testing fallback when randomUUID is unavailable
+      crypto.randomUUID = undefined;
+
+      const id = productsStore.create({ ...mockProduct, name: 'Fallback Product' });
+      expect(typeof id).toBe('string');
+      expect(id.length).toBeGreaterThan(0);
+      // Fallback format: timestamp-random-random
+      expect(id).toMatch(/^\d+-[a-z0-9]+-[a-z0-9]+$/);
+
+      crypto.randomUUID = originalRandomUUID;
+    });
+  });
+
+  describe('localStorage error handling', () => {
+    it('should handle localStorage.setItem throwing during persist', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation((key: string) => {
+        if (key === 'products') throw new Error('QuotaExceededError');
+      });
+
+      // Trigger a products update to fire the persist subscription
+      productsStore.create(mockProduct);
+
+      // Should not crash
+      expect(get(productsList).length).toBeGreaterThan(0);
+
+      setItemSpy.mockRestore();
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('SSR and initialization error handling', () => {
+    it('should return initial products in SSR (non-browser) environment', async () => {
+      vi.resetModules();
+      vi.doMock('$app/environment', () => ({
+        browser: false,
+        building: false,
+        dev: true,
+        version: 'test'
+      }));
+
+      const { productsList: ssrProductsList } = await import('./products');
+      const { get: getValue } = await import('svelte/store');
+
+      const products = getValue(ssrProductsList);
+      // Should have initial products from the data file
+      expect(Array.isArray(products)).toBe(true);
+
+      vi.doUnmock('$app/environment');
+    });
+
+    it('should return initial products when localStorage has invalid JSON', async () => {
+      vi.resetModules();
+      vi.doMock('$app/environment', () => ({
+        browser: true,
+        building: false,
+        dev: true,
+        version: 'test'
+      }));
+
+      localStorage.setItem('products', 'not valid json{{{');
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const { productsList: freshProductsList } = await import('./products');
+      const { get: getValue } = await import('svelte/store');
+
+      const products = getValue(freshProductsList);
+      expect(Array.isArray(products)).toBe(true);
+
+      consoleSpy.mockRestore();
+      localStorage.removeItem('products');
+      vi.doUnmock('$app/environment');
+    });
   });
 });

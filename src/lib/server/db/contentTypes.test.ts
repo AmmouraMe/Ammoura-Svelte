@@ -14,7 +14,8 @@ import {
   deleteContentType,
   archiveContentType,
   updateContentTypeSchema,
-  getContentTypeCount
+  getContentTypeCount,
+  resolveContentRoute
 } from './contentTypes';
 import type { DBContentType, CreateContentTypeData } from '../../types/contentTypes';
 
@@ -206,6 +207,32 @@ describe('Content Types Repository', () => {
       expect(result).not.toBeNull();
       expect(result.name).toBe('Blog');
     });
+
+    it('should throw when re-fetch after create returns null', async () => {
+      const mockRun = vi.fn().mockResolvedValue({ success: true });
+      const mockFirst = vi.fn().mockResolvedValue(null);
+      const mockAll = vi.fn().mockResolvedValue({ results: [], success: true });
+      const mockBind = vi.fn().mockReturnValue({
+        first: mockFirst,
+        all: mockAll,
+        run: mockRun
+      });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const data: CreateContentTypeData = {
+        name: 'Blog',
+        slug: 'blog',
+        basePath: '/blog',
+        fieldsSchema: [
+          { slug: 'body', name: 'Body', type: 'rich_text', required: true, position: 1 }
+        ]
+      };
+
+      await expect(createContentType(mockDB, siteId, data)).rejects.toThrow(
+        'Failed to create content type'
+      );
+    });
   });
 
   describe('updateContentType', () => {
@@ -353,6 +380,218 @@ describe('Content Types Repository', () => {
       const result = await getContentTypeCount(mockDB, siteId);
 
       expect(result).toBe(0);
+    });
+  });
+
+  describe('resolveContentRoute', () => {
+    it('should return null when no content types match slug', async () => {
+      const mockDB = createMockDB({ allResults: [] });
+
+      const result = await resolveContentRoute(mockDB, siteId, '/unknown');
+
+      expect(result).toBeNull();
+    });
+
+    it('should return listing page for exact match', async () => {
+      const mockDB = createMockDB({ allResults: [mockDBContentType] });
+
+      const result = await resolveContentRoute(mockDB, siteId, '/blog');
+
+      expect(result).not.toBeNull();
+      expect(result?.contentType.name).toBe('Blog');
+      expect(result?.entrySlug).toBeNull();
+    });
+
+    it('should return entry slug for valid entry route', async () => {
+      const mockDB = createMockDB({ allResults: [mockDBContentType] });
+
+      const result = await resolveContentRoute(mockDB, siteId, '/blog/my-post');
+
+      expect(result).not.toBeNull();
+      expect(result?.contentType.name).toBe('Blog');
+      expect(result?.entrySlug).toBe('my-post');
+    });
+
+    it('should return null when remainder does not start with slash', async () => {
+      const mockDB = createMockDB({ allResults: [mockDBContentType] });
+
+      const result = await resolveContentRoute(mockDB, siteId, '/blogging');
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null when entry slug is empty', async () => {
+      const mockDB = createMockDB({ allResults: [mockDBContentType] });
+
+      const result = await resolveContentRoute(mockDB, siteId, '/blog/');
+
+      expect(result).toBeNull();
+    });
+
+    it('should match most specific path first', async () => {
+      const generalType: DBContentType = {
+        ...mockDBContentType,
+        id: 'ct-general',
+        name: 'Content',
+        base_path: '/content'
+      };
+      const specificType: DBContentType = {
+        ...mockDBContentType,
+        id: 'ct-specific',
+        name: 'Deep Content',
+        base_path: '/content/blog'
+      };
+      const mockDB = createMockDB({ allResults: [generalType, specificType] });
+
+      const result = await resolveContentRoute(mockDB, siteId, '/content/blog');
+
+      expect(result).not.toBeNull();
+      expect(result?.contentType.name).toBe('Deep Content');
+    });
+  });
+
+  describe('updateContentType - additional field branches', () => {
+    it('should update listingPageId', async () => {
+      const mockDB = createMockDB({
+        firstResult: mockDBContentType
+      });
+
+      const result = await updateContentType(mockDB, siteId, 'ct-1', {
+        listingPageId: 'page-123'
+      });
+
+      expect(result).toBeDefined();
+    });
+
+    it('should update entryTemplatePageId', async () => {
+      const mockDB = createMockDB({
+        firstResult: mockDBContentType
+      });
+
+      const result = await updateContentType(mockDB, siteId, 'ct-1', {
+        entryTemplatePageId: 'page-456'
+      });
+
+      expect(result).toBeDefined();
+    });
+
+    it('should update basePath field', async () => {
+      const mockDB = createMockDB({
+        firstResult: mockDBContentType
+      });
+
+      const result = await updateContentType(mockDB, siteId, 'ct-1', {
+        basePath: '/new-path'
+      });
+
+      expect(result).toBeDefined();
+    });
+
+    it('should update icon field', async () => {
+      const mockDB = createMockDB({
+        firstResult: mockDBContentType
+      });
+
+      const result = await updateContentType(mockDB, siteId, 'ct-1', {
+        icon: 'new-icon'
+      });
+
+      expect(result).toBeDefined();
+    });
+
+    it('should update basePath and icon together', async () => {
+      const mockDB = createMockDB({
+        firstResult: mockDBContentType
+      });
+
+      const result = await updateContentType(mockDB, siteId, 'ct-1', {
+        basePath: '/articles',
+        icon: '📚'
+      });
+
+      expect(result).toBeDefined();
+    });
+
+    it('should update slug field', async () => {
+      const mockDB = createMockDB({
+        firstResult: mockDBContentType
+      });
+
+      const result = await updateContentType(mockDB, siteId, 'ct-1', {
+        slug: 'new-slug'
+      });
+
+      expect(result).toBeDefined();
+    });
+
+    it('should update description field', async () => {
+      const mockDB = createMockDB({
+        firstResult: mockDBContentType
+      });
+
+      const result = await updateContentType(mockDB, siteId, 'ct-1', {
+        description: 'New description'
+      });
+
+      expect(result).toBeDefined();
+    });
+
+    it('should throw when re-fetch after create returns null', async () => {
+      const mockFirst = vi.fn().mockResolvedValueOnce({ id: 'ct-new' }).mockResolvedValueOnce(null);
+      const mockDB = createMockDB({ firstResult: null });
+      (mockDB.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+        bind: vi.fn().mockReturnValue({
+          run: vi.fn().mockResolvedValue({ meta: { last_row_id: 1 } }),
+          first: mockFirst
+        })
+      });
+
+      await expect(
+        createContentType(mockDB, siteId, {
+          name: 'Posts',
+          slug: 'posts',
+          basePath: '/posts',
+          fieldsSchema: []
+        })
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('null results fallbacks', () => {
+    it('getContentTypes should return empty array when results is null', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getContentTypes(mockDB, siteId);
+      expect(result).toEqual([]);
+    });
+
+    it('getAllContentTypes should return empty array when results is null', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getAllContentTypes(mockDB, siteId);
+      expect(result).toEqual([]);
+    });
+
+    it('getContentTypeByBasePath should return null when row is null', async () => {
+      const mockDB = createMockDB({ firstResult: null });
+      const result = await getContentTypeByBasePath(mockDB, siteId, '/nonexistent');
+      expect(result).toBeNull();
+    });
+
+    it('resolveContentRoute should return null when no matching types', async () => {
+      const mockAll = vi.fn().mockResolvedValue({ results: null });
+      const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await resolveContentRoute(mockDB, siteId, '/nonexistent/slug');
+      expect(result).toBeNull();
     });
   });
 });

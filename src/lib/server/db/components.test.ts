@@ -265,6 +265,17 @@ describe('Component Database Functions', () => {
 
       expect(components[0].children_count).toBe(5); // Should use the larger value
     });
+
+    it('should throw when db query fails', async () => {
+      mockDb.all.mockRejectedValue(new Error('Database error'));
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await expect(
+        getComponentsWithChildrenCount(mockDb as unknown as D1Database, '1')
+      ).rejects.toThrow('Database error');
+
+      consoleSpy.mockRestore();
+    });
   });
 
   describe('getComponentsByType', () => {
@@ -680,6 +691,26 @@ describe('Component Database Functions', () => {
         updateComponent(mockDb as unknown as D1Database, '1', 1, { name: 'Test' })
       ).rejects.toThrow('Component not found or update failed');
     });
+
+    it('should throw and log when database error occurs during update', async () => {
+      const mockComponent = {
+        id: 1,
+        site_id: '1',
+        name: 'Original',
+        type: 'text',
+        config: '{}',
+        is_global: 0,
+        is_primitive: 0
+      };
+
+      mockDb.first
+        .mockResolvedValueOnce(mockComponent)
+        .mockRejectedValueOnce(new Error('Database error'));
+
+      await expect(
+        updateComponent(mockDb as unknown as D1Database, '1', 1, { name: 'Test' })
+      ).rejects.toThrow('Database error');
+    });
   });
 
   describe('deleteComponent', () => {
@@ -1075,6 +1106,104 @@ describe('Component Database Functions', () => {
         expect(themeToggle.id).toBe('theme-toggle');
         expect(themeToggle.config.visibilityRule).toBe('unauthenticated');
       }
+    });
+
+    it('should handle empty children array by preserving config', async () => {
+      const mockComponent = {
+        id: 1,
+        site_id: '1',
+        name: 'Container',
+        type: 'container',
+        config: '{"backgroundColor":"#fff","children":[]}',
+        is_global: 0,
+        is_primitive: 0
+      };
+
+      // 1) getComponent in saveComponentWithChildren
+      // 2) getComponent in updateComponent
+      // 3) UPDATE RETURNING
+      mockDb.first
+        .mockResolvedValueOnce(mockComponent)
+        .mockResolvedValueOnce(mockComponent)
+        .mockResolvedValueOnce({
+          ...mockComponent,
+          config: '{"backgroundColor":"#fff","children":[]}'
+        });
+      vi.mocked(getComponentChildren).mockResolvedValue([]);
+
+      const result = await saveComponentWithChildren(mockDb as unknown as D1Database, '1', 1, {
+        name: 'Container',
+        children: []
+      });
+
+      expect(result.children).toEqual([]);
+      expect(result.widgets).toEqual([]);
+    });
+
+    it('should handle wrapper widget by using its config as component config', async () => {
+      const mockComponent = {
+        id: 1,
+        site_id: '1',
+        name: 'Navbar',
+        type: 'navbar',
+        config: '{}',
+        is_global: 1,
+        is_primitive: 0
+      };
+
+      const wrapperConfig = {
+        layout: 'horizontal',
+        sticky: true
+      };
+
+      const mockChildren = [
+        {
+          id: '__component_wrapper__',
+          component_id: 1,
+          type: 'container' as const,
+          position: 0,
+          config: wrapperConfig
+        },
+        {
+          id: 'logo-widget',
+          component_id: 1,
+          type: 'image' as const,
+          position: 1,
+          config: { src: '/logo.png' },
+          parent_id: '__component_wrapper__'
+        }
+      ];
+
+      // 1) getComponent in updateComponent, 2) UPDATE RETURNING
+      mockDb.first.mockResolvedValueOnce(mockComponent).mockResolvedValueOnce({
+        ...mockComponent,
+        config: JSON.stringify({ ...wrapperConfig, children: [] })
+      });
+      vi.mocked(saveComponentChildren).mockResolvedValue(undefined);
+      vi.mocked(getComponentChildren).mockResolvedValue([
+        {
+          id: 'logo-widget',
+          component_id: 1,
+          type: 'image' as const,
+          position: 0,
+          config: { src: '/logo.png' },
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z'
+        }
+      ]);
+
+      const result = await saveComponentWithChildren(mockDb as unknown as D1Database, '1', 1, {
+        name: 'Navbar',
+        children: mockChildren
+      });
+
+      // saveComponentChildren should have been called without the wrapper widget
+      const savedChildren = vi.mocked(saveComponentChildren).mock.calls[0][2];
+      expect(savedChildren.every((c: { id: string }) => c.id !== '__component_wrapper__')).toBe(
+        true
+      );
+
+      expect(result).toBeDefined();
     });
 
     it('should throw error when update fails', async () => {

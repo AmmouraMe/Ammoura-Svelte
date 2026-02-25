@@ -725,4 +725,54 @@ describe('sanitizeFieldValues', () => {
     const result = sanitizeFieldValues([], {});
     expect(result).toEqual({});
   });
+
+  describe('validateEmailField non-string value', () => {
+    it('should return invalid_type error for non-string value', () => {
+      const field = {
+        id: 'email-1',
+        name: 'Email',
+        slug: 'email',
+        type: 'email' as const,
+        required: false,
+        sortOrder: 0,
+        position: 0
+      };
+      const result = validateEmailField(field, 123 as unknown as string);
+      expect(result).toHaveLength(1);
+      expect(result[0].code).toBe('invalid_type');
+    });
+  });
+
+  describe('validateMediaField multiple config', () => {
+    it('should return invalid_type when multiple is true and value is not an array', () => {
+      const field = {
+        id: 'media-1',
+        name: 'Photos',
+        slug: 'photos',
+        type: 'media' as const,
+        required: false,
+        sortOrder: 0,
+        position: 0,
+        config: { multiple: true }
+      };
+      const result = validateMediaField(field, 'not-an-array');
+      expect(result).toHaveLength(1);
+      expect(result[0].code).toBe('invalid_type');
+    });
+
+    it('should accept an array when multiple is true', () => {
+      const field = {
+        id: 'media-1',
+        name: 'Photos',
+        slug: 'photos',
+        type: 'media' as const,
+        required: false,
+        sortOrder: 0,
+        position: 0,
+        config: { multiple: true }
+      };
+      const result = validateMediaField(field, ['file1.jpg', 'file2.jpg']);
+      expect(result).toHaveLength(0);
+    });
+  });
 });

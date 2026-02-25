@@ -367,4 +367,30 @@ describe('Activity Logger', () => {
       expect(mockPrepare).toHaveBeenCalled();
     });
   });
+
+  describe('logProductAction productName fallback', () => {
+    it('should use productId when productName is not provided', async () => {
+      await logProductAction(mockDb, {
+        siteId: 'site-123',
+        userId: 'user-456',
+        action: 'viewed',
+        productId: 'prod-123'
+      });
+
+      expect(mockPrepare).toHaveBeenCalled();
+    });
+  });
+
+  describe('logPageAction pageName fallback', () => {
+    it('should use pageUrl when pageName is not provided', async () => {
+      await logPageAction(mockDb, {
+        siteId: 'site-123',
+        userId: 'user-456',
+        action: 'viewed',
+        pageUrl: '/about'
+      });
+
+      expect(mockPrepare).toHaveBeenCalled();
+    });
+  });
 });

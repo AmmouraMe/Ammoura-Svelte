@@ -642,4 +642,281 @@ describe('applyComponentChanges', () => {
       expect(container?.parent_id).toBeUndefined();
     });
   });
+
+  describe('unknown action', () => {
+    it('should return current components for unknown action', () => {
+      const components: PageComponent[] = [
+        {
+          id: 'comp-1',
+          type: 'text',
+          position: 0,
+          config: { text: 'Hello' }
+        } as PageComponent
+      ];
+      const result = applyComponentChanges(components, {
+        type: 'component_changes',
+        changes: {
+          action: 'unknown_action' as 'add'
+        }
+      });
+      expect(result).toEqual(components);
+    });
+  });
+
+  describe('add to deeply nested parent', () => {
+    it('should add component to a grandchild container via recursive update', () => {
+      const components: PageComponent[] = [
+        {
+          id: 'root-container',
+          type: 'container',
+          position: 0,
+          config: {
+            children: [
+              {
+                id: 'nested-container',
+                type: 'container',
+                position: 0,
+                config: {
+                  children: []
+                }
+              } as unknown as PageComponent
+            ]
+          }
+        } as unknown as PageComponent
+      ];
+
+      const result = applyComponentChanges(components, {
+        type: 'component_changes',
+        changes: {
+          action: 'add',
+          parentId: 'nested-container',
+          components: [
+            {
+              id: 'new-widget',
+              type: 'text',
+              position: 0,
+              config: { text: 'Nested text' }
+            } as PageComponent
+          ]
+        }
+      });
+
+      // The root container should be updated
+      expect(result[0].id).toBe('root-container');
+      // The nested container should have the new child
+      const rootChildren = result[0].config.children as PageComponent[];
+      expect(rootChildren[0].id).toBe('nested-container');
+      const nestedChildren = rootChildren[0].config.children as PageComponent[];
+      expect(nestedChildren).toHaveLength(1);
+      expect(nestedChildren[0].id).toBe('new-widget');
+    });
+
+    it('should return unchanged component when nested children have no match', () => {
+      const components: PageComponent[] = [
+        {
+          id: 'comp-with-children',
+          type: 'container',
+          position: 0,
+          config: {
+            children: [
+              {
+                id: 'child-1',
+                type: 'text',
+                position: 0,
+                config: { text: 'Hello' }
+              } as PageComponent
+            ]
+          }
+        } as PageComponent,
+        {
+          id: 'simple-comp',
+          type: 'text',
+          position: 1,
+          config: { text: 'World' }
+        } as PageComponent
+      ];
+
+      // Target a non-existent parent — recursion finds nothing to change
+      const result = applyComponentChanges(components, {
+        type: 'component_changes',
+        changes: {
+          action: 'add',
+          parentId: 'non-existent-parent',
+          components: [
+            {
+              id: 'new-widget',
+              type: 'text',
+              position: 0,
+              config: { text: 'Added' }
+            } as PageComponent
+          ]
+        }
+      });
+
+      // Components should be unchanged (false branch of updatedChildren !== comp.config.children)
+      expect(result.length).toBe(2);
+      const children = result[0].config.children as PageComponent[];
+      expect(children).toHaveLength(1);
+      expect(children[0].id).toBe('child-1');
+    });
+  });
+
+  describe('add components with ID handling', () => {
+    it('should keep numeric string IDs', () => {
+      const components: PageComponent[] = [];
+      const result = applyComponentChanges(components, {
+        type: 'component_changes',
+        changes: {
+          action: 'add',
+          components: [
+            {
+              id: '12345',
+              type: 'text',
+              position: 0,
+              config: { text: 'Numeric ID' }
+            } as PageComponent
+          ]
+        }
+      });
+      expect(result[0].id).toBe('12345');
+    });
+
+    it('should get page_id from existing components when not set on new component', () => {
+      const components: PageComponent[] = [
+        {
+          id: 'existing-1',
+          type: 'text',
+          position: 0,
+          page_id: 'page-abc',
+          config: { text: 'Existing' }
+        } as PageComponent
+      ];
+      const result = applyComponentChanges(components, {
+        type: 'component_changes',
+        changes: {
+          action: 'add',
+          components: [
+            {
+              id: 'temp-new',
+              type: 'hero',
+              position: 1,
+              config: { title: 'New' }
+            } as PageComponent
+          ]
+        }
+      });
+      // The new component should inherit page_id from existing components
+      expect(result.length).toBe(2);
+      expect(result[1].page_id).toBe('page-abc');
+    });
+
+    it('should generate new ID when ID does not start with temp- or match numeric', () => {
+      const components: PageComponent[] = [];
+      const result = applyComponentChanges(components, {
+        type: 'component_changes',
+        changes: {
+          action: 'add',
+          components: [
+            {
+              id: 'custom-id-format',
+              type: 'text',
+              position: 0,
+              config: { text: 'Custom ID' }
+            } as PageComponent
+          ]
+        }
+      });
+      // Should generate a new ID since 'custom-id-format' doesn't match temp- or numeric
+      expect(result[0].id).not.toBe('custom-id-format');
+    });
+  });
+
+  describe('undefined components/componentIds fallbacks', () => {
+    it('should handle add action with components undefined', () => {
+      const components: PageComponent[] = [
+        { id: 'comp-1', page_id: 'page-1', type: 'text', position: 0, config: {} } as PageComponent
+      ];
+      const result = applyComponentChanges(components, {
+        type: 'component_changes',
+        changes: {
+          action: 'add',
+          components: undefined
+        }
+      });
+      // With no new components, array should just contain existing
+      expect(result.length).toBe(1);
+    });
+
+    it('should handle remove action with componentIds undefined', () => {
+      const components: PageComponent[] = [
+        { id: 'comp-1', page_id: 'page-1', type: 'text', position: 0, config: {} } as PageComponent
+      ];
+      const result = applyComponentChanges(components, {
+        type: 'component_changes',
+        changes: {
+          action: 'remove',
+          componentIds: undefined
+        }
+      });
+      // With no IDs to remove, all should remain
+      expect(result.length).toBe(1);
+    });
+
+    it('should handle add to parent with components undefined', () => {
+      const components: PageComponent[] = [
+        {
+          id: 'container-1',
+          page_id: 'page-1',
+          type: 'container',
+          position: 0,
+          config: { children: [] }
+        } as unknown as PageComponent
+      ];
+      const result = applyComponentChanges(components, {
+        type: 'component_changes',
+        changes: {
+          action: 'add',
+          parentId: 'container-1',
+          components: undefined
+        }
+      });
+      expect(result.length).toBe(1);
+    });
+
+    it('should handle update action with components undefined', () => {
+      const components: PageComponent[] = [
+        {
+          id: 'comp-1',
+          page_id: 'page-1',
+          type: 'text',
+          position: 0,
+          config: { text: 'Hello' }
+        } as PageComponent
+      ];
+      const result = applyComponentChanges(components, {
+        type: 'component_changes',
+        changes: {
+          action: 'update',
+          components: undefined
+        }
+      });
+      expect(result.length).toBe(1);
+      expect((result[0].config as Record<string, unknown>).text).toBe('Hello');
+    });
+
+    it('should handle reorder action with components undefined', () => {
+      const components: PageComponent[] = [
+        { id: 'comp-1', page_id: 'page-1', type: 'text', position: 0, config: {} } as PageComponent
+      ];
+      const result = applyComponentChanges(components, {
+        type: 'component_changes',
+        changes: {
+          action: 'reorder',
+          components: undefined
+        }
+      });
+      // With no ordering components, result will be empty (reorder filters by provided list)
+      expect(result.length).toBe(0);
+    });
+  });
 });

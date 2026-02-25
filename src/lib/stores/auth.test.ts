@@ -334,5 +334,153 @@ describe('Auth Store', () => {
       expect(state.isAuthenticated).toBe(false);
       expect(state.user).toBeNull();
     });
+
+    it('should handle login exception in try/catch', async () => {
+      // Spy on console.error
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      // Mock fetch to throw
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new Error('Connection refused')
+      );
+
+      const success = await authStore.login('test@test.com', 'password');
+
+      expect(success).toBe(false);
+      const state = get(authState);
+      expect(state.isAuthenticated).toBe(false);
+      expect(state.isLoading).toBe(false);
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('subscribe', () => {
+    it('should provide subscribe method', () => {
+      expect(authStore.subscribe).toBeDefined();
+      expect(typeof authStore.subscribe).toBe('function');
+    });
+
+    it('should notify subscribers on state changes', async () => {
+      const states: Array<{ isAuthenticated: boolean }> = [];
+      const unsubscribe = authStore.subscribe((state) => {
+        states.push({ isAuthenticated: state.isAuthenticated });
+      });
+
+      (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          user: {
+            id: 'admin-1',
+            email: 'owner@hermes.local',
+            name: 'Site Owner',
+            role: 'admin'
+          }
+        })
+      });
+
+      await authStore.login('owner@hermes.local', 'owner456Pass');
+
+      // Should have received multiple state updates
+      expect(states.length).toBeGreaterThan(1);
+      expect(states[states.length - 1].isAuthenticated).toBe(true);
+
+      unsubscribe();
+    });
+  });
+
+  describe('localStorage error handling', () => {
+    it('should handle localStorage.setItem throwing during persist', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation((key: string) => {
+        if (key === 'auth') throw new Error('QuotaExceededError');
+      });
+
+      // Trigger a state update — the subscription persist should catch the error
+      authState.set({
+        user: { id: '1', email: 'test@test.com', name: 'Test', role: 'admin' },
+        isAuthenticated: true,
+        isLoading: false
+      });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Failed to save auth to localStorage:',
+        expect.any(Error)
+      );
+
+      setItemSpy.mockRestore();
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle localStorage.removeItem throwing during persist', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const removeItemSpy = vi
+        .spyOn(localStorage, 'removeItem')
+        .mockImplementation((key: string) => {
+          if (key === 'auth') throw new Error('SecurityError');
+        });
+
+      // Setting user to null triggers removeItem path
+      authState.set({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false
+      });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Failed to save auth to localStorage:',
+        expect.any(Error)
+      );
+
+      removeItemSpy.mockRestore();
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('SSR and initialization error handling', () => {
+    it('should return default state in SSR (non-browser) environment', async () => {
+      vi.resetModules();
+      vi.doMock('$app/environment', () => ({
+        browser: false,
+        building: false,
+        dev: true,
+        version: 'test'
+      }));
+
+      const { authState: ssrAuthState } = await import('./auth');
+      const { get: getValue } = await import('svelte/store');
+
+      const state = getValue(ssrAuthState);
+      expect(state.user).toBeNull();
+      expect(state.isAuthenticated).toBe(false);
+      expect(state.isLoading).toBe(false);
+
+      vi.doUnmock('$app/environment');
+    });
+
+    it('should return default state when localStorage has invalid JSON', async () => {
+      vi.resetModules();
+      vi.doMock('$app/environment', () => ({
+        browser: true,
+        building: false,
+        dev: true,
+        version: 'test'
+      }));
+
+      localStorage.setItem('auth', 'not valid json{{{');
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const { authState: freshAuthState } = await import('./auth');
+      const { get: getValue } = await import('svelte/store');
+
+      const state = getValue(freshAuthState);
+      expect(state.user).toBeNull();
+      expect(state.isAuthenticated).toBe(false);
+
+      consoleSpy.mockRestore();
+      localStorage.removeItem('auth');
+      vi.doUnmock('$app/environment');
+    });
   });
 });

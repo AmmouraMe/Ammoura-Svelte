@@ -386,4 +386,114 @@ describe('Checkout Validation', () => {
       expect(errors.paymentMethod).toBeDefined();
     });
   });
+
+  describe('edge case payment validation', () => {
+    it('should reject non-numeric expiry month (NaN branch)', () => {
+      const errors = validatePaymentMethod({
+        type: 'credit-card',
+        cardNumber: '4111111111111111',
+        cardHolderName: 'John Doe',
+        expiryMonth: 'abc',
+        expiryYear: '2027',
+        cvv: '123'
+      });
+      expect(errors.expiryMonth).toBeDefined();
+    });
+
+    it('should reject non-numeric expiry year (NaN branch)', () => {
+      const errors = validatePaymentMethod({
+        type: 'credit-card',
+        cardNumber: '4111111111111111',
+        cardHolderName: 'John Doe',
+        expiryMonth: '12',
+        expiryYear: 'xyz',
+        cvv: '123'
+      });
+      expect(errors.expiryYear).toBeDefined();
+    });
+
+    it('should accept 2-digit year format', () => {
+      const currentYear = new Date().getFullYear();
+      const twoDigitYear = ((currentYear + 2) % 100).toString();
+      const errors = validatePaymentMethod({
+        type: 'credit-card',
+        cardNumber: '4111111111111111',
+        cardHolderName: 'John Doe',
+        expiryMonth: '12',
+        expiryYear: twoDigitYear,
+        cvv: '123'
+      });
+      expect(errors.expiryYear).toBeUndefined();
+    });
+
+    it('should reject NaN expiry in isValidExpiryDate', () => {
+      const errors = validatePaymentMethod({
+        type: 'credit-card',
+        cardNumber: '4111111111111111',
+        cardHolderName: 'John Doe',
+        expiryMonth: 'not-a-number',
+        expiryYear: 'also-not',
+        cvv: '123'
+      });
+      expect(errors.expiryMonth).toBeDefined();
+      expect(errors.expiryYear).toBeDefined();
+    });
+
+    it('should handle 2-digit year in expiry date validation', () => {
+      const currentYear = new Date().getFullYear();
+      const twoDigitFuture = ((currentYear + 3) % 100).toString();
+      const errors = validatePaymentMethod({
+        type: 'credit-card',
+        cardNumber: '4111111111111111',
+        cardHolderName: 'John Doe',
+        expiryMonth: '06',
+        expiryYear: twoDigitFuture,
+        cvv: '123'
+      });
+      // Both month and year should be valid
+      expect(errors.expiryMonth).toBeUndefined();
+      expect(errors.expiryYear).toBeUndefined();
+    });
+
+    it('should reject expired card with same year but past month', () => {
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth() + 1;
+      if (currentMonth > 1) {
+        const errors = validatePaymentMethod({
+          type: 'credit-card',
+          cardNumber: '4111111111111111',
+          cardHolderName: 'John Doe',
+          expiryMonth: '01',
+          expiryYear: currentYear.toString(),
+          cvv: '123'
+        });
+        expect(errors.expiryMonth).toBe('Card has expired');
+        expect(errors.expiryYear).toBe('Card has expired');
+      }
+    });
+
+    it('should reject empty month after trim', () => {
+      const errors = validatePaymentMethod({
+        type: 'credit-card',
+        cardNumber: '4111111111111111',
+        cardHolderName: 'John Doe',
+        expiryMonth: '   ',
+        expiryYear: '2027',
+        cvv: '123'
+      });
+      expect(errors.expiryMonth).toBeDefined();
+    });
+
+    it('should reject empty year after trim', () => {
+      const errors = validatePaymentMethod({
+        type: 'credit-card',
+        cardNumber: '4111111111111111',
+        cardHolderName: 'John Doe',
+        expiryMonth: '12',
+        expiryYear: '   ',
+        cvv: '123'
+      });
+      expect(errors.expiryYear).toBeDefined();
+    });
+  });
 });

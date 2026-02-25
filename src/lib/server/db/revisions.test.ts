@@ -4,6 +4,7 @@ import {
   getRevisionById,
   createRevision,
   publishRevision,
+  markRevisionAsPublished,
   getPublishedRevision,
   getMostRecentDraftRevision,
   buildRevisionTree,
@@ -881,6 +882,380 @@ describe('Revisions Database Functions', () => {
       const updateCalls = mockRunFn.mock.calls;
       expect(updateCalls.length).toBeGreaterThan(0);
       expect(result).toHaveLength(1);
+    });
+  });
+
+  describe('markRevisionAsPublished', () => {
+    it('should update page and sync widgets', async () => {
+      const mockRunFn = vi.fn().mockResolvedValue({ success: true });
+      const mockBatchFn = vi.fn().mockResolvedValue([
+        { success: true, meta: { changes: 1 } },
+        { success: true, meta: { changes: 1 } },
+        { success: true, meta: { changes: 1 } },
+        { success: true, meta: { changes: 1 } }
+      ]);
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        run: mockRunFn
+      };
+
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+      (mockDb.batch as ReturnType<typeof vi.fn>).mockImplementation(mockBatchFn);
+
+      await markRevisionAsPublished(mockDb, pageId, revisionId, {
+        title: 'Published Page',
+        slug: 'published-page',
+        colorTheme: 'light',
+        components: [mockWidget]
+      });
+
+      // Should have updated the page
+      expect(mockRunFn).toHaveBeenCalled();
+      // Should have run batch operations
+      expect(mockBatchFn).toHaveBeenCalled();
+    });
+
+    it('should handle components with temp IDs', async () => {
+      const tempWidget = {
+        ...mockWidget,
+        id: 'temp-widget-123'
+      };
+
+      const mockRunFn = vi.fn().mockResolvedValue({ success: true });
+      const mockBatchFn = vi.fn().mockResolvedValue([{ success: true, meta: { changes: 1 } }]);
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        run: mockRunFn
+      };
+
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+      (mockDb.batch as ReturnType<typeof vi.fn>).mockImplementation(mockBatchFn);
+
+      await markRevisionAsPublished(mockDb, pageId, revisionId, {
+        title: 'Published Page',
+        slug: 'published-page',
+        components: [tempWidget]
+      });
+
+      expect(mockBatchFn).toHaveBeenCalled();
+    });
+
+    it('should handle empty components list', async () => {
+      const mockRunFn = vi.fn().mockResolvedValue({ success: true });
+      const mockBatchFn = vi.fn().mockResolvedValue([{ success: true, meta: { changes: 1 } }]);
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        run: mockRunFn
+      };
+
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+      (mockDb.batch as ReturnType<typeof vi.fn>).mockImplementation(mockBatchFn);
+
+      await markRevisionAsPublished(mockDb, pageId, revisionId, {
+        title: 'Empty Page',
+        slug: 'empty-page',
+        components: []
+      });
+
+      expect(mockBatchFn).toHaveBeenCalled();
+    });
+
+    it('should handle colorTheme being undefined', async () => {
+      const mockRunFn = vi.fn().mockResolvedValue({ success: true });
+      const mockBatchFn = vi.fn().mockResolvedValue([]);
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        run: mockRunFn
+      };
+
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+      (mockDb.batch as ReturnType<typeof vi.fn>).mockImplementation(mockBatchFn);
+
+      await markRevisionAsPublished(mockDb, pageId, revisionId, {
+        title: 'No Theme',
+        slug: 'no-theme',
+        components: []
+      });
+
+      // Should have bound colorTheme as null
+      expect(mockRunFn).toHaveBeenCalled();
+    });
+  });
+
+  describe('getPageRevisions - page_properties parsing', () => {
+    it('should handle null page_properties', async () => {
+      const revisionWithoutProps = {
+        ...mockRevisionData,
+        page_properties: null
+      };
+
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        all: vi.fn().mockResolvedValue({ results: [revisionWithoutProps] })
+      };
+
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const result = await getPageRevisions(mockDb, siteId, pageId);
+
+      expect(result[0].pageProperties).toBeUndefined();
+    });
+
+    it('should parse page_properties when present', async () => {
+      const props = { layout: 'full-width', showHeader: true };
+      const revisionWithProps = {
+        ...mockRevisionData,
+        page_properties: JSON.stringify(props)
+      };
+
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        all: vi.fn().mockResolvedValue({ results: [revisionWithProps] })
+      };
+
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const result = await getPageRevisions(mockDb, siteId, pageId);
+
+      expect(result[0].pageProperties).toEqual(props);
+    });
+  });
+
+  describe('getRevisionById - page_properties parsing', () => {
+    it('should handle null page_properties in single revision', async () => {
+      const revisionWithoutProps = {
+        ...mockRevisionData,
+        page_properties: null
+      };
+
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        first: vi.fn().mockResolvedValue(revisionWithoutProps)
+      };
+
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const result = await getRevisionById(mockDb, siteId, pageId, revisionId);
+
+      expect(result).not.toBeNull();
+      expect(result!.pageProperties).toBeUndefined();
+    });
+  });
+
+  describe('getPublishedRevision page_properties branch', () => {
+    it('should return undefined pageProperties when page_properties is null', async () => {
+      const revisionRow = {
+        id: 'rev-1',
+        page_id: pageId,
+        site_id: siteId,
+        hash: 'abc12345',
+        widgets_snapshot: JSON.stringify([mockWidget]),
+        page_properties: null,
+        parent_id: null,
+        status: 'published',
+        created_by: 'user-1',
+        created_at: 1234567890
+      };
+
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        first: vi.fn().mockResolvedValue(revisionRow)
+      };
+
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const result = await getPublishedRevision(mockDb, siteId, pageId);
+
+      expect(result).not.toBeNull();
+      expect(result!.pageProperties).toBeUndefined();
+    });
+
+    it('should parse page_properties when present', async () => {
+      const pageProps = { title: 'Test', description: 'Desc' };
+      const revisionRow = {
+        id: 'rev-1',
+        page_id: pageId,
+        site_id: siteId,
+        hash: 'abc12345',
+        widgets_snapshot: JSON.stringify([mockWidget]),
+        page_properties: JSON.stringify(pageProps),
+        parent_id: null,
+        status: 'published',
+        created_by: 'user-1',
+        created_at: 1234567890
+      };
+
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        first: vi.fn().mockResolvedValue(revisionRow)
+      };
+
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const result = await getPublishedRevision(mockDb, siteId, pageId);
+
+      expect(result).not.toBeNull();
+      expect(result!.pageProperties).toEqual(pageProps);
+    });
+  });
+
+  describe('getMostRecentDraftRevision page_properties branch', () => {
+    it('should return undefined pageProperties when page_properties is null', async () => {
+      const revisionRow = {
+        id: 'rev-1',
+        page_id: pageId,
+        site_id: siteId,
+        hash: 'abc12345',
+        widgets_snapshot: JSON.stringify([mockWidget]),
+        page_properties: null,
+        parent_id: null,
+        status: 'draft',
+        created_by: 'user-1',
+        created_at: 1234567890
+      };
+
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        first: vi.fn().mockResolvedValue(revisionRow)
+      };
+
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const result = await getMostRecentDraftRevision(mockDb, siteId, pageId);
+
+      expect(result).not.toBeNull();
+      expect(result!.pageProperties).toBeUndefined();
+    });
+
+    it('should parse page_properties when present', async () => {
+      const pageProps = { layout: 'full-width' };
+      const revisionRow = {
+        id: 'rev-1',
+        page_id: pageId,
+        site_id: siteId,
+        hash: 'abc12345',
+        widgets_snapshot: JSON.stringify([mockWidget]),
+        page_properties: JSON.stringify(pageProps),
+        parent_id: null,
+        status: 'draft',
+        created_by: 'user-1',
+        created_at: 1234567890
+      };
+
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        first: vi.fn().mockResolvedValue(revisionRow)
+      };
+
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const result = await getMostRecentDraftRevision(mockDb, siteId, pageId);
+
+      expect(result).not.toBeNull();
+      expect(result!.pageProperties).toEqual(pageProps);
+    });
+  });
+
+  describe('publishRevision - null revision', () => {
+    it('should throw when revision is not found', async () => {
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        first: vi.fn().mockResolvedValue(null)
+      };
+
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      await expect(publishRevision(mockDb, siteId, pageId, 'nonexistent-id')).rejects.toThrow(
+        'Revision not found'
+      );
+    });
+  });
+
+  describe('publishRevision - batch results with meta', () => {
+    it('should log batch results including meta?.changes', async () => {
+      const mockGetRevisionStatement = {
+        bind: vi.fn().mockReturnThis(),
+        first: vi.fn().mockResolvedValue(mockRevisionData)
+      };
+      const mockHashesStatement = {
+        bind: vi.fn().mockReturnThis(),
+        all: vi.fn().mockResolvedValue({ results: [] })
+      };
+      const mockPageStatement = {
+        bind: vi.fn().mockReturnThis(),
+        first: vi.fn().mockResolvedValue({ id: pageId })
+      };
+      const mockInsertStatement = {
+        bind: vi.fn().mockReturnThis(),
+        run: vi.fn().mockResolvedValue({})
+      };
+      const mockPageUpdateStatement = {
+        bind: vi.fn().mockReturnThis(),
+        run: vi.fn().mockResolvedValue({ success: true, meta: { changes: 1 } })
+      };
+      const mockBatchStatement = {
+        bind: vi.fn().mockReturnThis()
+      };
+
+      (mockDb.prepare as ReturnType<typeof vi.fn>)
+        .mockReturnValueOnce(mockGetRevisionStatement)
+        .mockReturnValueOnce(mockGetRevisionStatement)
+        .mockReturnValueOnce(mockPageStatement)
+        .mockReturnValueOnce(mockHashesStatement)
+        .mockReturnValueOnce(mockInsertStatement)
+        .mockReturnValueOnce(mockPageUpdateStatement)
+        .mockReturnValue(mockBatchStatement);
+
+      // Return batch results with meta: undefined on some items
+      (mockDb.batch as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { success: true, meta: { changes: 3 } },
+        { success: true, meta: undefined },
+        { success: true }
+      ]);
+
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await publishRevision(mockDb, siteId, pageId, revisionId);
+
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('createRevision - hash collision', () => {
+    it('should handle existingHashes results being null', async () => {
+      const mockPageStatement = {
+        bind: vi.fn().mockReturnThis(),
+        first: vi.fn().mockResolvedValue({ id: pageId })
+      };
+      const mockHashesStatement = {
+        bind: vi.fn().mockReturnThis(),
+        all: vi.fn().mockResolvedValue({ results: null })
+      };
+      const mockInsertStatement = {
+        bind: vi.fn().mockReturnThis(),
+        run: vi.fn().mockResolvedValue({})
+      };
+      const mockUpdateStatement = {
+        bind: vi.fn().mockReturnThis(),
+        run: vi.fn().mockResolvedValue({})
+      };
+
+      (mockDb.prepare as ReturnType<typeof vi.fn>)
+        .mockReturnValueOnce(mockPageStatement)
+        .mockReturnValueOnce(mockHashesStatement)
+        .mockReturnValueOnce(mockInsertStatement)
+        .mockReturnValueOnce(mockUpdateStatement);
+
+      const result = await createRevision(mockDb, siteId, pageId, {
+        title: 'Test',
+        slug: 'test',
+        status: 'draft',
+        components: [],
+        created_by: 'user-1'
+      });
+
+      expect(result.revision_hash).toBeDefined();
     });
   });
 });
