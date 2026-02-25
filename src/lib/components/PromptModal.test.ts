@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/svelte';
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { tick } from 'svelte';
 import PromptModal from './PromptModal.svelte';
@@ -212,9 +212,9 @@ describe('PromptModal', () => {
       await user.click(okButton);
 
       await promptPromise;
-      await tick();
-      await new Promise((resolve) => setTimeout(resolve, 50)); // Wait for transition
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      });
     });
   });
 
