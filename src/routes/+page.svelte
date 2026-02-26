@@ -1,6 +1,7 @@
 <script lang="ts">
   import ProductCard from '../lib/components/ProductCard.svelte';
   import FrontendComponentRenderer from '$lib/components/FrontendComponentRenderer.svelte';
+  import { buildComponentTree } from '$lib/utils/componentTree';
   import { themeRefToCssVar } from '$lib/utils/editor/colorThemes';
   import { themeStore } from '$lib/stores/theme';
   import { onMount } from 'svelte';
@@ -11,7 +12,7 @@
   export let data: PageData;
   const products = data.products;
   const page = data.page ?? null;
-  const components = data.components ?? [];
+  const components = buildComponentTree(data.components ?? []);
   const pageProperties: PageProperties | undefined = data.pageProperties;
   const _isAdmin = data.isAdmin ?? false;
   const systemLightTheme = data.systemLightTheme ?? 'vibrant';

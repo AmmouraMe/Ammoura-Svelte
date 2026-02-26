@@ -13,6 +13,7 @@
   import type { PageComponent, LayoutWidget } from '$lib/types/pages';
   import type { SiteContext } from '$lib/utils/templateSubstitution';
   import FrontendComponentRenderer from '$lib/components/FrontendComponentRenderer.svelte';
+  import { buildComponentTree } from '$lib/utils/componentTree';
 
   // User type for visibility filtering
   interface UserInfo {
@@ -36,8 +37,8 @@
   // Sort layout components by position
   $: sortedLayoutComponents = [...layoutComponents].sort((a, b) => a.position - b.position);
 
-  // Sort page components by position
-  $: sortedPageComponents = [...pageComponents].sort((a, b) => a.position - b.position);
+  // Build component tree (nesting children into parent configs) and sort by position
+  $: sortedPageComponents = buildComponentTree(pageComponents);
 
   // Check if there's a yield component in the layout
   $: _hasYield = sortedLayoutComponents.some((c) => c.type === 'yield');

@@ -1059,7 +1059,10 @@
                   componentItem.type === 'footer' ||
                   componentItem.type === 'container' ||
                   componentItem.type === 'dropdown' ||
-                  componentItem.type === 'columns';
+                  componentItem.type === 'columns' ||
+                  componentItem.type === 'hero' ||
+                  componentItem.type === 'features' ||
+                  componentItem.type === 'pricing';
 
                 if (usesInlineChildren) {
                   // The child was already removed from config.children in ComponentPropertiesPanel
@@ -1082,7 +1085,10 @@
                     componentItem.type === 'footer' ||
                     componentItem.type === 'container' ||
                     componentItem.type === 'dropdown' ||
-                    componentItem.type === 'columns';
+                    componentItem.type === 'columns' ||
+                    componentItem.type === 'hero' ||
+                    componentItem.type === 'features' ||
+                    componentItem.type === 'pricing';
 
                   if (usesInlineChildren) {
                     // For components with inline children, keep children in config as-is

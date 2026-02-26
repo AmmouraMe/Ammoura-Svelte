@@ -248,6 +248,9 @@
     id={config.anchorName || undefined}
     style="
       background: {resolveThemeColor(containerBackground, colorTheme, 'transparent', true)};
+      {backgroundImage
+      ? `background-image: url(${backgroundImage}); background-size: cover; background-position: center; background-repeat: no-repeat;`
+      : ''}
       min-height: {containerMinHeight};
       max-width: {containerMaxWidth};
       width: 100%;
@@ -257,6 +260,9 @@
       : '0'};
     "
   >
+    {#if overlay && backgroundImage}
+      <div class="hero-overlay" style="opacity: {overlayOpacity / 100}" />
+    {/if}
     {#if isEditable}
       <!-- Editable mode: use ContainerDropZone for drag-drop -->
       <ContainerDropZone
