@@ -41,11 +41,11 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
       userName: locals.currentUser?.name || locals.currentUser?.email,
       currentUser: locals.currentUser
         ? {
-          id: locals.currentUser.id,
-          name: locals.currentUser.name,
-          email: locals.currentUser.email,
-          role: locals.currentUser.role
-        }
+            id: locals.currentUser.id,
+            name: locals.currentUser.name,
+            email: locals.currentUser.email,
+            role: locals.currentUser.role
+          }
         : null,
       isNewLayout: true
     };
@@ -160,11 +160,11 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
     userName: locals.currentUser?.name || locals.currentUser?.email,
     currentUser: locals.currentUser
       ? {
-        id: locals.currentUser.id,
-        name: locals.currentUser.name,
-        email: locals.currentUser.email,
-        role: locals.currentUser.role
-      }
+          id: locals.currentUser.id,
+          name: locals.currentUser.name,
+          email: locals.currentUser.email,
+          role: locals.currentUser.role
+        }
       : null,
     isNewLayout: false
   };

@@ -54,12 +54,12 @@ describe('+layout.server load function', () => {
 
   // Helper to create mock DB prepare function
   const createMockDb = (options: {
-    generalSettings?: { store_name?: string; };
-    themePreferences?: { light?: string; dark?: string; };
-    colorThemes?: Array<{ id: string; colors: Record<string, string>; }>;
-    defaultLayout?: { id: number; is_default: number; } | null;
-    layoutWidgets?: Array<{ type: string; config: string | Record<string, unknown>; }>;
-    component?: { id?: number; type?: string; config: Record<string, unknown>; } | null;
+    generalSettings?: { store_name?: string };
+    themePreferences?: { light?: string; dark?: string };
+    colorThemes?: Array<{ id: string; colors: Record<string, string> }>;
+    defaultLayout?: { id: number; is_default: number } | null;
+    layoutWidgets?: Array<{ type: string; config: string | Record<string, unknown> }>;
+    component?: { id?: number; type?: string; config: Record<string, unknown> } | null;
   }) => {
     return vi.fn().mockImplementation((sql: string) => ({
       bind: vi.fn().mockReturnValue({
