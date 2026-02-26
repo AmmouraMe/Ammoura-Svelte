@@ -543,6 +543,7 @@
     <!-- Container-based navbar/footer/hero/features with custom children -->
     <div
       class="frontend-container frontend-responsive-container {type}-container"
+      class:has-overlay={type === 'hero' && config.overlay && config.backgroundImage}
       id={config.anchorName || undefined}
       style="
         {responsiveVars}
@@ -560,6 +561,9 @@
         box-sizing: border-box;
       "
     >
+      {#if type === 'hero' && config.overlay && config.backgroundImage}
+        <div class="hero-overlay" style="opacity: {(config.overlayOpacity ?? 50) / 100}" />
+      {/if}
       {#each children as child, i (child.id || i)}
         <div
           class="child-wrapper"
@@ -935,6 +939,23 @@
 
   .child-wrapper {
     box-sizing: border-box;
+  }
+
+  /* Hero overlay for container-based heroes on the public frontend */
+  .has-overlay {
+    position: relative;
+  }
+
+  .has-overlay > .hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: black;
+    pointer-events: none;
+  }
+
+  .has-overlay > .child-wrapper {
+    position: relative;
+    z-index: 1;
   }
 
   /* Mobile collapse content wrapper */
