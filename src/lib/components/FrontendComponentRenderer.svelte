@@ -106,13 +106,18 @@
   }
 
   /**
-   * Get all roles for the current user
+   * Get all effective roles for the current user.
+   * platform_engineer is a superset of admin, so it implicitly includes 'admin'.
    */
   function getUserRoles(): string[] {
     if (!user) return [];
     const roles: string[] = [];
     if (user.role) roles.push(user.role);
     if (user.roles) roles.push(...user.roles);
+    // platform_engineer is a superadmin role that includes admin privileges
+    if (roles.includes('platform_engineer') && !roles.includes('admin')) {
+      roles.push('admin');
+    }
     return roles;
   }
 

@@ -33,12 +33,17 @@ function checkVisibility(config: VisibilityConfig, user: UserInfo | null | undef
 
   const isAuthenticated = !!user;
 
-  // Get all roles for the current user
+  // Get all effective roles for the current user
+  // platform_engineer is a superset of admin, so it implicitly includes 'admin'
   const getUserRoles = (): string[] => {
     if (!user) return [];
     const roles: string[] = [];
     if (user.role) roles.push(user.role);
     if (user.roles) roles.push(...user.roles);
+    // platform_engineer is a superadmin role that includes admin privileges
+    if (roles.includes('platform_engineer') && !roles.includes('admin')) {
+      roles.push('admin');
+    }
     return roles;
   };
 
@@ -185,6 +190,33 @@ describe('FrontendComponentRenderer - Visibility Controls', () => {
       };
       const user: UserInfo = { id: 1, role: 'customer', roles: ['buyer', 'newsletter'] };
       expect(checkVisibility(config, user)).toBe(false);
+    });
+
+    it('shows admin-only component to platform_engineer user', () => {
+      const config: VisibilityConfig = {
+        visibilityRule: 'role',
+        requiredRoles: ['admin']
+      };
+      const user: UserInfo = { id: 1, role: 'platform_engineer' };
+      expect(checkVisibility(config, user)).toBe(true);
+    });
+
+    it('platform_engineer implicitly has admin role for visibility', () => {
+      const config: VisibilityConfig = {
+        visibilityRule: 'role',
+        requiredRoles: ['admin', 'editor']
+      };
+      const user: UserInfo = { id: 1, role: 'platform_engineer' };
+      expect(checkVisibility(config, user)).toBe(true);
+    });
+
+    it('does not duplicate admin role if platform_engineer already has it', () => {
+      const config: VisibilityConfig = {
+        visibilityRule: 'role',
+        requiredRoles: ['admin']
+      };
+      const user: UserInfo = { id: 1, role: 'platform_engineer', roles: ['admin'] };
+      expect(checkVisibility(config, user)).toBe(true);
     });
   });
 
