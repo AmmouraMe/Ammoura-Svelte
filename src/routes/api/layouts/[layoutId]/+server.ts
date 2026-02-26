@@ -31,14 +31,16 @@ export const PUT: RequestHandler = async ({ request, locals, platform, params })
       slug?: string;
       description?: string;
       components?: PageComponent[];
+      pageProperties?: Record<string, unknown>;
     };
 
     // Update the layout metadata if provided
-    if (body.name || body.slug || body.description) {
+    if (body.name || body.slug || body.description || body.pageProperties) {
       await updateLayout(platform.env.DB, siteId, layoutId, {
         name: body.name,
         slug: body.slug,
-        description: body.description
+        description: body.description,
+        page_properties: body.pageProperties ? JSON.stringify(body.pageProperties) : undefined
       });
     }
 

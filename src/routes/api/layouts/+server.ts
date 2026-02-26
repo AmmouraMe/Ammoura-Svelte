@@ -21,6 +21,7 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
       description?: string;
       widgets?: PageWidget[];
       components?: PageComponent[]; // Also accept components (used by builder)
+      pageProperties?: Record<string, unknown>;
     };
 
     if (!body.name || !body.slug) {
@@ -32,7 +33,8 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
       name: body.name,
       slug: body.slug,
       description: body.description,
-      is_default: false
+      is_default: false,
+      page_properties: body.pageProperties ? JSON.stringify(body.pageProperties) : undefined
     });
 
     // Accept either widgets or components (builder sends components)

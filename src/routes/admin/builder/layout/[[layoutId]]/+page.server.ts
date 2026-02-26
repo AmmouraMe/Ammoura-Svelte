@@ -41,11 +41,11 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
       userName: locals.currentUser?.name || locals.currentUser?.email,
       currentUser: locals.currentUser
         ? {
-            id: locals.currentUser.id,
-            name: locals.currentUser.name,
-            email: locals.currentUser.email,
-            role: locals.currentUser.role
-          }
+          id: locals.currentUser.id,
+          name: locals.currentUser.name,
+          email: locals.currentUser.email,
+          role: locals.currentUser.role
+        }
         : null,
       isNewLayout: true
     };
@@ -68,6 +68,7 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
     description: layoutResult.description as string | undefined,
     slug: layoutResult.slug as string,
     is_default: !!layoutResult.is_default,
+    page_properties: layoutResult.page_properties as string | undefined,
     created_at: layoutResult.created_at as string,
     updated_at: layoutResult.updated_at as string
   };
@@ -159,11 +160,11 @@ export const load: PageServerLoad = async ({ params, locals, platform }) => {
     userName: locals.currentUser?.name || locals.currentUser?.email,
     currentUser: locals.currentUser
       ? {
-          id: locals.currentUser.id,
-          name: locals.currentUser.name,
-          email: locals.currentUser.email,
-          role: locals.currentUser.role
-        }
+        id: locals.currentUser.id,
+        name: locals.currentUser.name,
+        email: locals.currentUser.email,
+        role: locals.currentUser.role
+      }
       : null,
     isNewLayout: false
   };

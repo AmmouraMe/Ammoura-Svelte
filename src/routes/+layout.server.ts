@@ -26,6 +26,18 @@ export interface FooterLayoutData {
 export interface LayoutData {
   navbar: NavbarLayoutData | null;
   footer: FooterLayoutData | null;
+  pageProperties?: {
+    maxWidth?: string;
+    width?: string;
+    padding?: string;
+    paddingTop?: number;
+    paddingRight?: number;
+    paddingBottom?: number;
+    paddingLeft?: number;
+    backgroundColor?: string;
+    backgroundImage?: string;
+    minHeight?: string;
+  };
 }
 
 export const load: LayoutServerLoad = async ({ platform, locals }) => {
@@ -74,7 +86,8 @@ export const load: LayoutServerLoad = async ({ platform, locals }) => {
       storeName: 'Hermes eCommerce',
       layoutData: {
         navbar: { type: 'navbar' as const, config: defaultNavbarConfig, position: undefined },
-        footer: null
+        footer: null,
+        pageProperties: undefined
       }
     };
   }
@@ -108,7 +121,7 @@ export const load: LayoutServerLoad = async ({ platform, locals }) => {
     const darkTheme = allThemes.find((t) => t.id === effectiveDarkThemeId);
 
     // Map color_themes colors to the old SiteThemeColors format for compatibility
-    const mapThemeColors = (theme: { colors: Record<string, string> } | null | undefined) => {
+    const mapThemeColors = (theme: { colors: Record<string, string>; } | null | undefined) => {
       if (!theme) return null;
       const colors = theme.colors;
       return {
@@ -131,6 +144,19 @@ export const load: LayoutServerLoad = async ({ platform, locals }) => {
     const layoutData: LayoutData = { navbar: null, footer: null };
     if (defaultLayout) {
       const layoutWidgets = await getLayoutComponents(db, defaultLayout.id);
+
+      // Parse layout page_properties if available
+      if (defaultLayout.page_properties) {
+        try {
+          const parsed =
+            typeof defaultLayout.page_properties === 'string'
+              ? JSON.parse(defaultLayout.page_properties)
+              : defaultLayout.page_properties;
+          layoutData.pageProperties = parsed;
+        } catch {
+          // Ignore malformed JSON
+        }
+      }
 
       // Process layout widgets to resolve component references
       for (const widget of layoutWidgets) {
@@ -234,7 +260,8 @@ export const load: LayoutServerLoad = async ({ platform, locals }) => {
       siteContext: createDefaultSiteContext(),
       layoutData: {
         navbar: { type: 'navbar' as const, config: defaultNavbarConfig, position: undefined },
-        footer: null
+        footer: null,
+        pageProperties: undefined
       }
     };
   }

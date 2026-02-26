@@ -13,7 +13,20 @@ interface LayoutLoadResult {
     role: string;
   } | null;
   storeName: string;
-  layoutData: ServerLayoutData;
+  layoutData: ServerLayoutData & {
+    pageProperties?: {
+      maxWidth?: string;
+      width?: string;
+      padding?: string;
+      paddingTop?: number;
+      paddingRight?: number;
+      paddingBottom?: number;
+      paddingLeft?: number;
+      backgroundColor?: string;
+      backgroundImage?: string;
+      minHeight?: string;
+    };
+  };
 }
 
 // Mock types
@@ -41,12 +54,12 @@ describe('+layout.server load function', () => {
 
   // Helper to create mock DB prepare function
   const createMockDb = (options: {
-    generalSettings?: { store_name?: string };
-    themePreferences?: { light?: string; dark?: string };
-    colorThemes?: Array<{ id: string; colors: Record<string, string> }>;
-    defaultLayout?: { id: number; is_default: number } | null;
-    layoutWidgets?: Array<{ type: string; config: string | Record<string, unknown> }>;
-    component?: { id?: number; type?: string; config: Record<string, unknown> } | null;
+    generalSettings?: { store_name?: string; };
+    themePreferences?: { light?: string; dark?: string; };
+    colorThemes?: Array<{ id: string; colors: Record<string, string>; }>;
+    defaultLayout?: { id: number; is_default: number; } | null;
+    layoutWidgets?: Array<{ type: string; config: string | Record<string, unknown>; }>;
+    component?: { id?: number; type?: string; config: Record<string, unknown>; } | null;
   }) => {
     return vi.fn().mockImplementation((sql: string) => ({
       bind: vi.fn().mockReturnValue({
@@ -628,6 +641,207 @@ describe('+layout.server load function', () => {
       expect(result.themeColorsDark).toBeNull();
       expect(result.storeName).toBe('Hermes eCommerce');
       expect(result.layoutData.navbar).toBeDefined();
+    });
+  });
+
+  describe('layout pageProperties', () => {
+    it('should parse page_properties from default layout', async () => {
+      const pageProps = {
+        maxWidth: '1400px',
+        paddingTop: 16,
+        paddingRight: 24,
+        paddingBottom: 16,
+        paddingLeft: 24
+      };
+
+      const pagePropsLayout = {
+        env: {
+          DB: {
+            prepare: vi.fn().mockImplementation((sql: string) => ({
+              bind: vi.fn().mockReturnValue({
+                first: vi.fn().mockImplementation(() => {
+                  if (sql.includes('SELECT * FROM site_settings')) {
+                    return Promise.resolve({
+                      settings: JSON.stringify({ storeName: 'Test Store' })
+                    });
+                  }
+                  if (sql.includes('SELECT * FROM layouts WHERE site_id = ? AND is_default')) {
+                    return Promise.resolve({
+                      id: 1,
+                      is_default: 1,
+                      page_properties: JSON.stringify(pageProps)
+                    });
+                  }
+                  return Promise.resolve(null);
+                }),
+                all: vi.fn().mockImplementation(() => {
+                  if (sql.includes('SELECT * FROM color_themes')) {
+                    return Promise.resolve({ results: [] });
+                  }
+                  if (sql.includes('SELECT * FROM layout_widgets')) {
+                    return Promise.resolve({ results: [] });
+                  }
+                  return Promise.resolve({ results: [] });
+                })
+              })
+            }))
+          }
+        }
+      };
+
+      const result = (await load({
+        platform: pagePropsLayout,
+        locals: mockLocals
+      } as never)) as LayoutLoadResult;
+
+      expect(result.layoutData.pageProperties).toBeDefined();
+      expect(result.layoutData.pageProperties?.maxWidth).toBe('1400px');
+      expect(result.layoutData.pageProperties?.paddingTop).toBe(16);
+      expect(result.layoutData.pageProperties?.paddingRight).toBe(24);
+      expect(result.layoutData.pageProperties?.paddingBottom).toBe(16);
+      expect(result.layoutData.pageProperties?.paddingLeft).toBe(24);
+    });
+
+    it('should not include pageProperties when layout has no page_properties', async () => {
+      const noPropsLayout = {
+        env: {
+          DB: {
+            prepare: vi.fn().mockImplementation((sql: string) => ({
+              bind: vi.fn().mockReturnValue({
+                first: vi.fn().mockImplementation(() => {
+                  if (sql.includes('SELECT * FROM site_settings')) {
+                    return Promise.resolve({
+                      settings: JSON.stringify({ storeName: 'Test Store' })
+                    });
+                  }
+                  if (sql.includes('SELECT * FROM layouts WHERE site_id = ? AND is_default')) {
+                    return Promise.resolve({ id: 1, is_default: 1 });
+                  }
+                  return Promise.resolve(null);
+                }),
+                all: vi.fn().mockImplementation(() => {
+                  if (sql.includes('SELECT * FROM color_themes')) {
+                    return Promise.resolve({ results: [] });
+                  }
+                  if (sql.includes('SELECT * FROM layout_widgets')) {
+                    return Promise.resolve({ results: [] });
+                  }
+                  return Promise.resolve({ results: [] });
+                })
+              })
+            }))
+          }
+        }
+      };
+
+      const result = (await load({
+        platform: noPropsLayout,
+        locals: mockLocals
+      } as never)) as LayoutLoadResult;
+
+      expect(result.layoutData.pageProperties).toBeUndefined();
+    });
+
+    it('should handle malformed page_properties JSON gracefully', async () => {
+      const malformedLayout = {
+        env: {
+          DB: {
+            prepare: vi.fn().mockImplementation((sql: string) => ({
+              bind: vi.fn().mockReturnValue({
+                first: vi.fn().mockImplementation(() => {
+                  if (sql.includes('SELECT * FROM site_settings')) {
+                    return Promise.resolve({
+                      settings: JSON.stringify({ storeName: 'Test Store' })
+                    });
+                  }
+                  if (sql.includes('SELECT * FROM layouts WHERE site_id = ? AND is_default')) {
+                    return Promise.resolve({
+                      id: 1,
+                      is_default: 1,
+                      page_properties: '{invalid json!!'
+                    });
+                  }
+                  return Promise.resolve(null);
+                }),
+                all: vi.fn().mockImplementation(() => {
+                  if (sql.includes('SELECT * FROM color_themes')) {
+                    return Promise.resolve({ results: [] });
+                  }
+                  if (sql.includes('SELECT * FROM layout_widgets')) {
+                    return Promise.resolve({ results: [] });
+                  }
+                  return Promise.resolve({ results: [] });
+                })
+              })
+            }))
+          }
+        }
+      };
+
+      const result = (await load({
+        platform: malformedLayout,
+        locals: mockLocals
+      } as never)) as LayoutLoadResult;
+
+      // Should not throw and pageProperties should be undefined
+      expect(result.layoutData.pageProperties).toBeUndefined();
+    });
+
+    it('should handle page_properties that is already an object', async () => {
+      const pageProps = { maxWidth: '960px', width: '100%' };
+
+      const objectPropsLayout = {
+        env: {
+          DB: {
+            prepare: vi.fn().mockImplementation((sql: string) => ({
+              bind: vi.fn().mockReturnValue({
+                first: vi.fn().mockImplementation(() => {
+                  if (sql.includes('SELECT * FROM site_settings')) {
+                    return Promise.resolve({
+                      settings: JSON.stringify({ storeName: 'Test Store' })
+                    });
+                  }
+                  if (sql.includes('SELECT * FROM layouts WHERE site_id = ? AND is_default')) {
+                    return Promise.resolve({
+                      id: 1,
+                      is_default: 1,
+                      page_properties: pageProps
+                    });
+                  }
+                  return Promise.resolve(null);
+                }),
+                all: vi.fn().mockImplementation(() => {
+                  if (sql.includes('SELECT * FROM color_themes')) {
+                    return Promise.resolve({ results: [] });
+                  }
+                  if (sql.includes('SELECT * FROM layout_widgets')) {
+                    return Promise.resolve({ results: [] });
+                  }
+                  return Promise.resolve({ results: [] });
+                })
+              })
+            }))
+          }
+        }
+      };
+
+      const result = (await load({
+        platform: objectPropsLayout,
+        locals: mockLocals
+      } as never)) as LayoutLoadResult;
+
+      expect(result.layoutData.pageProperties).toBeDefined();
+      expect(result.layoutData.pageProperties?.maxWidth).toBe('960px');
+      expect(result.layoutData.pageProperties?.width).toBe('100%');
+    });
+
+    it('should not include pageProperties in fallback layout when platform is unavailable', async () => {
+      const result = (await load({
+        platform: undefined,
+        locals: mockLocals
+      } as never)) as LayoutLoadResult;
+
+      expect(result.layoutData.pageProperties).toBeUndefined();
     });
   });
 });

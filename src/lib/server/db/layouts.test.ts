@@ -194,6 +194,33 @@ describe('layouts database operations', () => {
       expect(mockDb.prepare).toHaveBeenCalled();
     });
 
+    it('should create layout with page_properties', async () => {
+      const layoutWithProps = {
+        ...mockLayout,
+        page_properties: '{"maxWidth":"1400px","paddingTop":16}'
+      };
+      mockDb.prepare().bind().first.mockResolvedValue(layoutWithProps);
+
+      const result = await createLayout(mockDb as unknown as D1Database, 'site-1', {
+        name: 'Wide Layout',
+        slug: 'wide',
+        page_properties: JSON.stringify({ maxWidth: '1400px', paddingTop: 16 })
+      });
+
+      expect(result.page_properties).toBe('{"maxWidth":"1400px","paddingTop":16}');
+    });
+
+    it('should create layout without page_properties (defaults to null)', async () => {
+      mockDb.prepare().bind().first.mockResolvedValue(mockLayout);
+
+      const result = await createLayout(mockDb as unknown as D1Database, 'site-1', {
+        name: 'Basic Layout',
+        slug: 'basic'
+      });
+
+      expect(result.page_properties).toBeUndefined();
+    });
+
     it('should throw error when creation fails', async () => {
       mockDb.prepare().bind().first.mockResolvedValue(null);
 
@@ -260,6 +287,36 @@ describe('layouts database operations', () => {
       });
 
       expect(mockDb.prepare).toHaveBeenCalled();
+    });
+
+    it('should update layout page_properties', async () => {
+      const pageProps = JSON.stringify({ maxWidth: '1600px', paddingTop: 24 });
+      const updatedLayout = { ...mockLayout, page_properties: pageProps };
+      mockDb.prepare().bind().first.mockResolvedValue(updatedLayout);
+
+      const result = await updateLayout(mockDb as unknown as D1Database, 'site-1', 1, {
+        page_properties: pageProps
+      });
+
+      expect(result.page_properties).toBe(pageProps);
+    });
+
+    it('should update layout with multiple fields including page_properties', async () => {
+      const pageProps = JSON.stringify({ maxWidth: 'none', width: '100%' });
+      const updatedLayout = {
+        ...mockLayout,
+        name: 'Full Width Layout',
+        page_properties: pageProps
+      };
+      mockDb.prepare().bind().first.mockResolvedValue(updatedLayout);
+
+      const result = await updateLayout(mockDb as unknown as D1Database, 'site-1', 1, {
+        name: 'Full Width Layout',
+        page_properties: pageProps
+      });
+
+      expect(result.name).toBe('Full Width Layout');
+      expect(result.page_properties).toBe(pageProps);
     });
 
     it('should throw error when layout not found', async () => {

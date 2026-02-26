@@ -31,6 +31,7 @@ export interface LayoutRevisionData {
   slug: string;
   is_default: boolean;
   widgets: LayoutWidgetData[];
+  pageProperties?: Record<string, unknown>;
 }
 
 /**

@@ -3,7 +3,9 @@ import { buildComponentTree } from './componentTree';
 import type { PageComponent } from '$lib/types/pages';
 
 // Helper to create a minimal PageComponent
-function makeComponent(overrides: Partial<PageComponent> & { id: string; type: string; }): PageComponent {
+function makeComponent(
+  overrides: Partial<PageComponent> & { id: string; type: string }
+): PageComponent {
   return {
     page_id: 'page-1',
     config: {},

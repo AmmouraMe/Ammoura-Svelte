@@ -36,12 +36,26 @@
       backgroundColor?: string;
       backgroundImage?: string;
       minHeight?: string;
+      width?: string;
+      maxWidth?: string;
+      paddingTop?: number;
+      paddingRight?: number;
+      paddingBottom?: number;
+      paddingLeft?: number;
+      padding?: string;
       borderColor?: string;
       borderWidth?: string;
       borderStyle?: string;
       borderRadius?: string;
-      padding?: string;
       boxShadow?: string;
+      opacity?: number;
+      overflow?: 'visible' | 'hidden' | 'scroll' | 'auto';
+      positionType?: 'static' | 'relative' | 'absolute' | 'fixed' | 'sticky';
+      positionTop?: string;
+      positionRight?: string;
+      positionBottom?: string;
+      positionLeft?: string;
+      zIndex?: number;
     };
     currentRevisionId?: string | null;
     hasUnsavedChanges?: boolean;
@@ -118,12 +132,26 @@
         backgroundColor?: string;
         backgroundImage?: string;
         minHeight?: string;
+        width?: string;
+        maxWidth?: string;
+        paddingTop?: number;
+        paddingRight?: number;
+        paddingBottom?: number;
+        paddingLeft?: number;
+        padding?: string;
         borderColor?: string;
         borderWidth?: string;
         borderStyle?: string;
         borderRadius?: string;
-        padding?: string;
         boxShadow?: string;
+        opacity?: number;
+        overflow?: 'visible' | 'hidden' | 'scroll' | 'auto';
+        positionType?: 'static' | 'relative' | 'absolute' | 'fixed' | 'sticky';
+        positionTop?: string;
+        positionRight?: string;
+        positionBottom?: string;
+        positionLeft?: string;
+        zIndex?: number;
       }
     | undefined = undefined;
   export let onSave: (data: SaveData) => Promise<SaveResult | void>;
@@ -185,16 +213,54 @@
   let canvasComponent: BuilderCanvas;
 
   // Default page properties
-  const defaultPageProperties = {
+  const defaultPageProperties: {
+    backgroundColor: string;
+    backgroundImage: string;
+    minHeight: string;
+    width: string;
+    maxWidth: string;
+    paddingTop: number;
+    paddingRight: number;
+    paddingBottom: number;
+    paddingLeft: number;
+    padding: string;
+    borderColor: string;
+    borderWidth: string;
+    borderStyle: string;
+    borderRadius: string;
+    boxShadow: string;
+    opacity: number;
+    overflow: 'visible' | 'hidden' | 'scroll' | 'auto';
+    positionType: 'static' | 'relative' | 'absolute' | 'fixed' | 'sticky';
+    positionTop: string;
+    positionRight: string;
+    positionBottom: string;
+    positionLeft: string;
+    zIndex: number;
+  } = {
     backgroundColor: 'transparent',
     backgroundImage: '',
     minHeight: '100vh',
+    width: 'auto',
+    maxWidth: '',
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 0,
+    padding: '',
     borderColor: '',
     borderWidth: '0',
     borderStyle: 'solid',
     borderRadius: '0',
-    padding: '',
-    boxShadow: ''
+    boxShadow: '',
+    opacity: 100,
+    overflow: 'visible',
+    positionType: 'static',
+    positionTop: '',
+    positionRight: '',
+    positionBottom: '',
+    positionLeft: '',
+    zIndex: 0
   };
 
   // Page properties (custom styles for the entire page/component root)
@@ -205,12 +271,26 @@
     backgroundImage:
       initialPageProperties?.backgroundImage ?? defaultPageProperties.backgroundImage,
     minHeight: initialPageProperties?.minHeight ?? defaultPageProperties.minHeight,
+    width: initialPageProperties?.width ?? defaultPageProperties.width,
+    maxWidth: initialPageProperties?.maxWidth ?? defaultPageProperties.maxWidth,
+    paddingTop: initialPageProperties?.paddingTop ?? defaultPageProperties.paddingTop,
+    paddingRight: initialPageProperties?.paddingRight ?? defaultPageProperties.paddingRight,
+    paddingBottom: initialPageProperties?.paddingBottom ?? defaultPageProperties.paddingBottom,
+    paddingLeft: initialPageProperties?.paddingLeft ?? defaultPageProperties.paddingLeft,
+    padding: initialPageProperties?.padding ?? defaultPageProperties.padding,
     borderColor: initialPageProperties?.borderColor ?? defaultPageProperties.borderColor,
     borderWidth: initialPageProperties?.borderWidth ?? defaultPageProperties.borderWidth,
     borderStyle: initialPageProperties?.borderStyle ?? defaultPageProperties.borderStyle,
     borderRadius: initialPageProperties?.borderRadius ?? defaultPageProperties.borderRadius,
-    padding: initialPageProperties?.padding ?? defaultPageProperties.padding,
-    boxShadow: initialPageProperties?.boxShadow ?? defaultPageProperties.boxShadow
+    boxShadow: initialPageProperties?.boxShadow ?? defaultPageProperties.boxShadow,
+    opacity: initialPageProperties?.opacity ?? defaultPageProperties.opacity,
+    overflow: initialPageProperties?.overflow ?? defaultPageProperties.overflow,
+    positionType: initialPageProperties?.positionType ?? defaultPageProperties.positionType,
+    positionTop: initialPageProperties?.positionTop ?? defaultPageProperties.positionTop,
+    positionRight: initialPageProperties?.positionRight ?? defaultPageProperties.positionRight,
+    positionBottom: initialPageProperties?.positionBottom ?? defaultPageProperties.positionBottom,
+    positionLeft: initialPageProperties?.positionLeft ?? defaultPageProperties.positionLeft,
+    zIndex: initialPageProperties?.zIndex ?? defaultPageProperties.zIndex
   };
 
   // Calculate the user's currently active system theme ID based on their light/dark mode
@@ -762,12 +842,26 @@
           backgroundImage:
             revision.pageProperties.backgroundImage ?? pageProperties.backgroundImage,
           minHeight: revision.pageProperties.minHeight ?? pageProperties.minHeight,
+          width: revision.pageProperties.width ?? pageProperties.width,
+          maxWidth: revision.pageProperties.maxWidth ?? pageProperties.maxWidth,
+          paddingTop: revision.pageProperties.paddingTop ?? pageProperties.paddingTop,
+          paddingRight: revision.pageProperties.paddingRight ?? pageProperties.paddingRight,
+          paddingBottom: revision.pageProperties.paddingBottom ?? pageProperties.paddingBottom,
+          paddingLeft: revision.pageProperties.paddingLeft ?? pageProperties.paddingLeft,
+          padding: revision.pageProperties.padding ?? pageProperties.padding,
           borderColor: revision.pageProperties.borderColor ?? pageProperties.borderColor,
           borderWidth: revision.pageProperties.borderWidth ?? pageProperties.borderWidth,
           borderStyle: revision.pageProperties.borderStyle ?? pageProperties.borderStyle,
           borderRadius: revision.pageProperties.borderRadius ?? pageProperties.borderRadius,
-          padding: revision.pageProperties.padding ?? pageProperties.padding,
-          boxShadow: revision.pageProperties.boxShadow ?? pageProperties.boxShadow
+          boxShadow: revision.pageProperties.boxShadow ?? pageProperties.boxShadow,
+          opacity: revision.pageProperties.opacity ?? pageProperties.opacity,
+          overflow: revision.pageProperties.overflow ?? pageProperties.overflow,
+          positionType: revision.pageProperties.positionType ?? pageProperties.positionType,
+          positionTop: revision.pageProperties.positionTop ?? pageProperties.positionTop,
+          positionRight: revision.pageProperties.positionRight ?? pageProperties.positionRight,
+          positionBottom: revision.pageProperties.positionBottom ?? pageProperties.positionBottom,
+          positionLeft: revision.pageProperties.positionLeft ?? pageProperties.positionLeft,
+          zIndex: revision.pageProperties.zIndex ?? pageProperties.zIndex
         };
       }
 

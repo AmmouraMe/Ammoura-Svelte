@@ -91,6 +91,7 @@ export async function createLayout(
     description?: string;
     slug: string;
     is_default?: boolean;
+    page_properties?: string;
   }
 ): Promise<Layout> {
   try {
@@ -101,11 +102,18 @@ export async function createLayout(
 
     const result = await db
       .prepare(
-        `INSERT INTO layouts (site_id, name, description, slug, is_default)
-         VALUES (?, ?, ?, ?, ?)
+        `INSERT INTO layouts (site_id, name, description, slug, is_default, page_properties)
+         VALUES (?, ?, ?, ?, ?, ?)
          RETURNING *`
       )
-      .bind(siteId, data.name, data.description || null, data.slug, data.is_default ? 1 : 0)
+      .bind(
+        siteId,
+        data.name,
+        data.description || null,
+        data.slug,
+        data.is_default ? 1 : 0,
+        data.page_properties || null
+      )
       .first<Layout>();
 
     if (!result) {
@@ -131,6 +139,7 @@ export async function updateLayout(
     description?: string;
     slug?: string;
     is_default?: boolean;
+    page_properties?: string;
   }
 ): Promise<Layout> {
   try {
@@ -160,6 +169,10 @@ export async function updateLayout(
     if (data.is_default !== undefined) {
       updates.push('is_default = ?');
       values.push(data.is_default ? 1 : 0);
+    }
+    if (data.page_properties !== undefined) {
+      updates.push('page_properties = ?');
+      values.push(data.page_properties);
     }
 
     updates.push('updated_at = CURRENT_TIMESTAMP');

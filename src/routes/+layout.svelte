@@ -21,6 +21,10 @@
 
   $: isAdminPage = browser && $page.url.pathname.startsWith('/admin');
 
+  // Get layout maxWidth from layout page properties (default: 'none' for full-width)
+  $: layoutMaxWidth = data.layoutData?.pageProperties?.maxWidth || 'none';
+  $: layoutPadding = data.layoutData?.pageProperties?.padding || '0';
+
   // Determine the active color theme based on the current theme mode (light/dark)
   // This is used to pass to navbar/footer renderers for proper theme color resolution
   // Uses themeStore to be reactive to theme changes
@@ -267,7 +271,11 @@
   {/if}
 </svelte:head>
 
-<main class:admin-page={isAdminPage}>
+<main
+  class:admin-page={isAdminPage}
+  style:max-width={isAdminPage ? 'none' : layoutMaxWidth}
+  style:padding={isAdminPage ? '0' : layoutPadding}
+>
   {#if !isAdminPage && navbarConfig}
     {#key data.currentUser?.id}
       <FrontendComponentRenderer
@@ -312,9 +320,7 @@
   }
 
   main {
-    max-width: 1200px;
     margin: 0 auto;
-    padding: 1rem;
     min-height: 100vh;
     display: flex;
     flex-direction: column;

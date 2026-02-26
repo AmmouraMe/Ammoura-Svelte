@@ -5,9 +5,23 @@
   import type { PageData } from './$types';
   import AdvancedBuilder from '$lib/components/builder/AdvancedBuilder.svelte';
   import { toastStore } from '$lib/stores/toast';
-  import type { PageComponent } from '$lib/types/pages';
+  import type { PageComponent, PageProperties } from '$lib/types/pages';
 
   export let data: PageData;
+
+  // Parse layout page_properties from JSON string if available
+  const parsedPageProperties: PageProperties | undefined = (() => {
+    if (data.layout?.page_properties) {
+      try {
+        return typeof data.layout.page_properties === 'string'
+          ? JSON.parse(data.layout.page_properties)
+          : data.layout.page_properties;
+      } catch {
+        return undefined;
+      }
+    }
+    return undefined;
+  })();
 
   // Convert layout components to PageComponent format expected by AdvancedBuilder
   const parsedComponents: PageComponent[] = data.components.map((c) => ({
@@ -25,6 +39,7 @@
     title: string;
     slug: string;
     components: PageComponent[];
+    pageProperties?: Record<string, unknown>;
   }
 
   async function handleSave(saveData: SaveData, options?: { message?: string }): Promise<void> {
@@ -37,7 +52,8 @@
           body: JSON.stringify({
             name: saveData.title,
             slug: saveData.slug,
-            components: saveData.components
+            components: saveData.components,
+            pageProperties: saveData.pageProperties
           })
         });
 
@@ -60,7 +76,8 @@
           body: JSON.stringify({
             name: saveData.title,
             slug: saveData.slug,
-            components: saveData.components
+            components: saveData.components,
+            pageProperties: saveData.pageProperties
           })
         });
 
@@ -201,6 +218,7 @@
   mode="layout"
   page={pageFormatted}
   initialComponents={parsedComponents}
+  initialPageProperties={parsedPageProperties}
   revisions={data.revisions}
   currentRevisionId={data.currentRevisionId}
   currentRevisionIsPublished={data.currentRevisionIsPublished}

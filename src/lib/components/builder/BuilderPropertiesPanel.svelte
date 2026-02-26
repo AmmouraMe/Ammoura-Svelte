@@ -990,7 +990,113 @@
                 </div>
               {:else if pageActiveTab === 'responsive'}
                 <div class="property-section">
-                  <p class="empty-state">No responsive properties available</p>
+                  <h4>Layout Sizing</h4>
+                  <small class="section-help"
+                    >Controls how the page content area is sized on the storefront.</small
+                  >
+
+                  <div class="property-field">
+                    <label for="responsive-max-width">Max Width</label>
+                    <select
+                      id="responsive-max-width"
+                      bind:value={localMaxWidth}
+                      on:change={handlePagePropertyChange}
+                    >
+                      <option value="">None (full width)</option>
+                      <option value="960px">960px (Narrow)</option>
+                      <option value="1200px">1200px (Standard)</option>
+                      <option value="1400px">1400px (Wide)</option>
+                      <option value="1600px">1600px (Extra Wide)</option>
+                      <option value="1920px">1920px (Full HD)</option>
+                      <option value="100%">100%</option>
+                    </select>
+                    <small
+                      >Limits the maximum width of the page content area. Use "None" for full-width
+                      layouts.</small
+                    >
+                  </div>
+
+                  <div class="property-field">
+                    <label for="responsive-max-width-custom">Custom Max Width</label>
+                    <input
+                      id="responsive-max-width-custom"
+                      type="text"
+                      bind:value={localMaxWidth}
+                      on:blur={handlePagePropertyChange}
+                      placeholder="e.g. 1200px, 80%, none"
+                    />
+                    <small
+                      >Enter a custom value (px, %, rem, etc.) or type "none" for no limit.</small
+                    >
+                  </div>
+
+                  <div class="property-field">
+                    <label for="responsive-width">Width</label>
+                    <select
+                      id="responsive-width"
+                      bind:value={localWidth}
+                      on:change={handlePagePropertyChange}
+                    >
+                      <option value="auto">Auto</option>
+                      <option value="100%">Full Width (100%)</option>
+                      <option value="50%">Half Width (50%)</option>
+                      <option value="75%">Three Quarters (75%)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="property-section">
+                  <h4>Content Padding</h4>
+                  <small class="section-help">Spacing inside the page content area.</small>
+
+                  <div class="property-row">
+                    <div class="property-field half">
+                      <label for="responsive-padding-top">Top</label>
+                      <input
+                        id="responsive-padding-top"
+                        type="number"
+                        min="0"
+                        bind:value={localPaddingTop}
+                        on:blur={handlePagePropertyChange}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div class="property-field half">
+                      <label for="responsive-padding-right">Right</label>
+                      <input
+                        id="responsive-padding-right"
+                        type="number"
+                        min="0"
+                        bind:value={localPaddingRight}
+                        on:blur={handlePagePropertyChange}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                  <div class="property-row">
+                    <div class="property-field half">
+                      <label for="responsive-padding-bottom">Bottom</label>
+                      <input
+                        id="responsive-padding-bottom"
+                        type="number"
+                        min="0"
+                        bind:value={localPaddingBottom}
+                        on:blur={handlePagePropertyChange}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div class="property-field half">
+                      <label for="responsive-padding-left">Left</label>
+                      <input
+                        id="responsive-padding-left"
+                        type="number"
+                        min="0"
+                        bind:value={localPaddingLeft}
+                        on:blur={handlePagePropertyChange}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
                 </div>
               {/if}
             </div>
@@ -1297,12 +1403,12 @@
     margin-bottom: 2rem;
   }
 
-  .empty-state {
-    padding: 2rem 1rem;
-    text-align: center;
+  .section-help {
+    display: block;
     color: var(--color-text-tertiary);
-    font-size: 0.875rem;
-    font-style: italic;
+    font-size: 0.75rem;
+    margin: -0.5rem 0 1rem 0;
+    line-height: 1.4;
   }
 
   .property-section h4 {
