@@ -308,7 +308,7 @@
   :global(body) {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-    background-color: var(--color-bg-secondary);
+    background-color: var(--color-bg-primary);
   }
 
   main {
