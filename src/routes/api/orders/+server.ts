@@ -6,6 +6,7 @@
 import { json, type RequestEvent } from '@sveltejs/kit';
 import { getDB } from '$lib/server/db';
 import { createOrder } from '$lib/server/db/orders';
+import { saveOrderItemEquipmentValues } from '$lib/server/db/equipment';
 
 // Test credit card number for development
 const TEST_CARD_NUMBER = '5555555555555555';
@@ -20,6 +21,14 @@ interface CreateOrderRequest {
     price: number;
     quantity: number;
     image: string;
+    equipment_values?: Array<{
+      equipmentId: string;
+      equipmentName: string;
+      fieldId: string;
+      fieldName: string;
+      fieldType: string;
+      value: string;
+    }>;
   }>;
   subtotal: number;
   shipping_cost: number;
@@ -175,6 +184,33 @@ export async function POST({ request, platform, locals }: RequestEvent): Promise
       },
       shipping_details: data.shipping_details
     });
+
+    // Save equipment values for order items that have them
+    if (order.id) {
+      for (const item of data.items) {
+        if (item.equipment_values && item.equipment_values.length > 0 && item.product_id) {
+          // Find the matching order item by product_id
+          const orderItems = await db
+            .prepare('SELECT id FROM order_items WHERE order_id = ? AND product_id = ?')
+            .bind(order.id, item.product_id)
+            .all<{ id: string; }>();
+
+          const orderItemId = orderItems.results?.[0]?.id;
+          if (orderItemId) {
+            await saveOrderItemEquipmentValues(
+              db,
+              orderItemId,
+              item.equipment_values.map((ev) => ({
+                equipmentId: ev.equipmentId,
+                equipmentFieldId: ev.fieldId,
+                fieldName: ev.fieldName,
+                value: ev.value
+              }))
+            );
+          }
+        }
+      }
+    }
 
     return json({
       success: true,

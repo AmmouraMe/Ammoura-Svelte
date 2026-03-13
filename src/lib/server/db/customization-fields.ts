@@ -7,7 +7,8 @@ import { executeOne, execute, generateId, getCurrentTimestamp } from './connecti
 import type {
   ProductCustomizationField,
   CreateCustomizationFieldData,
-  UpdateCustomizationFieldData
+  UpdateCustomizationFieldData,
+  MediaRequirements
 } from '$lib/types/customization';
 
 interface DBCustomizationField {
@@ -25,6 +26,7 @@ interface DBCustomizationField {
   default_value: string | null;
   price_modifier: number;
   sort_order: number;
+  media_requirements: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -43,7 +45,10 @@ function mapToField(row: DBCustomizationField): ProductCustomizationField {
     maxValue: row.max_value,
     defaultValue: row.default_value,
     priceModifier: row.price_modifier,
-    sortOrder: row.sort_order
+    sortOrder: row.sort_order,
+    mediaRequirements: row.media_requirements
+      ? (JSON.parse(row.media_requirements) as MediaRequirements)
+      : null
   };
 }
 
@@ -90,12 +95,15 @@ export async function createCustomizationField(
   const id = generateId();
   const timestamp = getCurrentTimestamp();
   const optionsJson = data.options ? JSON.stringify(data.options) : null;
+  const mediaReqJson = data.mediaRequirements
+    ? JSON.stringify(data.mediaRequirements)
+    : null;
 
   await db
     .prepare(
       `INSERT INTO product_customization_fields
-       (id, site_id, product_id, name, field_type, options, placeholder, required, max_length, min_value, max_value, default_value, price_modifier, sort_order, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       (id, site_id, product_id, name, field_type, options, placeholder, required, max_length, min_value, max_value, default_value, price_modifier, sort_order, media_requirements, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       id,
@@ -112,6 +120,7 @@ export async function createCustomizationField(
       data.defaultValue ?? null,
       data.priceModifier ?? 0,
       data.sortOrder ?? 0,
+      mediaReqJson,
       timestamp,
       timestamp
     )
@@ -184,6 +193,12 @@ export async function updateCustomizationField(
   if (data.sortOrder !== undefined) {
     updates.push('sort_order = ?');
     params.push(data.sortOrder);
+  }
+  if (data.mediaRequirements !== undefined) {
+    updates.push('media_requirements = ?');
+    params.push(
+      data.mediaRequirements ? JSON.stringify(data.mediaRequirements) : null
+    );
   }
 
   if (updates.length === 0) {

@@ -62,9 +62,59 @@ export interface CartItemCustomization {
 
 // --- Product Customization Fields ---
 // Admin-defined input fields that customers fill in when ordering
-// (e.g., "Enter name to engrave", "Choose font style", "Select color")
+// (e.g., "Enter name to engrave", "Choose font style", "Select color",
+//  "Upload your design", "Record a voice message")
 
-export type CustomizationFieldType = 'text' | 'textarea' | 'select' | 'color' | 'number';
+export type CustomizationFieldType =
+  | 'text'
+  | 'textarea'
+  | 'select'
+  | 'color'
+  | 'number'
+  | 'image'
+  | 'audio'
+  | 'video';
+
+/**
+ * Media quality requirements for image, audio, and video field types.
+ * Allows admins to enforce minimum quality standards on customer uploads.
+ */
+export interface MediaRequirements {
+  /** Maximum file size in bytes */
+  maxFileSize?: number;
+  /** Allowed MIME types (e.g., ['image/png', 'image/jpeg']) */
+  allowedMimeTypes?: string[];
+
+  // Image-specific requirements
+  /** Minimum width in pixels */
+  minWidth?: number;
+  /** Minimum height in pixels */
+  minHeight?: number;
+  /** Maximum width in pixels */
+  maxWidth?: number;
+  /** Maximum height in pixels */
+  maxHeight?: number;
+  /** Minimum aspect ratio (width / height, e.g., 1.0 for square) */
+  minAspectRatio?: number;
+  /** Maximum aspect ratio (width / height) */
+  maxAspectRatio?: number;
+
+  // Audio/Video-specific requirements
+  /** Minimum duration in seconds */
+  minDuration?: number;
+  /** Maximum duration in seconds */
+  maxDuration?: number;
+
+  // Audio-specific requirements
+  /** Minimum audio bitrate in kbps */
+  minBitrate?: number;
+
+  // Video-specific requirements
+  /** Minimum video resolution (e.g., 720 for 720p) */
+  minResolution?: number;
+  /** Minimum video frame rate */
+  minFrameRate?: number;
+}
 
 /**
  * Admin-defined customization field on a product.
@@ -83,6 +133,8 @@ export interface ProductCustomizationField {
   defaultValue: string | null;
   priceModifier: number;
   sortOrder: number;
+  /** Media quality requirements for image/audio/video fields */
+  mediaRequirements: MediaRequirements | null;
 }
 
 /**
@@ -101,6 +153,7 @@ export interface CreateCustomizationFieldData {
   defaultValue?: string;
   priceModifier?: number;
   sortOrder?: number;
+  mediaRequirements?: MediaRequirements;
 }
 
 /**
@@ -118,6 +171,7 @@ export interface UpdateCustomizationFieldData {
   defaultValue?: string | null;
   priceModifier?: number;
   sortOrder?: number;
+  mediaRequirements?: MediaRequirements | null;
 }
 
 /**

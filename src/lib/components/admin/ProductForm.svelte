@@ -4,6 +4,7 @@
   import ProductMediaManager from '$lib/components/admin/ProductMediaManager.svelte';
   import CustomizationZoneEditor from '$lib/components/admin/CustomizationZoneEditor.svelte';
   import CustomizationFieldEditor from '$lib/components/admin/CustomizationFieldEditor.svelte';
+  import ProductEquipmentEditor from '$lib/components/admin/ProductEquipmentEditor.svelte';
   import RevisionModal from './RevisionModal.svelte';
   import type { Product, ProductType, FulfillmentProvider } from '$lib/types';
   import type { RevisionNode } from '$lib/types/revisions';
@@ -993,6 +994,13 @@
     {#if isEditing && product?.id}
       <div class="form-group">
         <CustomizationFieldEditor productId={product.id} />
+      </div>
+    {/if}
+
+    <!-- Equipment Requirements (for products being edited) -->
+    {#if isEditing && product?.id}
+      <div class="form-group">
+        <ProductEquipmentEditor productId={product.id} />
       </div>
     {/if}
 

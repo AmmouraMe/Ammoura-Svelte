@@ -3,9 +3,11 @@
   import ProductMediaGallery from '../../../lib/components/ProductMediaGallery.svelte';
   import ProductCustomizer from '../../../lib/components/ProductCustomizer.svelte';
   import ProductCustomizationFields from '../../../lib/components/ProductCustomizationFields.svelte';
+  import ProductEquipmentFields from '../../../lib/components/ProductEquipmentFields.svelte';
   import { cartStore, cartItems } from '../../../lib/stores/cart.ts';
   import { calculateTotalStock } from '$lib/utils/stock';
   import type { CartItemCustomization, CartItemFieldValue } from '$lib/types/customization';
+  import type { CartItemEquipmentValue } from '$lib/types/equipment';
   import type { Product } from '$lib/types';
 
   interface ShippingOptionDisplay {
@@ -24,13 +26,16 @@
   const { product, media } = data;
   const customizationZones = data.customizationZones || [];
   const customizationFields = data.customizationFields || [];
+  const productEquipment = data.productEquipment || [];
 
   let customizations: CartItemCustomization[] = [];
   let fieldValues: CartItemFieldValue[] = [];
+  let equipmentValues: CartItemEquipmentValue[] = [];
 
   $: hasCustomizationZones = customizationZones.length > 0;
   $: hasCustomizationFields = customizationFields.length > 0;
-  $: isCustomizable = hasCustomizationZones || hasCustomizationFields;
+  $: hasEquipment = productEquipment.length > 0;
+  $: isCustomizable = hasCustomizationZones || hasCustomizationFields || hasEquipment;
   $: fieldPriceModifier = fieldValues.reduce(
     (sum: number, fv: CartItemFieldValue) => sum + fv.priceModifier,
     0
@@ -41,7 +46,7 @@
   $: hasShippingOptions =
     product.type === 'physical' && product.shippingOptions && product.shippingOptions.length > 0;
 
-  // Check all required fields are filled
+  // Check all required customization fields are filled
   $: allRequiredFieldsFilled = customizationFields
     .filter((f: { required: boolean }) => f.required)
     .every((f: { id: string }) => {
@@ -49,15 +54,31 @@
       return val && val.value.trim().length > 0;
     });
 
-  $: canAddToCart = totalStock > 0 && (!hasCustomizationFields || allRequiredFieldsFilled);
+  // Check all required equipment fields are filled
+  $: allRequiredEquipmentFieldsFilled = productEquipment.every(
+    (eq: { fields: { id: string; required: boolean }[] }) =>
+      eq.fields
+        .filter((f: { required: boolean }) => f.required)
+        .every((f: { id: string }) => {
+          const val = equipmentValues.find((v) => v.fieldId === f.id);
+          return val && val.value.trim().length > 0;
+        })
+  );
+
+  $: canAddToCart =
+    totalStock > 0 &&
+    (!hasCustomizationFields || allRequiredFieldsFilled) &&
+    (!hasEquipment || allRequiredEquipmentFieldsFilled);
 
   function addToCart(): void {
     const hasZoneCustomizations = hasCustomizationZones && customizations.length > 0;
     const hasFieldCustomizations = fieldValues.length > 0;
+    const hasEquipmentValues = hasEquipment && equipmentValues.length > 0;
 
     const productToAdd = { ...product } as Product & {
       customizations?: CartItemCustomization[];
       fieldValues?: CartItemFieldValue[];
+      equipmentValues?: CartItemEquipmentValue[];
     };
 
     if (hasZoneCustomizations) {
@@ -65,6 +86,9 @@
     }
     if (hasFieldCustomizations) {
       productToAdd.fieldValues = fieldValues;
+    }
+    if (hasEquipmentValues) {
+      productToAdd.equipmentValues = equipmentValues;
     }
 
     cartStore.addItem(productToAdd, 1);
@@ -76,6 +100,10 @@
 
   function handleFieldValuesChange(e: CustomEvent<CartItemFieldValue[]>): void {
     fieldValues = e.detail;
+  }
+
+  function handleEquipmentValuesChange(e: CustomEvent<CartItemEquipmentValue[]>): void {
+    equipmentValues = e.detail;
   }
 
   function incrementCartQuantity(): void {
@@ -137,6 +165,13 @@
       <ProductCustomizationFields
         fields={customizationFields}
         on:fieldValuesChange={handleFieldValuesChange}
+      />
+    {/if}
+
+    {#if hasEquipment}
+      <ProductEquipmentFields
+        equipmentList={productEquipment}
+        on:equipmentValuesChange={handleEquipmentValuesChange}
       />
     {/if}
 

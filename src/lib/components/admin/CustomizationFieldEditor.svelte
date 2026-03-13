@@ -2,7 +2,11 @@
   import { onMount } from 'svelte';
   import { toastStore } from '$lib/stores/toast';
   import { confirmStore } from '$lib/stores/confirm';
-  import type { ProductCustomizationField, CustomizationFieldType } from '$lib/types/customization';
+  import type {
+    ProductCustomizationField,
+    CustomizationFieldType,
+    MediaRequirements
+  } from '$lib/types/customization';
 
   export let productId: string;
 
@@ -26,12 +30,32 @@
   let formDefaultValue = '';
   let formPriceModifier = 0;
 
+  // Media requirements form fields
+  let formMaxFileSize: number | null = null;
+  let formAllowedMimeTypes = '';
+  let formMinWidth: number | null = null;
+  let formMinHeight: number | null = null;
+  let formMaxWidth: number | null = null;
+  let formMaxHeight: number | null = null;
+  let formMinAspectRatio: number | null = null;
+  let formMaxAspectRatio: number | null = null;
+  let formMinDuration: number | null = null;
+  let formMaxDuration: number | null = null;
+  let formMinBitrate: number | null = null;
+  let formMinResolution: number | null = null;
+  let formMinFrameRate: number | null = null;
+
+  $: isMediaType = formFieldType === 'image' || formFieldType === 'audio' || formFieldType === 'video';
+
   const FIELD_TYPE_LABELS: Record<CustomizationFieldType, string> = {
     text: 'Text Input',
     textarea: 'Multi-line Text',
     select: 'Dropdown Select',
     color: 'Color Picker',
-    number: 'Number Input'
+    number: 'Number Input',
+    image: 'Image Upload',
+    audio: 'Audio Upload',
+    video: 'Video Upload'
   };
 
   async function loadFields(): Promise<void> {
@@ -63,6 +87,7 @@
     formMaxValue = null;
     formDefaultValue = '';
     formPriceModifier = 0;
+    resetMediaRequirements();
     showForm = true;
   }
 
@@ -78,6 +103,7 @@
     formMaxValue = field.maxValue;
     formDefaultValue = field.defaultValue || '';
     formPriceModifier = field.priceModifier;
+    loadMediaRequirements(field.mediaRequirements);
     showForm = true;
   }
 
@@ -91,6 +117,68 @@
       .split(',')
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
+  }
+
+  function resetMediaRequirements(): void {
+    formMaxFileSize = null;
+    formAllowedMimeTypes = '';
+    formMinWidth = null;
+    formMinHeight = null;
+    formMaxWidth = null;
+    formMaxHeight = null;
+    formMinAspectRatio = null;
+    formMaxAspectRatio = null;
+    formMinDuration = null;
+    formMaxDuration = null;
+    formMinBitrate = null;
+    formMinResolution = null;
+    formMinFrameRate = null;
+  }
+
+  function loadMediaRequirements(reqs: MediaRequirements | null): void {
+    resetMediaRequirements();
+    if (!reqs) return;
+    formMaxFileSize = reqs.maxFileSize ?? null;
+    formAllowedMimeTypes = reqs.allowedMimeTypes?.join(', ') ?? '';
+    formMinWidth = reqs.minWidth ?? null;
+    formMinHeight = reqs.minHeight ?? null;
+    formMaxWidth = reqs.maxWidth ?? null;
+    formMaxHeight = reqs.maxHeight ?? null;
+    formMinAspectRatio = reqs.minAspectRatio ?? null;
+    formMaxAspectRatio = reqs.maxAspectRatio ?? null;
+    formMinDuration = reqs.minDuration ?? null;
+    formMaxDuration = reqs.maxDuration ?? null;
+    formMinBitrate = reqs.minBitrate ?? null;
+    formMinResolution = reqs.minResolution ?? null;
+    formMinFrameRate = reqs.minFrameRate ?? null;
+  }
+
+  function buildMediaRequirements(): MediaRequirements | null {
+    if (!isMediaType) return null;
+    const reqs: MediaRequirements = {};
+    if (formMaxFileSize) reqs.maxFileSize = formMaxFileSize;
+    const mimeTypes = parseOptions(formAllowedMimeTypes);
+    if (mimeTypes.length > 0) reqs.allowedMimeTypes = mimeTypes;
+    if (formFieldType === 'image') {
+      if (formMinWidth) reqs.minWidth = formMinWidth;
+      if (formMinHeight) reqs.minHeight = formMinHeight;
+      if (formMaxWidth) reqs.maxWidth = formMaxWidth;
+      if (formMaxHeight) reqs.maxHeight = formMaxHeight;
+      if (formMinAspectRatio) reqs.minAspectRatio = formMinAspectRatio;
+      if (formMaxAspectRatio) reqs.maxAspectRatio = formMaxAspectRatio;
+    }
+    if (formFieldType === 'audio' || formFieldType === 'video') {
+      if (formMinDuration) reqs.minDuration = formMinDuration;
+      if (formMaxDuration) reqs.maxDuration = formMaxDuration;
+    }
+    if (formFieldType === 'audio' && formMinBitrate) {
+      reqs.minBitrate = formMinBitrate;
+    }
+    if (formFieldType === 'video') {
+      if (formMinResolution) reqs.minResolution = formMinResolution;
+      if (formMinFrameRate) reqs.minFrameRate = formMinFrameRate;
+    }
+    return Object.keys(reqs).length > 0 ? reqs : null;
   }
 
   async function saveField(): Promise<void> {
@@ -123,6 +211,11 @@
       if (formFieldType === 'number') {
         body.minValue = formMinValue;
         body.maxValue = formMaxValue;
+      }
+
+      const mediaReqs = buildMediaRequirements();
+      if (mediaReqs) {
+        body.mediaRequirements = mediaReqs;
       }
 
       if (editingField) {
@@ -311,6 +404,98 @@
               <input id="cf-max" type="number" bind:value={formMaxValue} placeholder="No max" />
             </div>
           </div>
+        {/if}
+
+        {#if isMediaType}
+          <fieldset class="media-requirements-fieldset">
+            <legend>Media Quality Requirements</legend>
+
+            <div class="form-row-group">
+              <div class="form-row">
+                <label for="cf-max-filesize">Max File Size (bytes)</label>
+                <input
+                  id="cf-max-filesize"
+                  type="number"
+                  bind:value={formMaxFileSize}
+                  min="0"
+                  placeholder="No limit"
+                />
+              </div>
+              <div class="form-row">
+                <label for="cf-mime-types">Allowed MIME Types (comma-separated)</label>
+                <input
+                  id="cf-mime-types"
+                  type="text"
+                  bind:value={formAllowedMimeTypes}
+                  placeholder="e.g., image/png, image/jpeg"
+                />
+              </div>
+            </div>
+
+            {#if formFieldType === 'image'}
+              <div class="form-row-group">
+                <div class="form-row">
+                  <label for="cf-min-width">Min Width (px)</label>
+                  <input id="cf-min-width" type="number" bind:value={formMinWidth} min="1" placeholder="Any" />
+                </div>
+                <div class="form-row">
+                  <label for="cf-min-height">Min Height (px)</label>
+                  <input id="cf-min-height" type="number" bind:value={formMinHeight} min="1" placeholder="Any" />
+                </div>
+                <div class="form-row">
+                  <label for="cf-max-width">Max Width (px)</label>
+                  <input id="cf-max-width" type="number" bind:value={formMaxWidth} min="1" placeholder="Any" />
+                </div>
+                <div class="form-row">
+                  <label for="cf-max-height">Max Height (px)</label>
+                  <input id="cf-max-height" type="number" bind:value={formMaxHeight} min="1" placeholder="Any" />
+                </div>
+              </div>
+              <div class="form-row-group">
+                <div class="form-row">
+                  <label for="cf-min-aspect">Min Aspect Ratio</label>
+                  <input id="cf-min-aspect" type="number" bind:value={formMinAspectRatio} step="0.01" min="0" placeholder="Any" />
+                </div>
+                <div class="form-row">
+                  <label for="cf-max-aspect">Max Aspect Ratio</label>
+                  <input id="cf-max-aspect" type="number" bind:value={formMaxAspectRatio} step="0.01" min="0" placeholder="Any" />
+                </div>
+              </div>
+            {/if}
+
+            {#if formFieldType === 'audio' || formFieldType === 'video'}
+              <div class="form-row-group">
+                <div class="form-row">
+                  <label for="cf-min-duration">Min Duration (seconds)</label>
+                  <input id="cf-min-duration" type="number" bind:value={formMinDuration} min="0" step="0.1" placeholder="Any" />
+                </div>
+                <div class="form-row">
+                  <label for="cf-max-duration">Max Duration (seconds)</label>
+                  <input id="cf-max-duration" type="number" bind:value={formMaxDuration} min="0" step="0.1" placeholder="Any" />
+                </div>
+              </div>
+            {/if}
+
+            {#if formFieldType === 'audio'}
+              <div class="form-row">
+                <label for="cf-min-bitrate">Min Bitrate (kbps)</label>
+                <input id="cf-min-bitrate" type="number" bind:value={formMinBitrate} min="0" placeholder="Any" />
+              </div>
+            {/if}
+
+            {#if formFieldType === 'video'}
+              <div class="form-row-group">
+                <div class="form-row">
+                  <label for="cf-min-resolution">Min Resolution (e.g., 720 for 720p)</label>
+                  <input id="cf-min-resolution" type="number" bind:value={formMinResolution} min="0" placeholder="Any" />
+                </div>
+                <div class="form-row">
+                  <label for="cf-min-framerate">Min Frame Rate (fps)</label>
+                  <input id="cf-min-framerate" type="number" bind:value={formMinFrameRate} min="0" placeholder="Any" />
+                </div>
+              </div>
+            {/if}
+          </fieldset>
         {/if}
 
         <div class="form-row">
@@ -585,5 +770,20 @@
   .add-btn:hover {
     background: var(--color-bg-accent, #f0f7ff);
     border-color: var(--color-primary, #4a90d9);
+  }
+
+  .media-requirements-fieldset {
+    border: 1px solid var(--color-border-secondary, #eee);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.75rem;
+    background: var(--color-bg-accent, #f8f9fa);
+  }
+
+  .media-requirements-fieldset legend {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text-secondary, #666);
+    padding: 0 0.5rem;
   }
 </style>

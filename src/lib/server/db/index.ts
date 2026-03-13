@@ -23,3 +23,4 @@ export * from './contentEntries.js';
 export * from './contentValidation.js';
 export * from './customization-zones.js';
 export * from './customization-fields.js';
+export * from './equipment.js';

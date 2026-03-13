@@ -89,8 +89,10 @@ export const cartStore: CartStore = {
         Array.isArray(cartProduct.customizations) && cartProduct.customizations.length > 0;
       const hasFieldValues =
         Array.isArray(cartProduct.fieldValues) && cartProduct.fieldValues.length > 0;
+      const hasEquipmentValues =
+        Array.isArray(cartProduct.equipmentValues) && cartProduct.equipmentValues.length > 0;
 
-      if (hasCustomizations || hasFieldValues) {
+      if (hasCustomizations || hasFieldValues || hasEquipmentValues) {
         const newItem: CartItem = { ...product, quantity };
         if (hasCustomizations) {
           newItem.customizations = cartProduct.customizations;
@@ -98,12 +100,18 @@ export const cartStore: CartStore = {
         if (hasFieldValues) {
           newItem.fieldValues = cartProduct.fieldValues;
         }
+        if (hasEquipmentValues) {
+          newItem.equipmentValues = cartProduct.equipmentValues;
+        }
         return [...items, newItem];
       }
 
       const existingItem = items.find(
         (item) =>
-          item.id === product.id && !item.customizations?.length && !item.fieldValues?.length
+          item.id === product.id &&
+          !item.customizations?.length &&
+          !item.fieldValues?.length &&
+          !item.equipmentValues?.length
       );
 
       if (existingItem) {

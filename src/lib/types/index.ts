@@ -1,4 +1,5 @@
 import type { CartItemCustomization, CartItemFieldValue } from './customization';
+import type { CartItemEquipmentValue } from './equipment';
 
 export type ProductType = 'physical' | 'service' | 'digital';
 
@@ -32,6 +33,7 @@ export interface CartItem extends Product {
   quantity: number;
   customizations?: CartItemCustomization[];
   fieldValues?: CartItemFieldValue[];
+  equipmentValues?: CartItemEquipmentValue[];
 }
 
 // Re-export checkout types
@@ -165,3 +167,21 @@ export type {
   UpdateCustomizationFieldData,
   CartItemFieldValue
 } from './customization';
+
+// Re-export equipment types
+export type {
+  EquipmentFieldType,
+  Equipment,
+  EquipmentField,
+  EquipmentWithFields,
+  ProductEquipment,
+  CartItemEquipmentValue,
+  CreateEquipmentData,
+  UpdateEquipmentData,
+  CreateEquipmentFieldData,
+  UpdateEquipmentFieldData,
+  DBEquipment,
+  DBEquipmentField,
+  DBProductEquipment,
+  DBOrderItemEquipmentValue
+} from './equipment';

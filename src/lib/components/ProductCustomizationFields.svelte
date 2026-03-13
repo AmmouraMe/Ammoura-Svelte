@@ -1,6 +1,10 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import type { ProductCustomizationField, CartItemFieldValue } from '$lib/types/customization';
+  import type {
+    ProductCustomizationField,
+    CartItemFieldValue,
+    MediaRequirements
+  } from '$lib/types/customization';
 
   export let fields: ProductCustomizationField[] = [];
   export let initialValues: CartItemFieldValue[] = [];
@@ -9,6 +13,7 @@
 
   // Initialize values from defaults or initial values
   let values: Record<string, string> = {};
+  let mediaErrors: Record<string, string> = {};
 
   $: {
     const newValues: Record<string, string> = {};
@@ -59,6 +64,187 @@
 
   function formatPrice(val: number): string {
     return val > 0 ? `+$${val.toFixed(2)}` : '';
+  }
+
+  function getAcceptAttribute(field: ProductCustomizationField): string {
+    const reqs = field.mediaRequirements;
+    if (reqs?.allowedMimeTypes && reqs.allowedMimeTypes.length > 0) {
+      return reqs.allowedMimeTypes.join(',');
+    }
+    if (field.fieldType === 'image') return 'image/*';
+    if (field.fieldType === 'audio') return 'audio/*';
+    if (field.fieldType === 'video') return 'video/*';
+    return '';
+  }
+
+  function formatFileSize(bytes: number): string {
+    if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;
+    if (bytes >= 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${bytes} bytes`;
+  }
+
+  function describeRequirements(reqs: MediaRequirements, fieldType: string): string[] {
+    const desc: string[] = [];
+    if (reqs.maxFileSize) desc.push(`Max file size: ${formatFileSize(reqs.maxFileSize)}`);
+    if (reqs.allowedMimeTypes?.length) desc.push(`Types: ${reqs.allowedMimeTypes.join(', ')}`);
+    if (fieldType === 'image') {
+      if (reqs.minWidth || reqs.minHeight) {
+        desc.push(`Min: ${reqs.minWidth ?? 'any'}×${reqs.minHeight ?? 'any'}px`);
+      }
+      if (reqs.maxWidth || reqs.maxHeight) {
+        desc.push(`Max: ${reqs.maxWidth ?? 'any'}×${reqs.maxHeight ?? 'any'}px`);
+      }
+      if (reqs.minAspectRatio || reqs.maxAspectRatio) {
+        const parts: string[] = [];
+        if (reqs.minAspectRatio) parts.push(`min ${reqs.minAspectRatio}`);
+        if (reqs.maxAspectRatio) parts.push(`max ${reqs.maxAspectRatio}`);
+        desc.push(`Aspect ratio: ${parts.join(', ')}`);
+      }
+    }
+    if (fieldType === 'audio' || fieldType === 'video') {
+      if (reqs.minDuration || reqs.maxDuration) {
+        const parts: string[] = [];
+        if (reqs.minDuration) parts.push(`min ${reqs.minDuration}s`);
+        if (reqs.maxDuration) parts.push(`max ${reqs.maxDuration}s`);
+        desc.push(`Duration: ${parts.join(', ')}`);
+      }
+    }
+    if (fieldType === 'audio' && reqs.minBitrate) {
+      desc.push(`Min bitrate: ${reqs.minBitrate} kbps`);
+    }
+    if (fieldType === 'video') {
+      if (reqs.minResolution) desc.push(`Min resolution: ${reqs.minResolution}p`);
+      if (reqs.minFrameRate) desc.push(`Min frame rate: ${reqs.minFrameRate} fps`);
+    }
+    return desc;
+  }
+
+  async function validateMediaFile(
+    file: File,
+    field: ProductCustomizationField
+  ): Promise<string | null> {
+    const reqs = field.mediaRequirements;
+    if (!reqs) return null;
+
+    if (reqs.maxFileSize && file.size > reqs.maxFileSize) {
+      return `File too large. Maximum: ${formatFileSize(reqs.maxFileSize)}`;
+    }
+
+    if (reqs.allowedMimeTypes?.length && !reqs.allowedMimeTypes.includes(file.type)) {
+      return `File type ${file.type} not allowed. Accepted: ${reqs.allowedMimeTypes.join(', ')}`;
+    }
+
+    if (field.fieldType === 'image') {
+      const error = await validateImage(file, reqs);
+      if (error) return error;
+    }
+
+    if (field.fieldType === 'audio' || field.fieldType === 'video') {
+      const error = await validateMediaDuration(file, field.fieldType, reqs);
+      if (error) return error;
+    }
+
+    return null;
+  }
+
+  function validateImage(file: File, reqs: MediaRequirements): Promise<string | null> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = (): void => {
+        URL.revokeObjectURL(img.src);
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        if (reqs.minWidth && w < reqs.minWidth) {
+          resolve(`Image width (${w}px) is below minimum (${reqs.minWidth}px)`);
+          return;
+        }
+        if (reqs.minHeight && h < reqs.minHeight) {
+          resolve(`Image height (${h}px) is below minimum (${reqs.minHeight}px)`);
+          return;
+        }
+        if (reqs.maxWidth && w > reqs.maxWidth) {
+          resolve(`Image width (${w}px) exceeds maximum (${reqs.maxWidth}px)`);
+          return;
+        }
+        if (reqs.maxHeight && h > reqs.maxHeight) {
+          resolve(`Image height (${h}px) exceeds maximum (${reqs.maxHeight}px)`);
+          return;
+        }
+        const aspect = w / h;
+        if (reqs.minAspectRatio && aspect < reqs.minAspectRatio) {
+          resolve(`Aspect ratio (${aspect.toFixed(2)}) is below minimum (${reqs.minAspectRatio})`);
+          return;
+        }
+        if (reqs.maxAspectRatio && aspect > reqs.maxAspectRatio) {
+          resolve(`Aspect ratio (${aspect.toFixed(2)}) exceeds maximum (${reqs.maxAspectRatio})`);
+          return;
+        }
+        resolve(null);
+      };
+      img.onerror = (): void => {
+        URL.revokeObjectURL(img.src);
+        resolve('Unable to read image file');
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  function validateMediaDuration(
+    file: File,
+    fieldType: string,
+    reqs: MediaRequirements
+  ): Promise<string | null> {
+    if (!reqs.minDuration && !reqs.maxDuration) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      const el = document.createElement(fieldType === 'video' ? 'video' : 'audio');
+      el.preload = 'metadata';
+      el.onloadedmetadata = (): void => {
+        URL.revokeObjectURL(el.src);
+        const dur = el.duration;
+        if (reqs.minDuration && dur < reqs.minDuration) {
+          resolve(`Duration (${dur.toFixed(1)}s) is below minimum (${reqs.minDuration}s)`);
+          return;
+        }
+        if (reqs.maxDuration && dur > reqs.maxDuration) {
+          resolve(`Duration (${dur.toFixed(1)}s) exceeds maximum (${reqs.maxDuration}s)`);
+          return;
+        }
+        resolve(null);
+      };
+      el.onerror = (): void => {
+        URL.revokeObjectURL(el.src);
+        resolve('Unable to read media file');
+      };
+      el.src = URL.createObjectURL(file);
+    });
+  }
+
+  async function handleFileChange(
+    fieldId: string,
+    event: Event
+  ): Promise<void> {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    const field = fields.find((f) => f.id === fieldId);
+    if (!file || !field) {
+      handleChange(fieldId, '');
+      delete mediaErrors[fieldId];
+      mediaErrors = { ...mediaErrors };
+      return;
+    }
+
+    const error = await validateMediaFile(file, field);
+    if (error) {
+      mediaErrors[fieldId] = error;
+      mediaErrors = { ...mediaErrors };
+      input.value = '';
+      handleChange(fieldId, '');
+      return;
+    }
+
+    delete mediaErrors[fieldId];
+    mediaErrors = { ...mediaErrors };
+    handleChange(fieldId, file.name);
   }
 </script>
 
@@ -142,6 +328,28 @@
           max={field.maxValue ?? undefined}
           required={field.required}
         />
+      {:else if field.fieldType === 'image' || field.fieldType === 'audio' || field.fieldType === 'video'}
+        <input
+          id="field-{field.id}"
+          type="file"
+          accept={getAcceptAttribute(field)}
+          on:change={(e) => handleFileChange(field.id, e)}
+          required={field.required}
+          class="file-input"
+        />
+        {#if field.mediaRequirements}
+          <div class="media-requirements">
+            {#each describeRequirements(field.mediaRequirements, field.fieldType) as req}
+              <span class="requirement-item">{req}</span>
+            {/each}
+          </div>
+        {/if}
+        {#if mediaErrors[field.id]}
+          <span class="media-error">{mediaErrors[field.id]}</span>
+        {/if}
+        {#if values[field.id]}
+          <span class="file-selected">Selected: {values[field.id]}</span>
+        {/if}
       {/if}
     </div>
   {/each}
@@ -266,5 +474,50 @@
     color: var(--color-warning-text, #856404);
     margin: 0.5rem 0 0;
     text-align: center;
+  }
+
+  .file-input {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    border: 1px dashed var(--color-border-primary, #ddd);
+    border-radius: 6px;
+    font-size: 0.95rem;
+    background: var(--color-bg-primary, #fff);
+    color: var(--color-text-primary, #333);
+    box-sizing: border-box;
+    cursor: pointer;
+  }
+
+  .file-input:hover {
+    border-color: var(--color-primary, #4a90d9);
+  }
+
+  .media-requirements {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.3rem;
+  }
+
+  .requirement-item {
+    font-size: 0.75rem;
+    color: var(--color-text-tertiary, #999);
+    background: var(--color-bg-accent, #f0f0f0);
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+  }
+
+  .media-error {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--color-danger, #dc3545);
+    margin-top: 0.3rem;
+  }
+
+  .file-selected {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--color-success-text, #28a745);
+    margin-top: 0.3rem;
   }
 </style>

@@ -10,6 +10,9 @@ import {
 } from '../utils/shippingGroups';
 import type { CartItem } from '../types';
 
+type SubmitOrderItem = Pick<CartItem, 'id' | 'name' | 'price' | 'quantity' | 'image'> &
+  Partial<Pick<CartItem, 'equipmentValues'>>;
+
 // Initial form data
 const initialFormData: CheckoutFormData = {
   shippingAddress: {
@@ -96,12 +99,12 @@ function validateForm(): CheckoutValidationErrors {
 }
 
 async function submitOrder(
-  cartItems: Array<{ id: string; name: string; price: number; quantity: number; image: string }>,
+  cartItems: SubmitOrderItem[],
   subtotal: number,
   shippingCost: number,
   tax: number,
   total: number
-): Promise<{ success: boolean; orderId?: string; error?: string }> {
+): Promise<{ success: boolean; orderId?: string; error?: string; }> {
   checkoutState.update((state) => ({ ...state, isSubmitting: true }));
 
   try {
@@ -176,7 +179,8 @@ async function submitOrder(
         name: item.name,
         price: item.price,
         quantity: item.quantity,
-        image: item.image
+        image: item.image,
+        equipment_values: item.equipmentValues || []
       })),
       subtotal,
       shipping_cost: shippingCost,
@@ -262,7 +266,7 @@ function setSelectedShippingOption(optionId: string | null): void {
 }
 
 async function loadShippingOptions(
-  cartItems: Array<{ id: string; type: 'physical' | 'digital' | 'service'; category?: string }>
+  cartItems: Array<{ id: string; type: 'physical' | 'digital' | 'service'; category?: string; }>
 ): Promise<void> {
   checkoutState.update((state) => ({ ...state, loadingShippingOptions: true }));
 

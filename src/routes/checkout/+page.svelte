@@ -273,6 +273,13 @@
               <div class="item-info">
                 <h4>{item.name}</h4>
                 <p>Quantity: {item.quantity}</p>
+                {#if item.equipmentValues && item.equipmentValues.length > 0}
+                  <div class="item-equipment-values">
+                    {#each item.equipmentValues as ev}
+                      <span class="equipment-value">{ev.fieldName}: {ev.value}</span>
+                    {/each}
+                  </div>
+                {/if}
               </div>
               <div class="item-price">
                 ${(item.price * item.quantity).toFixed(2)}
@@ -572,6 +579,18 @@
     color: var(--color-text-secondary);
     font-size: 0.8rem;
     transition: color var(--transition-normal);
+  }
+
+  .item-equipment-values {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    margin-top: 0.25rem;
+  }
+
+  .equipment-value {
+    color: var(--color-text-tertiary);
+    font-size: 0.75rem;
   }
 
   .item-price {
