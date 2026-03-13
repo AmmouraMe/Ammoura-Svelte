@@ -1,7 +1,7 @@
 <script lang="ts">
   import { invalidateAll } from '$app/navigation';
   import { toastStore } from '$lib/stores/toast';
-  import type { FulfillmentProvider } from '$lib/types';
+  import type { FulfillmentProvider, ProviderType } from '$lib/types';
 
   export let data;
   let providers: FulfillmentProvider[] = data.providers;
@@ -18,11 +18,30 @@
   // Form fields
   let formName = '';
   let formDescription = '';
+  let formProviderType: ProviderType = 'manual';
   let formIsActive = true;
+
+  const providerTypeOptions: { value: ProviderType; label: string; description: string }[] = [
+    {
+      value: 'manual',
+      label: 'Manual / Self-Fulfilled',
+      description: 'You manage stock, shipping, and pricing yourself.'
+    },
+    {
+      value: 'printful',
+      label: 'Printful',
+      description: 'Print-on-demand. Printful manages stock, printing, and shipping.'
+    }
+  ];
+
+  function getProviderTypeLabel(type: ProviderType): string {
+    return providerTypeOptions.find((o) => o.value === type)?.label || type;
+  }
 
   function handleAddClick() {
     formName = '';
     formDescription = '';
+    formProviderType = 'manual';
     formIsActive = true;
     showAddModal = true;
   }
@@ -31,6 +50,7 @@
     selectedProvider = provider;
     formName = provider.name;
     formDescription = provider.description || '';
+    formProviderType = provider.providerType;
     formIsActive = provider.isActive;
     showEditModal = true;
   }
@@ -54,6 +74,7 @@
       const providerData = {
         name: formName.trim(),
         description: formDescription.trim() || undefined,
+        providerType: formProviderType,
         isActive: formIsActive
       };
 
@@ -170,6 +191,9 @@
           <div class="provider-info">
             <div class="provider-header">
               <h3>{provider.name}</h3>
+              <span class="badge type-badge {provider.providerType}"
+                >{getProviderTypeLabel(provider.providerType)}</span
+              >
               {#if provider.isDefault}
                 <span class="badge default">Default</span>
               {/if}
@@ -234,6 +258,18 @@
       </button>
     </div>
     <form on:submit|preventDefault={handleSubmit}>
+      <div class="form-group">
+        <label for="provider-type">Provider Type *</label>
+        <select id="provider-type" bind:value={formProviderType}>
+          {#each providerTypeOptions as option}
+            <option value={option.value}>{option.label}</option>
+          {/each}
+        </select>
+        <p class="field-hint">
+          {providerTypeOptions.find((o) => o.value === formProviderType)?.description || ''}
+        </p>
+      </div>
+
       <div class="form-group">
         <label for="provider-name">Name *</label>
         <input
@@ -436,6 +472,18 @@
     color: var(--color-text-secondary);
   }
 
+  .badge.type-badge {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border-secondary);
+  }
+
+  .badge.type-badge.printful {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border-color: #a5d6a7;
+  }
+
   .description {
     color: var(--color-text-secondary);
     margin: 0;
@@ -553,7 +601,8 @@
   }
 
   .form-group input[type='text'],
-  .form-group textarea {
+  .form-group textarea,
+  .form-group select {
     width: 100%;
     padding: 0.75rem;
     border: 1px solid var(--color-border-secondary);
@@ -565,10 +614,18 @@
   }
 
   .form-group input[type='text']:focus,
-  .form-group textarea:focus {
+  .form-group textarea:focus,
+  .form-group select:focus {
     outline: none;
     border-color: var(--color-primary);
     box-shadow: 0 0 0 3px var(--color-primary-alpha);
+  }
+
+  .field-hint {
+    margin: 0.25rem 0 0 0;
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+    line-height: 1.4;
   }
 
   .checkbox-group label {

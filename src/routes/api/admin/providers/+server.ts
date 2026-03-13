@@ -8,6 +8,7 @@ import {
   deleteFulfillmentProvider
 } from '$lib/server/db';
 import type { DBFulfillmentProvider } from '$lib/types/fulfillment';
+import { isValidProviderType } from '$lib/server/fulfillment/providerCapabilities';
 
 // GET all providers
 export const GET: RequestHandler = async ({ platform, locals }) => {
@@ -25,6 +26,7 @@ export const GET: RequestHandler = async ({ platform, locals }) => {
       id: p.id,
       name: p.name,
       description: p.description,
+      providerType: p.provider_type || 'manual',
       isDefault: p.is_default === 1,
       isActive: p.is_active === 1
     }));
@@ -49,6 +51,8 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
     const data = (await request.json()) as {
       name: string;
       description?: string;
+      providerType?: string;
+      config?: Record<string, string>;
       isActive?: boolean;
     };
 
@@ -56,9 +60,15 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
       throw error(400, 'Provider name is required');
     }
 
+    if (data.providerType && !isValidProviderType(data.providerType)) {
+      throw error(400, 'Invalid provider type');
+    }
+
     const providerData = {
       name: data.name.trim(),
       description: data.description?.trim(),
+      providerType: data.providerType as 'manual' | 'printful' | undefined,
+      config: data.config,
       isActive: data.isActive !== undefined ? data.isActive : true
     };
 
@@ -68,6 +78,7 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
       id: dbProvider.id,
       name: dbProvider.name,
       description: dbProvider.description,
+      providerType: dbProvider.provider_type || 'manual',
       isDefault: dbProvider.is_default === 1,
       isActive: dbProvider.is_active === 1
     };
@@ -96,6 +107,8 @@ export const PUT: RequestHandler = async ({ request, platform, locals }) => {
       id: string;
       name?: string;
       description?: string;
+      providerType?: string;
+      config?: Record<string, string>;
       isActive?: boolean;
     };
 
@@ -106,6 +119,8 @@ export const PUT: RequestHandler = async ({ request, platform, locals }) => {
     const updateData: {
       name?: string;
       description?: string;
+      providerType?: 'manual' | 'printful';
+      config?: Record<string, string>;
       isActive?: boolean;
     } = {};
 
@@ -117,6 +132,15 @@ export const PUT: RequestHandler = async ({ request, platform, locals }) => {
     }
     if (data.description !== undefined) {
       updateData.description = data.description?.trim();
+    }
+    if (data.providerType !== undefined) {
+      if (!isValidProviderType(data.providerType)) {
+        throw error(400, 'Invalid provider type');
+      }
+      updateData.providerType = data.providerType as 'manual' | 'printful';
+    }
+    if (data.config !== undefined) {
+      updateData.config = data.config;
     }
     if (data.isActive !== undefined) {
       updateData.isActive = data.isActive;
@@ -132,6 +156,7 @@ export const PUT: RequestHandler = async ({ request, platform, locals }) => {
       id: dbProvider.id,
       name: dbProvider.name,
       description: dbProvider.description,
+      providerType: dbProvider.provider_type || 'manual',
       isDefault: dbProvider.is_default === 1,
       isActive: dbProvider.is_active === 1
     };

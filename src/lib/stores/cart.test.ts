@@ -309,6 +309,159 @@ describe('Cart Store', () => {
     });
   });
 
+  describe('addItem with fieldValues', () => {
+    it('should add product with fieldValues as a new line item', () => {
+      const productWithFields = {
+        ...mockProduct,
+        fieldValues: [
+          {
+            fieldId: 'f1',
+            fieldName: 'Engraving',
+            fieldType: 'text' as const,
+            value: 'Hello World',
+            priceModifier: 5
+          }
+        ]
+      };
+
+      cartStore.addItem(productWithFields);
+      const items = get(cartItems);
+
+      expect(items).toHaveLength(1);
+      expect(items[0].fieldValues).toHaveLength(1);
+      expect(items[0].fieldValues![0].value).toBe('Hello World');
+    });
+
+    it('should not merge fieldValues product with existing non-customized item', () => {
+      cartStore.addItem(mockProduct);
+
+      const productWithFields = {
+        ...mockProduct,
+        fieldValues: [
+          {
+            fieldId: 'f1',
+            fieldName: 'Color',
+            fieldType: 'color' as const,
+            value: '#ff0000',
+            priceModifier: 0
+          }
+        ]
+      };
+      cartStore.addItem(productWithFields);
+      const items = get(cartItems);
+
+      expect(items).toHaveLength(2);
+      expect(items[0].fieldValues).toBeUndefined();
+      expect(items[1].fieldValues).toHaveLength(1);
+    });
+
+    it('should always create new line items for repeated fieldValues products', () => {
+      const productWithFields = {
+        ...mockProduct,
+        fieldValues: [
+          {
+            fieldId: 'f1',
+            fieldName: 'Message',
+            fieldType: 'textarea' as const,
+            value: 'First message',
+            priceModifier: 0
+          }
+        ]
+      };
+
+      cartStore.addItem(productWithFields);
+      cartStore.addItem({
+        ...mockProduct,
+        fieldValues: [
+          {
+            fieldId: 'f1',
+            fieldName: 'Message',
+            fieldType: 'textarea' as const,
+            value: 'Second message',
+            priceModifier: 0
+          }
+        ]
+      });
+      const items = get(cartItems);
+
+      expect(items).toHaveLength(2);
+      expect(items[0].fieldValues![0].value).toBe('First message');
+      expect(items[1].fieldValues![0].value).toBe('Second message');
+    });
+
+    it('should handle product with both customizations and fieldValues', () => {
+      const productWithBoth = {
+        ...mockProduct,
+        customizations: [{ zoneId: 'z1', zoneName: 'Front', imageUrl: '/img.png' }],
+        fieldValues: [
+          {
+            fieldId: 'f1',
+            fieldName: 'Size',
+            fieldType: 'select' as const,
+            value: 'Large',
+            priceModifier: 3
+          }
+        ]
+      };
+
+      cartStore.addItem(productWithBoth);
+      const items = get(cartItems);
+
+      expect(items).toHaveLength(1);
+      expect(items[0].customizations).toHaveLength(1);
+      expect(items[0].fieldValues).toHaveLength(1);
+    });
+
+    it('should not merge non-customized product into existing customized ones', () => {
+      const productWithFields = {
+        ...mockProduct,
+        fieldValues: [
+          {
+            fieldId: 'f1',
+            fieldName: 'Text',
+            fieldType: 'text' as const,
+            value: 'Custom',
+            priceModifier: 0
+          }
+        ]
+      };
+
+      cartStore.addItem(productWithFields);
+      cartStore.addItem(mockProduct);
+      const items = get(cartItems);
+
+      // Should be 2 items: customized + plain
+      expect(items).toHaveLength(2);
+      expect(items[0].fieldValues).toHaveLength(1);
+      expect(items[1].fieldValues).toBeUndefined();
+    });
+
+    it('should merge plain products even when fieldValues items exist in cart', () => {
+      const productWithFields = {
+        ...mockProduct,
+        fieldValues: [
+          {
+            fieldId: 'f1',
+            fieldName: 'Text',
+            fieldType: 'text' as const,
+            value: 'Custom',
+            priceModifier: 0
+          }
+        ]
+      };
+
+      cartStore.addItem(productWithFields);
+      cartStore.addItem(mockProduct, 2);
+      cartStore.addItem(mockProduct, 3);
+      const items = get(cartItems);
+
+      // 1 customized + 1 plain (merged)
+      expect(items).toHaveLength(2);
+      expect(items[1].quantity).toBe(5);
+      expect(items[1].fieldValues).toBeUndefined();
+    });
+  });
+
   describe('clearCart alias', () => {
     it('should clear cart using clearCart method (alias for clear)', () => {
       cartStore.addItem(mockProduct);

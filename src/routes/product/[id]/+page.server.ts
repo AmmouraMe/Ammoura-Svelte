@@ -2,7 +2,9 @@ import {
   getDB,
   getProductById,
   getProductMedia,
-  getProductFulfillmentOptions
+  getProductFulfillmentOptions,
+  getCustomizationZones,
+  getCustomizationFields
 } from '$lib/server/db';
 import { getProductShippingOptions } from '$lib/server/db/shipping-options';
 import { error } from '@sveltejs/kit';
@@ -41,6 +43,12 @@ export const load: PageServerLoad = async ({
     // Fetch shipping options for physical products
     const shippingOptionsRaw =
       dbProduct.type === 'physical' ? await getProductShippingOptions(db, siteId, params.id) : [];
+
+    // Fetch customization zones
+    const customizationZones = await getCustomizationZones(db, siteId, params.id);
+
+    // Fetch customization fields (customer input fields)
+    const customizationFields = await getCustomizationFields(db, siteId, params.id);
 
     const shippingOptions = shippingOptionsRaw.map((opt) => ({
       shippingOptionId: opt.shippingOptionId,
@@ -102,7 +110,9 @@ export const load: PageServerLoad = async ({
 
     return {
       product,
-      media
+      media,
+      customizationZones,
+      customizationFields
     };
   } catch (err) {
     if (err && typeof err === 'object' && 'status' in err) {

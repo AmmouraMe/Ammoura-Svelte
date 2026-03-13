@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   getAllFulfillmentProviders,
   getFulfillmentProviderById,
+  getFulfillmentProvidersByType,
   createFulfillmentProvider,
   updateFulfillmentProvider,
   deleteFulfillmentProvider,
@@ -35,6 +36,8 @@ describe('fulfillment-providers', () => {
           site_id: testSiteId,
           name: 'Self',
           description: 'Self-fulfilled',
+          provider_type: 'manual',
+          config: null,
           is_default: 1,
           is_active: 1,
           created_at: Date.now(),
@@ -45,6 +48,8 @@ describe('fulfillment-providers', () => {
           site_id: testSiteId,
           name: 'Third Party',
           description: 'Third party fulfillment',
+          provider_type: 'manual',
+          config: null,
           is_default: 0,
           is_active: 1,
           created_at: Date.now(),
@@ -78,6 +83,8 @@ describe('fulfillment-providers', () => {
         site_id: testSiteId,
         name: 'Self',
         description: 'Self-fulfilled',
+        provider_type: 'manual',
+        config: null,
         is_default: 1,
         is_active: 1,
         created_at: Date.now(),
@@ -111,6 +118,8 @@ describe('fulfillment-providers', () => {
         site_id: testSiteId,
         name: 'New Provider',
         description: 'Test provider',
+        provider_type: 'manual',
+        config: null,
         is_default: 0,
         is_active: 1,
         created_at: expect.any(Number),
@@ -136,6 +145,8 @@ describe('fulfillment-providers', () => {
         site_id: testSiteId,
         name: 'Minimal Provider',
         description: null,
+        provider_type: 'manual',
+        config: null,
         is_default: 0,
         is_active: 1,
         created_at: expect.any(Number),
@@ -159,6 +170,8 @@ describe('fulfillment-providers', () => {
         site_id: testSiteId,
         name: 'Old Name',
         description: 'Old desc',
+        provider_type: 'manual',
+        config: null,
         is_default: 0,
         is_active: 1,
         created_at: Date.now(),
@@ -199,6 +212,8 @@ describe('fulfillment-providers', () => {
         site_id: testSiteId,
         name: 'Provider',
         description: 'Desc',
+        provider_type: 'manual',
+        config: null,
         is_default: 0,
         is_active: 1,
         created_at: Date.now(),
@@ -412,6 +427,8 @@ describe('fulfillment-providers', () => {
         site_id: testSiteId,
         name: 'Test Provider',
         description: null,
+        provider_type: 'manual',
+        config: null,
         is_default: 0,
         is_active: 0,
         created_at: 12345,
@@ -528,6 +545,159 @@ describe('fulfillment-providers', () => {
       const result = await getProductFulfillmentOptions(mockDb, testSiteId, testProductId);
 
       expect(result).toEqual([]);
+    });
+  });
+
+  describe('getFulfillmentProvidersByType', () => {
+    it('fetches providers filtered by type', async () => {
+      const mockProviders: DBFulfillmentProvider[] = [
+        {
+          id: 'provider-printful-1',
+          site_id: testSiteId,
+          name: 'My Printful Store',
+          description: 'Printful integration',
+          provider_type: 'printful',
+          config: null,
+          is_default: 0,
+          is_active: 1,
+          created_at: Date.now(),
+          updated_at: Date.now()
+        }
+      ];
+
+      mockDb.all.mockResolvedValue({ results: mockProviders });
+
+      const providers = await getFulfillmentProvidersByType(mockDb, testSiteId, 'printful');
+
+      expect(providers).toHaveLength(1);
+      expect(providers[0].provider_type).toBe('printful');
+      expect(mockDb.prepare).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE site_id = ? AND provider_type = ?')
+      );
+      expect(mockDb.bind).toHaveBeenCalledWith(testSiteId, 'printful');
+    });
+
+    it('returns empty array when no providers of type found', async () => {
+      mockDb.all.mockResolvedValue({ results: [] });
+
+      const providers = await getFulfillmentProvidersByType(mockDb, testSiteId, 'printful');
+
+      expect(providers).toEqual([]);
+    });
+  });
+
+  describe('createFulfillmentProvider with providerType', () => {
+    it('creates a printful provider', async () => {
+      const mockProvider: DBFulfillmentProvider = {
+        id: 'prov-printful',
+        site_id: testSiteId,
+        name: 'Printful Store',
+        description: 'Print on demand',
+        provider_type: 'printful',
+        config: JSON.stringify({ apiKey: 'test-key' }),
+        is_default: 0,
+        is_active: 1,
+        created_at: Date.now(),
+        updated_at: Date.now()
+      };
+
+      mockDb.run.mockResolvedValue({ success: true });
+      mockDb.first.mockResolvedValue(mockProvider);
+
+      const result = await createFulfillmentProvider(mockDb, testSiteId, {
+        name: 'Printful Store',
+        description: 'Print on demand',
+        providerType: 'printful',
+        config: { apiKey: 'test-key' }
+      });
+
+      expect(result.provider_type).toBe('printful');
+      expect(result.config).toBe(JSON.stringify({ apiKey: 'test-key' }));
+      expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('provider_type'));
+    });
+
+    it('defaults to manual when providerType not specified', async () => {
+      const mockProvider: DBFulfillmentProvider = {
+        id: 'prov-manual',
+        site_id: testSiteId,
+        name: 'Manual Provider',
+        description: null,
+        provider_type: 'manual',
+        config: null,
+        is_default: 0,
+        is_active: 1,
+        created_at: Date.now(),
+        updated_at: Date.now()
+      };
+
+      mockDb.run.mockResolvedValue({ success: true });
+      mockDb.first.mockResolvedValue(mockProvider);
+
+      const result = await createFulfillmentProvider(mockDb, testSiteId, {
+        name: 'Manual Provider'
+      });
+
+      expect(result.provider_type).toBe('manual');
+    });
+  });
+
+  describe('updateFulfillmentProvider with providerType and config', () => {
+    it('updates provider type', async () => {
+      const existing: DBFulfillmentProvider = {
+        id: testProviderId,
+        site_id: testSiteId,
+        name: 'Provider',
+        description: null,
+        provider_type: 'manual',
+        config: null,
+        is_default: 0,
+        is_active: 1,
+        created_at: Date.now(),
+        updated_at: Date.now()
+      };
+
+      const updated: DBFulfillmentProvider = {
+        ...existing,
+        provider_type: 'printful'
+      };
+
+      mockDb.first.mockResolvedValueOnce(existing).mockResolvedValueOnce(updated);
+
+      const result = await updateFulfillmentProvider(mockDb, testSiteId, testProviderId, {
+        providerType: 'printful'
+      });
+
+      expect(result?.provider_type).toBe('printful');
+      expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('provider_type = ?'));
+    });
+
+    it('updates config', async () => {
+      const existing: DBFulfillmentProvider = {
+        id: testProviderId,
+        site_id: testSiteId,
+        name: 'Printful',
+        description: null,
+        provider_type: 'printful',
+        config: null,
+        is_default: 0,
+        is_active: 1,
+        created_at: Date.now(),
+        updated_at: Date.now()
+      };
+
+      const updated: DBFulfillmentProvider = {
+        ...existing,
+        config: JSON.stringify({ apiKey: 'new-key' })
+      };
+
+      mockDb.first.mockResolvedValueOnce(existing).mockResolvedValueOnce(updated);
+
+      const result = await updateFulfillmentProvider(mockDb, testSiteId, testProviderId, {
+        config: { apiKey: 'new-key' }
+      });
+
+      expect(result?.config).toBe(JSON.stringify({ apiKey: 'new-key' }));
+      expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('config = ?'));
     });
   });
 });

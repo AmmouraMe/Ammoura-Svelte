@@ -1,0 +1,132 @@
+/**
+ * Product customization zone defined by admin.
+ * Represents a rectangular area on a product image where customers can place uploads.
+ */
+export interface ProductCustomizationZone {
+  id: string;
+  productId: string;
+  mediaId: string | null;
+  name: string;
+  xPercent: number;
+  yPercent: number;
+  widthPercent: number;
+  heightPercent: number;
+  maxFileSize: number;
+  allowedTypes: string[];
+  sortOrder: number;
+}
+
+/**
+ * Data for creating a new customization zone.
+ */
+export interface CreateCustomizationZoneData {
+  productId: string;
+  mediaId?: string | null;
+  name: string;
+  xPercent: number;
+  yPercent: number;
+  widthPercent: number;
+  heightPercent: number;
+  maxFileSize?: number;
+  allowedTypes?: string[];
+  sortOrder?: number;
+}
+
+/**
+ * Data for updating an existing customization zone.
+ */
+export interface UpdateCustomizationZoneData {
+  name?: string;
+  mediaId?: string | null;
+  xPercent?: number;
+  yPercent?: number;
+  widthPercent?: number;
+  heightPercent?: number;
+  maxFileSize?: number;
+  allowedTypes?: string[];
+  sortOrder?: number;
+}
+
+/**
+ * Customer's customization for a single zone, stored in the cart.
+ */
+export interface CartItemCustomization {
+  zoneId: string;
+  zoneName: string;
+  imageDataUrl: string;
+  originalFilename: string;
+  offsetXPercent: number;
+  offsetYPercent: number;
+  scale: number;
+}
+
+// --- Product Customization Fields ---
+// Admin-defined input fields that customers fill in when ordering
+// (e.g., "Enter name to engrave", "Choose font style", "Select color")
+
+export type CustomizationFieldType = 'text' | 'textarea' | 'select' | 'color' | 'number';
+
+/**
+ * Admin-defined customization field on a product.
+ */
+export interface ProductCustomizationField {
+  id: string;
+  productId: string;
+  name: string;
+  fieldType: CustomizationFieldType;
+  options: string[];
+  placeholder: string | null;
+  required: boolean;
+  maxLength: number | null;
+  minValue: number | null;
+  maxValue: number | null;
+  defaultValue: string | null;
+  priceModifier: number;
+  sortOrder: number;
+}
+
+/**
+ * Data for creating a new customization field.
+ */
+export interface CreateCustomizationFieldData {
+  productId: string;
+  name: string;
+  fieldType: CustomizationFieldType;
+  options?: string[];
+  placeholder?: string;
+  required?: boolean;
+  maxLength?: number;
+  minValue?: number;
+  maxValue?: number;
+  defaultValue?: string;
+  priceModifier?: number;
+  sortOrder?: number;
+}
+
+/**
+ * Data for updating an existing customization field.
+ */
+export interface UpdateCustomizationFieldData {
+  name?: string;
+  fieldType?: CustomizationFieldType;
+  options?: string[];
+  placeholder?: string | null;
+  required?: boolean;
+  maxLength?: number | null;
+  minValue?: number | null;
+  maxValue?: number | null;
+  defaultValue?: string | null;
+  priceModifier?: number;
+  sortOrder?: number;
+}
+
+/**
+ * Customer's field value for a single customization field, stored in the cart.
+ */
+export interface CartItemFieldValue {
+  fieldId: string;
+  fieldName: string;
+  fieldType: CustomizationFieldType;
+  value: string;
+  priceModifier: number;
+}

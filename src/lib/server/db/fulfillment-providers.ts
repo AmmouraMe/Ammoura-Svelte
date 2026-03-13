@@ -43,6 +43,22 @@ export async function getFulfillmentProviderById(
 }
 
 /**
+ * Get all fulfillment providers of a specific type for a site
+ */
+export async function getFulfillmentProvidersByType(
+  db: D1Database,
+  siteId: string,
+  providerType: string
+): Promise<DBFulfillmentProvider[]> {
+  const result = await execute<DBFulfillmentProvider>(
+    db,
+    'SELECT * FROM fulfillment_providers WHERE site_id = ? AND provider_type = ? ORDER BY name ASC',
+    [siteId, providerType]
+  );
+  return result.results || [];
+}
+
+/**
  * Create a new fulfillment provider (scoped by site)
  */
 export async function createFulfillmentProvider(
@@ -52,17 +68,20 @@ export async function createFulfillmentProvider(
 ): Promise<DBFulfillmentProvider> {
   const id = generateId();
   const timestamp = getCurrentTimestamp();
+  const configJson = data.config ? JSON.stringify(data.config) : null;
 
   await db
     .prepare(
-      `INSERT INTO fulfillment_providers (id, site_id, name, description, is_default, is_active, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO fulfillment_providers (id, site_id, name, description, provider_type, config, is_default, is_active, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       id,
       siteId,
       data.name,
       data.description || null,
+      data.providerType || 'manual',
+      configJson,
       0, // Never default for user-created providers
       data.isActive !== undefined ? (data.isActive ? 1 : 0) : 1,
       timestamp,
@@ -102,6 +121,14 @@ export async function updateFulfillmentProvider(
   if (data.description !== undefined) {
     updates.push('description = ?');
     params.push(data.description);
+  }
+  if (data.providerType !== undefined) {
+    updates.push('provider_type = ?');
+    params.push(data.providerType);
+  }
+  if (data.config !== undefined) {
+    updates.push('config = ?');
+    params.push(JSON.stringify(data.config));
   }
   if (data.isActive !== undefined) {
     updates.push('is_active = ?');

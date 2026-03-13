@@ -2,6 +2,8 @@
   import { goto, invalidateAll } from '$app/navigation';
   import { toastStore } from '$lib/stores/toast';
   import ProductMediaManager from '$lib/components/admin/ProductMediaManager.svelte';
+  import CustomizationZoneEditor from '$lib/components/admin/CustomizationZoneEditor.svelte';
+  import CustomizationFieldEditor from '$lib/components/admin/CustomizationFieldEditor.svelte';
   import RevisionModal from './RevisionModal.svelte';
   import type { Product, ProductType, FulfillmentProvider } from '$lib/types';
   import type { RevisionNode } from '$lib/types/revisions';
@@ -974,6 +976,23 @@
             {/if}
           {/each}
         </div>
+      </div>
+    {/if}
+
+    <!-- Customization Zones (for products being edited) -->
+    {#if isEditing && product?.id}
+      <div class="form-group">
+        <CustomizationZoneEditor
+          productId={product.id}
+          productImage={formImage || DEFAULT_PRODUCT_IMAGE}
+        />
+      </div>
+    {/if}
+
+    <!-- Customer Input Fields (for products being edited) -->
+    {#if isEditing && product?.id}
+      <div class="form-group">
+        <CustomizationFieldEditor productId={product.id} />
       </div>
     {/if}
 

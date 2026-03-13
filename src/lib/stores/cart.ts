@@ -68,7 +68,7 @@ if (browser) {
 
 export interface CartStore {
   subscribe: typeof cartItems.subscribe;
-  addItem: (product: Product, quantity?: number) => void;
+  addItem: (product: Product | CartItem, quantity?: number) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clear: () => void;
@@ -81,9 +81,30 @@ export interface CartStore {
 export const cartStore: CartStore = {
   subscribe: cartItems.subscribe,
 
-  addItem: (product: Product, quantity: number = 1): void => {
+  addItem: (product: Product | CartItem, quantity: number = 1): void => {
     cartItems.update((items: CartItem[]) => {
-      const existingItem = items.find((item) => item.id === product.id);
+      // Customized products (zones or fields) are always added as new line items
+      const cartProduct = product as CartItem;
+      const hasCustomizations =
+        Array.isArray(cartProduct.customizations) && cartProduct.customizations.length > 0;
+      const hasFieldValues =
+        Array.isArray(cartProduct.fieldValues) && cartProduct.fieldValues.length > 0;
+
+      if (hasCustomizations || hasFieldValues) {
+        const newItem: CartItem = { ...product, quantity };
+        if (hasCustomizations) {
+          newItem.customizations = cartProduct.customizations;
+        }
+        if (hasFieldValues) {
+          newItem.fieldValues = cartProduct.fieldValues;
+        }
+        return [...items, newItem];
+      }
+
+      const existingItem = items.find(
+        (item) =>
+          item.id === product.id && !item.customizations?.length && !item.fieldValues?.length
+      );
 
       if (existingItem) {
         existingItem.quantity += quantity;

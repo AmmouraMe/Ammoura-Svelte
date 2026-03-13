@@ -1,8 +1,12 @@
 <script lang="ts">
   import Button from '../../../lib/components/Button.svelte';
   import ProductMediaGallery from '../../../lib/components/ProductMediaGallery.svelte';
+  import ProductCustomizer from '../../../lib/components/ProductCustomizer.svelte';
+  import ProductCustomizationFields from '../../../lib/components/ProductCustomizationFields.svelte';
   import { cartStore, cartItems } from '../../../lib/stores/cart.ts';
   import { calculateTotalStock } from '$lib/utils/stock';
+  import type { CartItemCustomization, CartItemFieldValue } from '$lib/types/customization';
+  import type { Product } from '$lib/types';
 
   interface ShippingOptionDisplay {
     shippingOptionId: string;
@@ -18,32 +22,78 @@
   export let data;
 
   const { product, media } = data;
+  const customizationZones = data.customizationZones || [];
+  const customizationFields = data.customizationFields || [];
 
+  let customizations: CartItemCustomization[] = [];
+  let fieldValues: CartItemFieldValue[] = [];
+
+  $: hasCustomizationZones = customizationZones.length > 0;
+  $: hasCustomizationFields = customizationFields.length > 0;
+  $: isCustomizable = hasCustomizationZones || hasCustomizationFields;
+  $: fieldPriceModifier = fieldValues.reduce(
+    (sum: number, fv: CartItemFieldValue) => sum + fv.priceModifier,
+    0
+  );
+  $: displayPrice = product.price + fieldPriceModifier;
   $: cartQuantity = cartStore.getItemQuantity($cartItems, product.id);
   $: totalStock = calculateTotalStock(product.fulfillmentOptions);
   $: hasShippingOptions =
     product.type === 'physical' && product.shippingOptions && product.shippingOptions.length > 0;
 
-  function addToCart() {
-    cartStore.addItem(product, 1);
+  // Check all required fields are filled
+  $: allRequiredFieldsFilled = customizationFields
+    .filter((f: { required: boolean }) => f.required)
+    .every((f: { id: string }) => {
+      const val = fieldValues.find((v) => v.fieldId === f.id);
+      return val && val.value.trim().length > 0;
+    });
+
+  $: canAddToCart = totalStock > 0 && (!hasCustomizationFields || allRequiredFieldsFilled);
+
+  function addToCart(): void {
+    const hasZoneCustomizations = hasCustomizationZones && customizations.length > 0;
+    const hasFieldCustomizations = fieldValues.length > 0;
+
+    const productToAdd = { ...product } as Product & {
+      customizations?: CartItemCustomization[];
+      fieldValues?: CartItemFieldValue[];
+    };
+
+    if (hasZoneCustomizations) {
+      productToAdd.customizations = customizations;
+    }
+    if (hasFieldCustomizations) {
+      productToAdd.fieldValues = fieldValues;
+    }
+
+    cartStore.addItem(productToAdd, 1);
   }
 
-  function incrementCartQuantity() {
+  function handleCustomizationsChange(e: CustomEvent<CartItemCustomization[]>): void {
+    customizations = e.detail;
+  }
+
+  function handleFieldValuesChange(e: CustomEvent<CartItemFieldValue[]>): void {
+    fieldValues = e.detail;
+  }
+
+  function incrementCartQuantity(): void {
     cartStore.updateQuantity(product.id, cartQuantity + 1);
   }
 
-  function decrementCartQuantity() {
+  function decrementCartQuantity(): void {
     cartStore.updateQuantity(product.id, cartQuantity - 1);
   }
 
-  function formatEstimatedDelivery(option: ShippingOptionDisplay) {
+  function formatEstimatedDelivery(option: ShippingOptionDisplay): string {
     if (option.estimatedDaysMin && option.estimatedDaysMax) {
       return `${option.estimatedDaysMin}-${option.estimatedDaysMax} business days`;
     }
     return '';
   }
 
-  function getShippingPrice(option: ShippingOptionDisplay) {
+  function getShippingPrice(option: ShippingOptionDisplay): number {
     return option.priceOverride !== null ? option.priceOverride : 0;
   }
 </script>
@@ -55,7 +105,17 @@
 
 <div class="product-detail">
   <div class="product-media-section">
-    <ProductMediaGallery {media} productName={product.name} fallbackImage={product.image} />
+    {#if hasCustomizationZones}
+      <ProductCustomizer
+        productImage={product.image}
+        productName={product.name}
+        {media}
+        zones={customizationZones}
+        on:customizationsChange={handleCustomizationsChange}
+      />
+    {:else}
+      <ProductMediaGallery {media} productName={product.name} fallbackImage={product.image} />
+    {/if}
   </div>
 
   <div class="product-info">
@@ -64,9 +124,21 @@
     <p class="description">{product.description}</p>
 
     <div class="price-section">
-      <span class="price">${product.price}</span>
+      <div class="price-display">
+        <span class="price">${displayPrice.toFixed(2)}</span>
+        {#if fieldPriceModifier > 0}
+          <span class="base-price">(Base: ${product.price.toFixed(2)})</span>
+        {/if}
+      </div>
       <span class="stock">{totalStock} in stock</span>
     </div>
+
+    {#if hasCustomizationFields}
+      <ProductCustomizationFields
+        fields={customizationFields}
+        on:fieldValuesChange={handleFieldValuesChange}
+      />
+    {/if}
 
     {#if hasShippingOptions}
       <div class="shipping-info">
@@ -104,9 +176,13 @@
     {/if}
 
     <div class="purchase-section">
-      {#if cartQuantity === 0}
-        <Button variant="primary" disabled={totalStock === 0} on:click={addToCart}>
-          {totalStock === 0 ? 'Out of Stock' : 'Add to Cart'}
+      {#if cartQuantity === 0 || isCustomizable}
+        <Button variant="primary" disabled={!canAddToCart} on:click={addToCart}>
+          {totalStock === 0
+            ? 'Out of Stock'
+            : isCustomizable
+              ? 'Add Customized Item to Cart'
+              : 'Add to Cart'}
         </Button>
       {:else}
         <div class="quantity-controls">
@@ -195,6 +271,17 @@
     font-weight: bold;
     color: var(--color-primary);
     transition: color var(--transition-normal);
+  }
+
+  .price-display {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  .base-price {
+    font-size: 0.9rem;
+    color: var(--color-text-tertiary);
   }
 
   .stock {

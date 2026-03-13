@@ -17,6 +17,7 @@ export const load: PageServerLoad = async ({ platform, locals }) => {
       id: p.id,
       name: p.name,
       description: p.description,
+      providerType: (p.provider_type as 'manual' | 'printful') || 'manual',
       isDefault: p.is_default === 1,
       isActive: p.is_active === 1
     }));

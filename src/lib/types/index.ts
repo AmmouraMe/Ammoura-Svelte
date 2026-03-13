@@ -1,3 +1,5 @@
+import type { CartItemCustomization, CartItemFieldValue } from './customization';
+
 export type ProductType = 'physical' | 'service' | 'digital';
 
 export interface Product {
@@ -28,6 +30,8 @@ export interface Product {
 
 export interface CartItem extends Product {
   quantity: number;
+  customizations?: CartItemCustomization[];
+  fieldValues?: CartItemFieldValue[];
 }
 
 // Re-export checkout types
@@ -97,6 +101,8 @@ export type {
 
 // Re-export fulfillment types
 export type {
+  ProviderType,
+  ProviderCapabilities,
   FulfillmentProvider,
   DBFulfillmentProvider,
   CreateFulfillmentProviderData,
@@ -146,3 +152,16 @@ export type {
 } from './contentTypes';
 
 export { parseContentType, parseContentEntry, parseContentEntryTag } from './contentTypes';
+
+// Re-export customization types
+export type {
+  ProductCustomizationZone,
+  CreateCustomizationZoneData,
+  UpdateCustomizationZoneData,
+  CartItemCustomization,
+  CustomizationFieldType,
+  ProductCustomizationField,
+  CreateCustomizationFieldData,
+  UpdateCustomizationFieldData,
+  CartItemFieldValue
+} from './customization';
