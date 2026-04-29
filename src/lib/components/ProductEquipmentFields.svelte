@@ -73,7 +73,7 @@
   function validateMediaFile(
     file: File,
     reqs: MediaRequirements | null,
-    fieldType: string
+    _fieldType: string
   ): string | null {
     if (!reqs) return null;
     if (reqs.maxFileSize && file.size > reqs.maxFileSize) {
