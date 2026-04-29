@@ -219,10 +219,7 @@
     });
   }
 
-  async function handleFileChange(
-    fieldId: string,
-    event: Event
-  ): Promise<void> {
+  async function handleFileChange(fieldId: string, event: Event): Promise<void> {
     const input = event.currentTarget as HTMLInputElement;
     const file = input.files?.[0];
     const field = fields.find((f) => f.id === fieldId);

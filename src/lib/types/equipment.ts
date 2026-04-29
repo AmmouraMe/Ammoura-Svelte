@@ -9,7 +9,19 @@
 
 // --- Equipment Field Types ---
 
-export type EquipmentFieldType = 'text' | 'textarea' | 'select' | 'color' | 'number' | 'date';
+export type EquipmentFieldType =
+  | 'text'
+  | 'textarea'
+  | 'select'
+  | 'color'
+  | 'number'
+  | 'date'
+  | 'image'
+  | 'audio'
+  | 'video';
+
+// Re-export MediaRequirements from customization so consumers can use it
+export type { MediaRequirements } from './customization';
 
 /**
  * A piece of equipment available to a site.
@@ -59,6 +71,7 @@ export interface EquipmentField {
   maxValue: number | null;
   defaultValue: string | null;
   sortOrder: number;
+  mediaRequirements: import('./customization').MediaRequirements | null;
 }
 
 /**
@@ -76,6 +89,7 @@ export interface CreateEquipmentFieldData {
   maxValue?: number;
   defaultValue?: string;
   sortOrder?: number;
+  mediaRequirements?: import('./customization').MediaRequirements;
 }
 
 /**
@@ -92,6 +106,7 @@ export interface UpdateEquipmentFieldData {
   maxValue?: number | null;
   defaultValue?: string | null;
   sortOrder?: number;
+  mediaRequirements?: import('./customization').MediaRequirements | null;
 }
 
 /**
@@ -151,6 +166,7 @@ export interface DBEquipmentField {
   max_value: number | null;
   default_value: string | null;
   sort_order: number;
+  media_requirements: string | null;
   created_at: number;
   updated_at: number;
 }

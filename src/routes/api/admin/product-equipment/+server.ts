@@ -79,7 +79,7 @@ export const DELETE: RequestHandler = async ({ request, platform, locals }) => {
   try {
     const db = getDB(platform);
     const siteId = locals.siteId || 'default-site';
-    const data = (await request.json()) as { productId?: string; equipmentId?: string; };
+    const data = (await request.json()) as { productId?: string; equipmentId?: string };
 
     if (!data.productId || !data.equipmentId) {
       throw error(400, 'Product ID and Equipment ID are required');

@@ -3,6 +3,7 @@
   import { toastStore } from '$lib/stores/toast';
   import { confirmStore } from '$lib/stores/confirm';
   import type { Equipment, EquipmentField, EquipmentFieldType } from '$lib/types/equipment';
+  import type { MediaRequirements } from '$lib/types/customization';
 
   export let data: { equipment: Equipment[] };
   let equipment: Equipment[] = data.equipment;
@@ -36,13 +37,91 @@
   let fieldDefaultValue = '';
   let fieldSortOrder = 0;
 
+  // Media requirements state (for image/audio/video field types)
+  let mediaMaxFileSize: number | null = null;
+  let mediaAllowedMimeTypes = '';
+  let mediaMinWidth: number | null = null;
+  let mediaMinHeight: number | null = null;
+  let mediaMaxWidth: number | null = null;
+  let mediaMaxHeight: number | null = null;
+  let mediaMinDuration: number | null = null;
+  let mediaMaxDuration: number | null = null;
+  let mediaMinBitrate: number | null = null;
+  let mediaMinResolution: number | null = null;
+  let mediaMinFrameRate: number | null = null;
+
+  $: isMediaType = fieldType === 'image' || fieldType === 'audio' || fieldType === 'video';
+
+  function buildMediaRequirements(): MediaRequirements | undefined {
+    if (!isMediaType) return undefined;
+    const reqs: MediaRequirements = {};
+    if (mediaMaxFileSize) reqs.maxFileSize = mediaMaxFileSize;
+    if (mediaAllowedMimeTypes.trim()) {
+      reqs.allowedMimeTypes = mediaAllowedMimeTypes
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
+    }
+    if (fieldType === 'image') {
+      if (mediaMinWidth) reqs.minWidth = mediaMinWidth;
+      if (mediaMinHeight) reqs.minHeight = mediaMinHeight;
+      if (mediaMaxWidth) reqs.maxWidth = mediaMaxWidth;
+      if (mediaMaxHeight) reqs.maxHeight = mediaMaxHeight;
+    }
+    if (fieldType === 'audio' || fieldType === 'video') {
+      if (mediaMinDuration) reqs.minDuration = mediaMinDuration;
+      if (mediaMaxDuration) reqs.maxDuration = mediaMaxDuration;
+    }
+    if (fieldType === 'audio') {
+      if (mediaMinBitrate) reqs.minBitrate = mediaMinBitrate;
+    }
+    if (fieldType === 'video') {
+      if (mediaMinResolution) reqs.minResolution = mediaMinResolution;
+      if (mediaMinFrameRate) reqs.minFrameRate = mediaMinFrameRate;
+    }
+    return Object.keys(reqs).length > 0 ? reqs : undefined;
+  }
+
+  function resetMediaRequirements(): void {
+    mediaMaxFileSize = null;
+    mediaAllowedMimeTypes = '';
+    mediaMinWidth = null;
+    mediaMinHeight = null;
+    mediaMaxWidth = null;
+    mediaMaxHeight = null;
+    mediaMinDuration = null;
+    mediaMaxDuration = null;
+    mediaMinBitrate = null;
+    mediaMinResolution = null;
+    mediaMinFrameRate = null;
+  }
+
+  function loadMediaRequirements(reqs: MediaRequirements | null): void {
+    resetMediaRequirements();
+    if (!reqs) return;
+    mediaMaxFileSize = reqs.maxFileSize ?? null;
+    mediaAllowedMimeTypes = reqs.allowedMimeTypes?.join(', ') ?? '';
+    mediaMinWidth = reqs.minWidth ?? null;
+    mediaMinHeight = reqs.minHeight ?? null;
+    mediaMaxWidth = reqs.maxWidth ?? null;
+    mediaMaxHeight = reqs.maxHeight ?? null;
+    mediaMinDuration = reqs.minDuration ?? null;
+    mediaMaxDuration = reqs.maxDuration ?? null;
+    mediaMinBitrate = reqs.minBitrate ?? null;
+    mediaMinResolution = reqs.minResolution ?? null;
+    mediaMinFrameRate = reqs.minFrameRate ?? null;
+  }
+
   const fieldTypeOptions: { value: EquipmentFieldType; label: string }[] = [
     { value: 'text', label: 'Text' },
     { value: 'textarea', label: 'Textarea' },
     { value: 'select', label: 'Select / Dropdown' },
     { value: 'color', label: 'Color Picker' },
     { value: 'number', label: 'Number' },
-    { value: 'date', label: 'Date' }
+    { value: 'date', label: 'Date' },
+    { value: 'image', label: 'Image Upload' },
+    { value: 'audio', label: 'Audio Upload' },
+    { value: 'video', label: 'Video Upload' }
   ];
 
   // --- Equipment CRUD ---
@@ -155,6 +234,7 @@
     fieldMaxValue = null;
     fieldDefaultValue = '';
     fieldSortOrder = equipmentFields.length;
+    resetMediaRequirements();
     showFieldForm = true;
   }
 
@@ -170,6 +250,7 @@
     fieldMaxValue = field.maxValue;
     fieldDefaultValue = field.defaultValue || '';
     fieldSortOrder = field.sortOrder;
+    loadMediaRequirements(field.mediaRequirements);
     showFieldForm = true;
   }
 
@@ -225,7 +306,8 @@
         minValue: fieldMinValue,
         maxValue: fieldMaxValue,
         defaultValue: fieldDefaultValue.trim() || undefined,
-        sortOrder: fieldSortOrder
+        sortOrder: fieldSortOrder,
+        mediaRequirements: buildMediaRequirements() ?? null
       };
 
       const response = await fetch('/api/admin/equipment', {
@@ -425,6 +507,108 @@
                 <input id="field-max" type="number" bind:value={fieldMaxValue} step="any" />
               </div>
             </div>
+          {/if}
+
+          {#if isMediaType}
+            <fieldset class="media-requirements-fieldset">
+              <legend>Media Requirements</legend>
+              <div class="form-group">
+                <label for="media-max-size">Max File Size (bytes)</label>
+                <input
+                  id="media-max-size"
+                  type="number"
+                  bind:value={mediaMaxFileSize}
+                  min="0"
+                  placeholder="e.g., 10485760 (10 MB)"
+                />
+              </div>
+              <div class="form-group">
+                <label for="media-mimes">Allowed MIME Types (comma-separated)</label>
+                <input
+                  id="media-mimes"
+                  type="text"
+                  bind:value={mediaAllowedMimeTypes}
+                  placeholder={fieldType === 'image'
+                    ? 'image/png, image/jpeg'
+                    : fieldType === 'audio'
+                      ? 'audio/mpeg, audio/wav'
+                      : 'video/mp4, video/webm'}
+                />
+              </div>
+
+              {#if fieldType === 'image'}
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="media-min-w">Min Width (px)</label>
+                    <input id="media-min-w" type="number" bind:value={mediaMinWidth} min="1" />
+                  </div>
+                  <div class="form-group">
+                    <label for="media-min-h">Min Height (px)</label>
+                    <input id="media-min-h" type="number" bind:value={mediaMinHeight} min="1" />
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="media-max-w">Max Width (px)</label>
+                    <input id="media-max-w" type="number" bind:value={mediaMaxWidth} min="1" />
+                  </div>
+                  <div class="form-group">
+                    <label for="media-max-h">Max Height (px)</label>
+                    <input id="media-max-h" type="number" bind:value={mediaMaxHeight} min="1" />
+                  </div>
+                </div>
+              {/if}
+
+              {#if fieldType === 'audio' || fieldType === 'video'}
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="media-min-dur">Min Duration (sec)</label>
+                    <input
+                      id="media-min-dur"
+                      type="number"
+                      bind:value={mediaMinDuration}
+                      min="0"
+                      step="any"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="media-max-dur">Max Duration (sec)</label>
+                    <input
+                      id="media-max-dur"
+                      type="number"
+                      bind:value={mediaMaxDuration}
+                      min="0"
+                      step="any"
+                    />
+                  </div>
+                </div>
+              {/if}
+
+              {#if fieldType === 'audio'}
+                <div class="form-group">
+                  <label for="media-bitrate">Min Bitrate (kbps)</label>
+                  <input id="media-bitrate" type="number" bind:value={mediaMinBitrate} min="0" />
+                </div>
+              {/if}
+
+              {#if fieldType === 'video'}
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="media-resolution">Min Resolution (e.g., 720)</label>
+                    <input
+                      id="media-resolution"
+                      type="number"
+                      bind:value={mediaMinResolution}
+                      min="1"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="media-fps">Min Frame Rate (fps)</label>
+                    <input id="media-fps" type="number" bind:value={mediaMinFrameRate} min="1" />
+                  </div>
+                </div>
+              {/if}
+            </fieldset>
           {/if}
 
           <div class="form-row">
@@ -740,5 +924,20 @@
     color: var(--color-text-secondary);
     text-align: center;
     padding: 1.5rem 0;
+  }
+
+  /* Media requirements fieldset */
+  .media-requirements-fieldset {
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 0.5rem 0 1rem;
+  }
+
+  .media-requirements-fieldset legend {
+    font-weight: 600;
+    font-size: 0.875rem;
+    padding: 0 0.5rem;
+    color: var(--color-text-secondary);
   }
 </style>

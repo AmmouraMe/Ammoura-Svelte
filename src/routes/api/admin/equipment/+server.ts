@@ -19,7 +19,10 @@ const VALID_FIELD_TYPES: EquipmentFieldType[] = [
   'select',
   'color',
   'number',
-  'date'
+  'date',
+  'image',
+  'audio',
+  'video'
 ];
 
 // GET all equipment (with optional fields)
@@ -79,7 +82,11 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
         minValue: typeof data.minValue === 'number' ? data.minValue : undefined,
         maxValue: typeof data.maxValue === 'number' ? data.maxValue : undefined,
         defaultValue: data.defaultValue ? String(data.defaultValue) : undefined,
-        sortOrder: typeof data.sortOrder === 'number' ? data.sortOrder : undefined
+        sortOrder: typeof data.sortOrder === 'number' ? data.sortOrder : undefined,
+        mediaRequirements:
+          data.mediaRequirements && typeof data.mediaRequirements === 'object'
+            ? (data.mediaRequirements as Record<string, unknown>)
+            : undefined
       });
 
       return json(field, { status: 201 });
@@ -142,6 +149,12 @@ export const PUT: RequestHandler = async ({ request, platform, locals }) => {
       if (data.maxValue !== undefined) updateData.maxValue = data.maxValue;
       if (data.defaultValue !== undefined) updateData.defaultValue = data.defaultValue;
       if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
+      if (data.mediaRequirements !== undefined) {
+        updateData.mediaRequirements =
+          data.mediaRequirements && typeof data.mediaRequirements === 'object'
+            ? data.mediaRequirements
+            : null;
+      }
 
       const field = await updateEquipmentField(db, siteId, id, updateData);
       if (!field) {

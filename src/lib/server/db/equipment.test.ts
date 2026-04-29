@@ -277,6 +277,7 @@ describe('equipment', () => {
           max_value: null,
           default_value: 'Wood',
           sort_order: 0,
+          media_requirements: null,
           created_at: 1000,
           updated_at: 1000
         },
@@ -294,6 +295,7 @@ describe('equipment', () => {
           max_value: 5.0,
           default_value: '1',
           sort_order: 1,
+          media_requirements: null,
           created_at: 1000,
           updated_at: 1000
         }
@@ -349,6 +351,7 @@ describe('equipment', () => {
         max_value: null,
         default_value: '#000000',
         sort_order: 0,
+        media_requirements: null,
         created_at: 1000,
         updated_at: 1000
       });
@@ -387,6 +390,7 @@ describe('equipment', () => {
         max_value: null,
         default_value: '80gsm',
         sort_order: 0,
+        media_requirements: null,
         created_at: 1000,
         updated_at: 1000
       });
@@ -422,6 +426,7 @@ describe('equipment', () => {
         max_value: null,
         default_value: null,
         sort_order: 1,
+        media_requirements: null,
         created_at: 1000,
         updated_at: 1000
       });
@@ -453,6 +458,140 @@ describe('equipment', () => {
         })
       ).rejects.toThrow('Failed to create equipment field');
     });
+
+    it('creates an image field with media requirements', async () => {
+      const mediaReqs = {
+        maxFileSize: 10485760,
+        allowedMimeTypes: ['image/png', 'image/jpeg'],
+        minWidth: 800,
+        minHeight: 600
+      };
+      mockDb.first.mockResolvedValue({
+        id: 'new-field',
+        site_id: testSiteId,
+        equipment_id: testEquipmentId,
+        name: 'Product Photo',
+        field_type: 'image',
+        options: null,
+        placeholder: null,
+        required: 1,
+        max_length: null,
+        min_value: null,
+        max_value: null,
+        default_value: null,
+        sort_order: 0,
+        media_requirements: JSON.stringify(mediaReqs),
+        created_at: 1000,
+        updated_at: 1000
+      });
+
+      const field = await createEquipmentField(mockDb, testSiteId, {
+        equipmentId: testEquipmentId,
+        name: 'Product Photo',
+        fieldType: 'image',
+        required: true,
+        mediaRequirements: mediaReqs
+      });
+
+      expect(field.name).toBe('Product Photo');
+      expect(field.fieldType).toBe('image');
+      expect(field.mediaRequirements).toEqual(mediaReqs);
+      expect(field.required).toBe(true);
+    });
+
+    it('creates an audio field with duration requirements', async () => {
+      const mediaReqs = { maxDuration: 120, minBitrate: 128 };
+      mockDb.first.mockResolvedValue({
+        id: 'new-field',
+        site_id: testSiteId,
+        equipment_id: testEquipmentId,
+        name: 'Voice Message',
+        field_type: 'audio',
+        options: null,
+        placeholder: null,
+        required: 0,
+        max_length: null,
+        min_value: null,
+        max_value: null,
+        default_value: null,
+        sort_order: 0,
+        media_requirements: JSON.stringify(mediaReqs),
+        created_at: 1000,
+        updated_at: 1000
+      });
+
+      const field = await createEquipmentField(mockDb, testSiteId, {
+        equipmentId: testEquipmentId,
+        name: 'Voice Message',
+        fieldType: 'audio',
+        mediaRequirements: mediaReqs
+      });
+
+      expect(field.fieldType).toBe('audio');
+      expect(field.mediaRequirements).toEqual(mediaReqs);
+    });
+
+    it('creates a video field with resolution requirements', async () => {
+      const mediaReqs = { minResolution: 720, minFrameRate: 24 };
+      mockDb.first.mockResolvedValue({
+        id: 'new-field',
+        site_id: testSiteId,
+        equipment_id: testEquipmentId,
+        name: 'Demo Video',
+        field_type: 'video',
+        options: null,
+        placeholder: null,
+        required: 0,
+        max_length: null,
+        min_value: null,
+        max_value: null,
+        default_value: null,
+        sort_order: 0,
+        media_requirements: JSON.stringify(mediaReqs),
+        created_at: 1000,
+        updated_at: 1000
+      });
+
+      const field = await createEquipmentField(mockDb, testSiteId, {
+        equipmentId: testEquipmentId,
+        name: 'Demo Video',
+        fieldType: 'video',
+        mediaRequirements: mediaReqs
+      });
+
+      expect(field.fieldType).toBe('video');
+      expect(field.mediaRequirements).toEqual(mediaReqs);
+    });
+
+    it('creates a media field without requirements', async () => {
+      mockDb.first.mockResolvedValue({
+        id: 'new-field',
+        site_id: testSiteId,
+        equipment_id: testEquipmentId,
+        name: 'Reference Image',
+        field_type: 'image',
+        options: null,
+        placeholder: null,
+        required: 0,
+        max_length: null,
+        min_value: null,
+        max_value: null,
+        default_value: null,
+        sort_order: 0,
+        media_requirements: null,
+        created_at: 1000,
+        updated_at: 1000
+      });
+
+      const field = await createEquipmentField(mockDb, testSiteId, {
+        equipmentId: testEquipmentId,
+        name: 'Reference Image',
+        fieldType: 'image'
+      });
+
+      expect(field.fieldType).toBe('image');
+      expect(field.mediaRequirements).toBeNull();
+    });
   });
 
   describe('updateEquipmentField', () => {
@@ -472,6 +611,7 @@ describe('equipment', () => {
           max_value: null,
           default_value: null,
           sort_order: 0,
+          media_requirements: null,
           created_at: 1000,
           updated_at: 1000
         })
@@ -489,6 +629,7 @@ describe('equipment', () => {
           max_value: null,
           default_value: null,
           sort_order: 0,
+          media_requirements: null,
           created_at: 1000,
           updated_at: 2000
         });
@@ -533,6 +674,7 @@ describe('equipment', () => {
         max_value: null,
         default_value: null,
         sort_order: 0,
+        media_requirements: null,
         created_at: 1000,
         updated_at: 1000
       });
@@ -541,6 +683,102 @@ describe('equipment', () => {
 
       expect(field).not.toBeNull();
       expect(field!.name).toBe('Unchanged');
+    });
+
+    it('updates media requirements on a field', async () => {
+      const newReqs = { maxFileSize: 5242880, minWidth: 400 };
+      mockDb.first
+        .mockResolvedValueOnce({
+          id: testFieldId,
+          site_id: testSiteId,
+          equipment_id: testEquipmentId,
+          name: 'Photo',
+          field_type: 'image',
+          options: null,
+          placeholder: null,
+          required: 1,
+          max_length: null,
+          min_value: null,
+          max_value: null,
+          default_value: null,
+          sort_order: 0,
+          media_requirements: null,
+          created_at: 1000,
+          updated_at: 1000
+        })
+        .mockResolvedValueOnce({
+          id: testFieldId,
+          site_id: testSiteId,
+          equipment_id: testEquipmentId,
+          name: 'Photo',
+          field_type: 'image',
+          options: null,
+          placeholder: null,
+          required: 1,
+          max_length: null,
+          min_value: null,
+          max_value: null,
+          default_value: null,
+          sort_order: 0,
+          media_requirements: JSON.stringify(newReqs),
+          created_at: 1000,
+          updated_at: 2000
+        });
+
+      const field = await updateEquipmentField(mockDb, testSiteId, testFieldId, {
+        mediaRequirements: newReqs
+      });
+
+      expect(field).not.toBeNull();
+      expect(field!.mediaRequirements).toEqual(newReqs);
+    });
+
+    it('clears media requirements when set to null', async () => {
+      const existingReqs = { maxFileSize: 5242880 };
+      mockDb.first
+        .mockResolvedValueOnce({
+          id: testFieldId,
+          site_id: testSiteId,
+          equipment_id: testEquipmentId,
+          name: 'Photo',
+          field_type: 'image',
+          options: null,
+          placeholder: null,
+          required: 1,
+          max_length: null,
+          min_value: null,
+          max_value: null,
+          default_value: null,
+          sort_order: 0,
+          media_requirements: JSON.stringify(existingReqs),
+          created_at: 1000,
+          updated_at: 1000
+        })
+        .mockResolvedValueOnce({
+          id: testFieldId,
+          site_id: testSiteId,
+          equipment_id: testEquipmentId,
+          name: 'Photo',
+          field_type: 'image',
+          options: null,
+          placeholder: null,
+          required: 1,
+          max_length: null,
+          min_value: null,
+          max_value: null,
+          default_value: null,
+          sort_order: 0,
+          media_requirements: null,
+          created_at: 1000,
+          updated_at: 2000
+        });
+
+      const field = await updateEquipmentField(mockDb, testSiteId, testFieldId, {
+        mediaRequirements: null
+      });
+
+      expect(field).not.toBeNull();
+      expect(field!.mediaRequirements).toBeNull();
     });
   });
 
@@ -702,6 +940,7 @@ describe('equipment', () => {
             max_value: null,
             default_value: 'Wood',
             sort_order: 0,
+            media_requirements: null,
             created_at: 1000,
             updated_at: 1000
           }

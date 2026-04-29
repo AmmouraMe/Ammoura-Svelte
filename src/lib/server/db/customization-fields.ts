@@ -95,9 +95,7 @@ export async function createCustomizationField(
   const id = generateId();
   const timestamp = getCurrentTimestamp();
   const optionsJson = data.options ? JSON.stringify(data.options) : null;
-  const mediaReqJson = data.mediaRequirements
-    ? JSON.stringify(data.mediaRequirements)
-    : null;
+  const mediaReqJson = data.mediaRequirements ? JSON.stringify(data.mediaRequirements) : null;
 
   await db
     .prepare(
@@ -196,9 +194,7 @@ export async function updateCustomizationField(
   }
   if (data.mediaRequirements !== undefined) {
     updates.push('media_requirements = ?');
-    params.push(
-      data.mediaRequirements ? JSON.stringify(data.mediaRequirements) : null
-    );
+    params.push(data.mediaRequirements ? JSON.stringify(data.mediaRequirements) : null);
   }
 
   if (updates.length === 0) {

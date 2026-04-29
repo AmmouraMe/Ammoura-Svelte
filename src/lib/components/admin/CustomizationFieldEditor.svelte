@@ -45,7 +45,8 @@
   let formMinResolution: number | null = null;
   let formMinFrameRate: number | null = null;
 
-  $: isMediaType = formFieldType === 'image' || formFieldType === 'audio' || formFieldType === 'video';
+  $: isMediaType =
+    formFieldType === 'image' || formFieldType === 'audio' || formFieldType === 'video';
 
   const FIELD_TYPE_LABELS: Record<CustomizationFieldType, string> = {
     text: 'Text Input',
@@ -436,29 +437,67 @@
               <div class="form-row-group">
                 <div class="form-row">
                   <label for="cf-min-width">Min Width (px)</label>
-                  <input id="cf-min-width" type="number" bind:value={formMinWidth} min="1" placeholder="Any" />
+                  <input
+                    id="cf-min-width"
+                    type="number"
+                    bind:value={formMinWidth}
+                    min="1"
+                    placeholder="Any"
+                  />
                 </div>
                 <div class="form-row">
                   <label for="cf-min-height">Min Height (px)</label>
-                  <input id="cf-min-height" type="number" bind:value={formMinHeight} min="1" placeholder="Any" />
+                  <input
+                    id="cf-min-height"
+                    type="number"
+                    bind:value={formMinHeight}
+                    min="1"
+                    placeholder="Any"
+                  />
                 </div>
                 <div class="form-row">
                   <label for="cf-max-width">Max Width (px)</label>
-                  <input id="cf-max-width" type="number" bind:value={formMaxWidth} min="1" placeholder="Any" />
+                  <input
+                    id="cf-max-width"
+                    type="number"
+                    bind:value={formMaxWidth}
+                    min="1"
+                    placeholder="Any"
+                  />
                 </div>
                 <div class="form-row">
                   <label for="cf-max-height">Max Height (px)</label>
-                  <input id="cf-max-height" type="number" bind:value={formMaxHeight} min="1" placeholder="Any" />
+                  <input
+                    id="cf-max-height"
+                    type="number"
+                    bind:value={formMaxHeight}
+                    min="1"
+                    placeholder="Any"
+                  />
                 </div>
               </div>
               <div class="form-row-group">
                 <div class="form-row">
                   <label for="cf-min-aspect">Min Aspect Ratio</label>
-                  <input id="cf-min-aspect" type="number" bind:value={formMinAspectRatio} step="0.01" min="0" placeholder="Any" />
+                  <input
+                    id="cf-min-aspect"
+                    type="number"
+                    bind:value={formMinAspectRatio}
+                    step="0.01"
+                    min="0"
+                    placeholder="Any"
+                  />
                 </div>
                 <div class="form-row">
                   <label for="cf-max-aspect">Max Aspect Ratio</label>
-                  <input id="cf-max-aspect" type="number" bind:value={formMaxAspectRatio} step="0.01" min="0" placeholder="Any" />
+                  <input
+                    id="cf-max-aspect"
+                    type="number"
+                    bind:value={formMaxAspectRatio}
+                    step="0.01"
+                    min="0"
+                    placeholder="Any"
+                  />
                 </div>
               </div>
             {/if}
@@ -467,11 +506,25 @@
               <div class="form-row-group">
                 <div class="form-row">
                   <label for="cf-min-duration">Min Duration (seconds)</label>
-                  <input id="cf-min-duration" type="number" bind:value={formMinDuration} min="0" step="0.1" placeholder="Any" />
+                  <input
+                    id="cf-min-duration"
+                    type="number"
+                    bind:value={formMinDuration}
+                    min="0"
+                    step="0.1"
+                    placeholder="Any"
+                  />
                 </div>
                 <div class="form-row">
                   <label for="cf-max-duration">Max Duration (seconds)</label>
-                  <input id="cf-max-duration" type="number" bind:value={formMaxDuration} min="0" step="0.1" placeholder="Any" />
+                  <input
+                    id="cf-max-duration"
+                    type="number"
+                    bind:value={formMaxDuration}
+                    min="0"
+                    step="0.1"
+                    placeholder="Any"
+                  />
                 </div>
               </div>
             {/if}
@@ -479,7 +532,13 @@
             {#if formFieldType === 'audio'}
               <div class="form-row">
                 <label for="cf-min-bitrate">Min Bitrate (kbps)</label>
-                <input id="cf-min-bitrate" type="number" bind:value={formMinBitrate} min="0" placeholder="Any" />
+                <input
+                  id="cf-min-bitrate"
+                  type="number"
+                  bind:value={formMinBitrate}
+                  min="0"
+                  placeholder="Any"
+                />
               </div>
             {/if}
 
@@ -487,11 +546,23 @@
               <div class="form-row-group">
                 <div class="form-row">
                   <label for="cf-min-resolution">Min Resolution (e.g., 720 for 720p)</label>
-                  <input id="cf-min-resolution" type="number" bind:value={formMinResolution} min="0" placeholder="Any" />
+                  <input
+                    id="cf-min-resolution"
+                    type="number"
+                    bind:value={formMinResolution}
+                    min="0"
+                    placeholder="Any"
+                  />
                 </div>
                 <div class="form-row">
                   <label for="cf-min-framerate">Min Frame Rate (fps)</label>
-                  <input id="cf-min-framerate" type="number" bind:value={formMinFrameRate} min="0" placeholder="Any" />
+                  <input
+                    id="cf-min-framerate"
+                    type="number"
+                    bind:value={formMinFrameRate}
+                    min="0"
+                    placeholder="Any"
+                  />
                 </div>
               </div>
             {/if}

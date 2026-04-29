@@ -5,6 +5,7 @@
     EquipmentField,
     CartItemEquipmentValue
   } from '$lib/types/equipment';
+  import type { MediaRequirements } from '$lib/types/customization';
 
   export let equipmentList: EquipmentWithFields[] = [];
 
@@ -14,6 +15,7 @@
 
   // Track values per equipment field
   let values: Record<string, string> = {};
+  let errors: Record<string, string> = {};
 
   // Initialize default values
   $: {
@@ -27,10 +29,98 @@
     }
   }
 
+  function getAcceptAttribute(field: EquipmentField): string {
+    if (field.mediaRequirements?.allowedMimeTypes?.length) {
+      return field.mediaRequirements.allowedMimeTypes.join(',');
+    }
+    if (field.fieldType === 'image') return 'image/*';
+    if (field.fieldType === 'audio') return 'audio/*';
+    if (field.fieldType === 'video') return 'video/*';
+    return '';
+  }
+
+  function getRequirementDescriptions(reqs: MediaRequirements, fieldType: string): string[] {
+    const descs: string[] = [];
+    if (reqs.maxFileSize) {
+      const mb = (reqs.maxFileSize / (1024 * 1024)).toFixed(1);
+      descs.push(`Max ${mb} MB`);
+    }
+    if (reqs.allowedMimeTypes?.length) {
+      descs.push(`Types: ${reqs.allowedMimeTypes.join(', ')}`);
+    }
+    if (fieldType === 'image') {
+      if (reqs.minWidth || reqs.minHeight) {
+        descs.push(`Min ${reqs.minWidth ?? '?'}×${reqs.minHeight ?? '?'}px`);
+      }
+      if (reqs.maxWidth || reqs.maxHeight) {
+        descs.push(`Max ${reqs.maxWidth ?? '?'}×${reqs.maxHeight ?? '?'}px`);
+      }
+    }
+    if (fieldType === 'audio' || fieldType === 'video') {
+      if (reqs.minDuration) descs.push(`Min ${reqs.minDuration}s`);
+      if (reqs.maxDuration) descs.push(`Max ${reqs.maxDuration}s`);
+    }
+    if (fieldType === 'audio' && reqs.minBitrate) {
+      descs.push(`Min ${reqs.minBitrate} kbps`);
+    }
+    if (fieldType === 'video') {
+      if (reqs.minResolution) descs.push(`Min ${reqs.minResolution}p`);
+      if (reqs.minFrameRate) descs.push(`Min ${reqs.minFrameRate} fps`);
+    }
+    return descs;
+  }
+
+  function validateMediaFile(
+    file: File,
+    reqs: MediaRequirements | null,
+    fieldType: string
+  ): string | null {
+    if (!reqs) return null;
+    if (reqs.maxFileSize && file.size > reqs.maxFileSize) {
+      const mb = (reqs.maxFileSize / (1024 * 1024)).toFixed(1);
+      return `File too large. Maximum size is ${mb} MB.`;
+    }
+    if (reqs.allowedMimeTypes?.length && !reqs.allowedMimeTypes.includes(file.type)) {
+      return `File type ${file.type} is not allowed.`;
+    }
+    return null;
+  }
+
   function handleChange(equipmentId: string, field: EquipmentField, value: string): void {
     const key = `${equipmentId}:${field.id}`;
     values[key] = value;
-    values = values; // trigger reactivity
+    errors[key] = '';
+    values = values;
+    errors = errors;
+    emitValues();
+  }
+
+  function handleFileChange(equipmentId: string, field: EquipmentField, event: Event): void {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    const key = `${equipmentId}:${field.id}`;
+
+    if (!file) {
+      values[key] = '';
+      errors[key] = '';
+      values = values;
+      errors = errors;
+      emitValues();
+      return;
+    }
+
+    const error = validateMediaFile(file, field.mediaRequirements, field.fieldType);
+    if (error) {
+      errors[key] = error;
+      errors = errors;
+      input.value = '';
+      return;
+    }
+
+    values[key] = file.name;
+    errors[key] = '';
+    values = values;
+    errors = errors;
     emitValues();
   }
 
@@ -141,6 +231,24 @@
                   required={field.required}
                   on:input={(e) => handleChange(eq.id, field, e.currentTarget.value)}
                 />
+              {:else if field.fieldType === 'image' || field.fieldType === 'audio' || field.fieldType === 'video'}
+                <input
+                  id="eq-field-{field.id}"
+                  type="file"
+                  accept={getAcceptAttribute(field)}
+                  required={field.required}
+                  on:change={(e) => handleFileChange(eq.id, field, e)}
+                />
+                {#if field.mediaRequirements}
+                  <div class="media-requirements-info">
+                    {#each getRequirementDescriptions(field.mediaRequirements, field.fieldType) as desc}
+                      <span class="requirement-tag">{desc}</span>
+                    {/each}
+                  </div>
+                {/if}
+                {#if errors[`${eq.id}:${field.id}`]}
+                  <p class="field-error">{errors[`${eq.id}:${field.id}`]}</p>
+                {/if}
               {/if}
             </div>
           {/each}
@@ -235,5 +343,30 @@
     border-radius: 6px;
     padding: 2px;
     cursor: pointer;
+  }
+
+  .field-group input[type='file'] {
+    font-size: 0.875rem;
+  }
+
+  .media-requirements-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.25rem;
+  }
+
+  .requirement-tag {
+    background: var(--color-bg-accent, #e8f0fe);
+    color: var(--color-text-secondary, #555);
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+  }
+
+  .field-error {
+    color: var(--color-danger, #dc3545);
+    font-size: 0.8rem;
+    margin: 0.25rem 0 0;
   }
 </style>

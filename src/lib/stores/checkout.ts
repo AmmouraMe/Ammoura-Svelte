@@ -104,7 +104,7 @@ async function submitOrder(
   shippingCost: number,
   tax: number,
   total: number
-): Promise<{ success: boolean; orderId?: string; error?: string; }> {
+): Promise<{ success: boolean; orderId?: string; error?: string }> {
   checkoutState.update((state) => ({ ...state, isSubmitting: true }));
 
   try {
@@ -266,7 +266,7 @@ function setSelectedShippingOption(optionId: string | null): void {
 }
 
 async function loadShippingOptions(
-  cartItems: Array<{ id: string; type: 'physical' | 'digital' | 'service'; category?: string; }>
+  cartItems: Array<{ id: string; type: 'physical' | 'digital' | 'service'; category?: string }>
 ): Promise<void> {
   checkoutState.update((state) => ({ ...state, loadingShippingOptions: true }));
 

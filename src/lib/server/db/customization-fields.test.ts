@@ -342,9 +342,7 @@ describe('customization-fields', () => {
       expect(field.mediaRequirements!.minWidth).toBe(1920);
       expect(field.mediaRequirements!.minHeight).toBe(1080);
       expect(field.mediaRequirements!.allowedMimeTypes).toEqual(['image/png', 'image/jpeg']);
-      expect(mockDb.prepare).toHaveBeenCalledWith(
-        expect.stringContaining('media_requirements')
-      );
+      expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('media_requirements'));
     });
 
     it('creates an audio field with duration requirements', async () => {

@@ -47,7 +47,8 @@ function mapToEquipmentField(row: DBEquipmentField): EquipmentField {
     minValue: row.min_value,
     maxValue: row.max_value,
     defaultValue: row.default_value,
-    sortOrder: row.sort_order
+    sortOrder: row.sort_order,
+    mediaRequirements: row.media_requirements ? JSON.parse(row.media_requirements) : null
   };
 }
 
@@ -233,12 +234,13 @@ export async function createEquipmentField(
   const id = generateId();
   const timestamp = getCurrentTimestamp();
   const optionsJson = data.options ? JSON.stringify(data.options) : null;
+  const mediaReqJson = data.mediaRequirements ? JSON.stringify(data.mediaRequirements) : null;
 
   await db
     .prepare(
       `INSERT INTO equipment_fields
-       (id, site_id, equipment_id, name, field_type, options, placeholder, required, max_length, min_value, max_value, default_value, sort_order, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       (id, site_id, equipment_id, name, field_type, options, placeholder, required, max_length, min_value, max_value, default_value, media_requirements, sort_order, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       id,
@@ -253,6 +255,7 @@ export async function createEquipmentField(
       data.minValue ?? null,
       data.maxValue ?? null,
       data.defaultValue ?? null,
+      mediaReqJson,
       data.sortOrder ?? 0,
       timestamp,
       timestamp
@@ -322,6 +325,10 @@ export async function updateEquipmentField(
   if (data.sortOrder !== undefined) {
     updates.push('sort_order = ?');
     params.push(data.sortOrder);
+  }
+  if (data.mediaRequirements !== undefined) {
+    updates.push('media_requirements = ?');
+    params.push(data.mediaRequirements ? JSON.stringify(data.mediaRequirements) : null);
   }
 
   if (updates.length === 0) {

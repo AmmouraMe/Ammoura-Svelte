@@ -193,7 +193,7 @@ export async function POST({ request, platform, locals }: RequestEvent): Promise
           const orderItems = await db
             .prepare('SELECT id FROM order_items WHERE order_id = ? AND product_id = ?')
             .bind(order.id, item.product_id)
-            .all<{ id: string; }>();
+            .all<{ id: string }>();
 
           const orderItemId = orderItems.results?.[0]?.id;
           if (orderItemId) {
