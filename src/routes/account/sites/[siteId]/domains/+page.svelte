@@ -85,6 +85,80 @@
       busyDomainId = '';
     }
   }
+
+  // Assisted Cloudflare DNS connect (per-domain expandable panel)
+  interface ConnectInfo {
+    cloudflare: boolean;
+    zone: string | null;
+    tokenCreateUrl: string;
+  }
+  let connectPanelDomainId = '';
+  let connectInfo: ConnectInfo | null = null;
+  let connectToken = '';
+  let connectBusy = false;
+  let connectError = '';
+  let connectSuccess = '';
+
+  async function toggleConnectPanel(domainId: string) {
+    connectError = '';
+    connectSuccess = '';
+    connectToken = '';
+    if (connectPanelDomainId === domainId) {
+      connectPanelDomainId = '';
+      connectInfo = null;
+      return;
+    }
+    connectPanelDomainId = domainId;
+    connectInfo = null;
+    const response = await fetch(
+      `/api/account/sites/${data.site.id}/domains/${domainId}/cloudflare-connect`
+    );
+    const result = (await response.json()) as { success: boolean } & ConnectInfo;
+    if (result.success) {
+      connectInfo = result;
+    }
+  }
+
+  async function connectViaCloudflare(domainId: string) {
+    connectError = '';
+    connectSuccess = '';
+    if (!connectToken.trim()) {
+      connectError = 'Paste the token first';
+      return;
+    }
+    connectBusy = true;
+    try {
+      const response = await fetch(
+        `/api/account/sites/${data.site.id}/domains/${domainId}/cloudflare-connect`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: connectToken })
+        }
+      );
+      const result = (await response.json()) as {
+        success: boolean;
+        error?: string;
+        zone?: string;
+        outcomes?: Array<{ record: { type: string; name: string }; outcome: string }>;
+      };
+
+      if (result.success) {
+        const summary = (result.outcomes || [])
+          .map((o) => `${o.record.type} ${o.record.name}: ${o.outcome}`)
+          .join(', ');
+        connectSuccess = `Records set in ${result.zone}. ${summary}. You can delete the token in Cloudflare now.`;
+        connectToken = '';
+        await invalidateAll();
+      } else {
+        connectError = result.error || 'Could not connect the domain';
+      }
+    } catch {
+      connectError = 'An error occurred. Please try again.';
+    } finally {
+      connectBusy = false;
+    }
+  }
 </script>
 
 <svelte:head>
@@ -102,31 +176,95 @@
   <ul class="domain-list">
     {#each data.domains as domain (domain.id)}
       <li class="domain-card">
-        <div class="domain-main">
-          <span class="domain-name">{domain.hostname}</span>
-          <span class="badge {domain.status}">{statusLabels[domain.status] || domain.status}</span>
-          {#if domain.kind === 'platform'}
-            <span class="badge kind">Included</span>
+        <div class="domain-row">
+          <div class="domain-main">
+            <span class="domain-name">{domain.hostname}</span>
+            <span class="badge {domain.status}">{statusLabels[domain.status] || domain.status}</span
+            >
+            {#if domain.kind === 'platform'}
+              <span class="badge kind">Included</span>
+            {/if}
+          </div>
+          {#if domain.kind === 'custom'}
+            <div class="domain-actions">
+              {#if domain.status !== 'active'}
+                <button
+                  class="small-button"
+                  disabled={busyDomainId === domain.id}
+                  on:click={() => toggleConnectPanel(domain.id)}
+                >
+                  Connect via Cloudflare
+                </button>
+                <button
+                  class="small-button"
+                  disabled={busyDomainId === domain.id}
+                  on:click={() => refreshDomain(domain.id)}
+                >
+                  {busyDomainId === domain.id ? 'Checking…' : 'Check status'}
+                </button>
+              {/if}
+              <button
+                class="small-button danger"
+                disabled={busyDomainId === domain.id}
+                on:click={() => removeDomain(domain.id, domain.hostname)}
+              >
+                Remove
+              </button>
+            </div>
           {/if}
         </div>
-        {#if domain.kind === 'custom'}
-          <div class="domain-actions">
-            {#if domain.status !== 'active'}
-              <button
-                class="small-button"
-                disabled={busyDomainId === domain.id}
-                on:click={() => refreshDomain(domain.id)}
-              >
-                {busyDomainId === domain.id ? 'Checking…' : 'Check status'}
-              </button>
+
+        {#if connectPanelDomainId === domain.id}
+          <div class="connect-panel">
+            {#if !connectInfo}
+              <p class="connect-note">Checking your DNS provider…</p>
+            {:else if !connectInfo.cloudflare}
+              <p class="connect-note">
+                This domain's DNS doesn't appear to be hosted on Cloudflare, so assisted setup isn't
+                available — use the DNS records shown when you added the domain. (Moving DNS to
+                Cloudflare's free plan enables one-click setup.)
+              </p>
+            {:else}
+              <p class="connect-note">
+                Your DNS is on <strong>Cloudflare</strong> ({connectInfo.zone}). We can create the
+                records for you:
+              </p>
+              <ol class="connect-steps">
+                <li>
+                  <a href={connectInfo.tokenCreateUrl} target="_blank" rel="noopener">
+                    Open Cloudflare to create a token
+                  </a>
+                  — permissions are prefilled (Zone: Read, DNS: Edit). Scope it to
+                  <strong>{connectInfo.zone}</strong>, click <em>Create Token</em>, and copy it.
+                </li>
+                <li>Paste the token here — we use it once and never store it:</li>
+              </ol>
+              <div class="connect-row">
+                <input
+                  type="password"
+                  bind:value={connectToken}
+                  placeholder="Paste your Cloudflare API token"
+                  disabled={connectBusy}
+                />
+                <button
+                  class="submit-button"
+                  disabled={connectBusy}
+                  on:click={() => connectViaCloudflare(domain.id)}
+                >
+                  {connectBusy ? 'Connecting…' : 'Connect'}
+                </button>
+              </div>
+              <p class="connect-note">
+                You can delete the token in Cloudflare right after — certificate renewals need no
+                further DNS changes.
+              </p>
             {/if}
-            <button
-              class="small-button danger"
-              disabled={busyDomainId === domain.id}
-              on:click={() => removeDomain(domain.id, domain.hostname)}
-            >
-              Remove
-            </button>
+            {#if connectError}
+              <div class="form-error" role="alert">{connectError}</div>
+            {/if}
+            {#if connectSuccess}
+              <div class="connect-success">{connectSuccess}</div>
+            {/if}
           </div>
         {/if}
       </li>
@@ -157,9 +295,9 @@
         <h3>Almost there — add these DNS records</h3>
         {#if onCloudflare}
           <p class="cf-hint">
-            Your domain's DNS is hosted on <strong>Cloudflare</strong> — assisted setup (we create
-            the records for you) is coming soon. For now, add the records below in your Cloudflare
-            dashboard with the cloud icon set to
+            Your domain's DNS is hosted on <strong>Cloudflare</strong> — use
+            <em>Connect via Cloudflare</em> on the domain above and we'll create these records for
+            you. Or add them yourself with the cloud icon set to
             <em>DNS only</em> (grey).
           </p>
         {/if}
@@ -221,14 +359,60 @@
   }
 
   .domain-card {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
     background: var(--color-bg-primary);
     border: 1px solid var(--color-border-secondary);
     border-radius: 10px;
     padding: 0.85rem 1.1rem;
+  }
+
+  .domain-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .connect-panel {
+    margin-top: 0.9rem;
+    border-top: 1px solid var(--color-border-secondary);
+    padding-top: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .connect-note {
+    color: var(--color-text-secondary);
+    font-size: 0.88rem;
+    margin: 0;
+  }
+
+  .connect-steps {
+    margin: 0;
+    padding-left: 1.2rem;
+    color: var(--color-text-secondary);
+    font-size: 0.88rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .connect-steps a {
+    color: var(--color-primary);
+  }
+
+  .connect-row {
+    display: flex;
+    gap: 0.6rem;
+  }
+
+  .connect-success {
+    background: color-mix(in srgb, var(--color-success, #22c55e) 12%, transparent);
+    color: var(--color-success, #22c55e);
+    border: 1px solid var(--color-success, #22c55e);
+    border-radius: 8px;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.88rem;
   }
 
   .domain-main {

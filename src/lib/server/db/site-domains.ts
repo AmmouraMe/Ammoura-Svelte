@@ -90,6 +90,27 @@ export async function getSiteDomainByHostname(
 }
 
 /**
+ * Like getSiteDomainByHostname but includes soft-removed rows — needed when
+ * re-adding a hostname, since hostname is UNIQUE across all statuses.
+ */
+export async function getAnySiteDomainByHostname(
+  db: D1Database,
+  hostname: string
+): Promise<SiteDomain | null> {
+  return await executeOne<SiteDomain>(db, 'SELECT * FROM site_domains WHERE hostname = ?', [
+    normalizeHostname(hostname)
+  ]);
+}
+
+/**
+ * Permanently delete a domain row. Only for reclaiming soft-removed rows;
+ * active domains should go through removeSiteDomain (soft delete).
+ */
+export async function hardDeleteSiteDomain(db: D1Database, id: string): Promise<void> {
+  await db.prepare('DELETE FROM site_domains WHERE id = ?').bind(id).run();
+}
+
+/**
  * Resolve a hostname to its site id. Only active domains route traffic.
  */
 export async function getActiveSiteIdForHostname(

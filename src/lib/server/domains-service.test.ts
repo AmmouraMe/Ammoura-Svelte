@@ -96,15 +96,23 @@ describe('domains-service', () => {
       const mockRun = vi.fn().mockResolvedValue({ success: true });
       const mockBind = vi.fn().mockReturnValue({ first: mockFirst, run: mockRun });
       const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
-      return { db: { prepare: mockPrepare } as unknown as D1Database, created };
+      return { db: { prepare: mockPrepare } as unknown as D1Database, created, mockPrepare };
     }
 
     const noDns = vi.fn(async () => ({ ok: true, json: async () => ({ Status: 3 }) }) as Response);
 
     it('should reject a hostname already attached elsewhere', async () => {
-      const { db } = mockDb({ site_id: 'other-site' });
+      const { db } = mockDb({ site_id: 'other-site', status: 'active' });
       const result = await addCustomDomain(db, undefined, {}, 'site-1', 'shop.example.com', noDns);
       expect(result.error).toContain('already in use');
+    });
+
+    it('should reclaim a soft-removed row so the hostname can be re-added', async () => {
+      const { db, mockPrepare } = mockDb({ id: 'old-dom', status: 'removed' });
+      const result = await addCustomDomain(db, undefined, {}, 'site-1', 'shop.example.com', noDns);
+      expect(result.error).toBeUndefined();
+      const sqls = mockPrepare.mock.calls.map(([sql]) => sql as string);
+      expect(sqls.some((s) => s.startsWith('DELETE FROM site_domains'))).toBe(true);
     });
 
     it('should create a pending domain with instructions when no CF credentials', async () => {

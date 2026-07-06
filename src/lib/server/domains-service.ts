@@ -8,9 +8,10 @@
 import {
   addSiteDomain,
   getSiteDomainById,
-  getSiteDomainByHostname,
+  getAnySiteDomainByHostname,
   getDomainsForSite,
   updateSiteDomainStatus,
+  hardDeleteSiteDomain,
   normalizeHostname,
   type SiteDomain
 } from './db/site-domains.js';
@@ -124,14 +125,18 @@ export async function addCustomDomain(
     return { error: validationError };
   }
 
-  const existing = await getSiteDomainByHostname(db, hostname);
-  if (existing) {
+  const existing = await getAnySiteDomainByHostname(db, hostname);
+  if (existing && existing.status !== 'removed') {
     return {
       error:
         existing.site_id === siteId
           ? 'This domain is already attached to this site'
           : 'This domain is already in use on the platform'
     };
+  }
+  if (existing) {
+    // Reclaim the soft-removed row so the UNIQUE hostname can be reused
+    await hardDeleteSiteDomain(db, existing.id);
   }
 
   // Provision through Cloudflare for SaaS when credentials are configured
