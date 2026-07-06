@@ -1014,7 +1014,7 @@
   .provider-card.env-provider {
     padding-left: 1.5rem;
     cursor: default;
-    border-left: 3px solid var(--color-success, #22c55e);
+    border-left: 3px solid var(--color-success);
   }
 
   .provider-card.env-provider:hover {
@@ -1028,8 +1028,8 @@
     font-size: 0.7rem;
     font-weight: 600;
     letter-spacing: 0.05em;
-    color: var(--color-success, #22c55e);
-    background: color-mix(in srgb, var(--color-success, #22c55e) 15%, transparent);
+    color: var(--color-success);
+    background: color-mix(in srgb, var(--color-success) 15%, transparent);
     border-radius: 4px;
     text-transform: uppercase;
   }

@@ -407,9 +407,9 @@
   }
 
   .connect-success {
-    background: color-mix(in srgb, var(--color-success, #22c55e) 12%, transparent);
-    color: var(--color-success, #22c55e);
-    border: 1px solid var(--color-success, #22c55e);
+    background: color-mix(in srgb, var(--color-success) 12%, transparent);
+    color: var(--color-success);
+    border: 1px solid var(--color-success);
     border-radius: 8px;
     padding: 0.6rem 0.8rem;
     font-size: 0.88rem;
@@ -438,14 +438,14 @@
   }
 
   .badge.active {
-    color: var(--color-success, #22c55e);
-    border-color: var(--color-success, #22c55e);
+    color: var(--color-success);
+    border-color: var(--color-success);
   }
 
   .badge.pending_dns,
   .badge.pending_validation {
-    color: var(--color-warning, #f59e0b);
-    border-color: var(--color-warning, #f59e0b);
+    color: var(--color-warning);
+    border-color: var(--color-warning);
   }
 
   .badge.error {

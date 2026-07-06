@@ -355,7 +355,7 @@
   }
 
   .slug-hint.available {
-    color: var(--color-success, #22c55e);
+    color: var(--color-success);
   }
 
   .slug-hint.unavailable {

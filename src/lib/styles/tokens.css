@@ -1,0 +1,88 @@
+/**
+ * Design tokens v2 (frontend overhaul F0 — Ammoura planning repo,
+ * plans/frontend-overhaul.md).
+ *
+ * Color tokens stay in app.css / the DB theme system (--color-*, --theme-*).
+ * Everything else lives here: spacing, type scale, radius, shadows, motion.
+ *
+ * Breakpoints cannot be expressed as CSS variables inside media queries;
+ * the canonical values live in src/lib/styles/breakpoints.ts and are
+ * mirrored here as informational vars. A unit test keeps them in sync.
+ */
+
+:root {
+  /* Spacing — 4px scale */
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.5rem; /* 8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem; /* 16px */
+  --space-5: 1.5rem; /* 24px */
+  --space-6: 2rem; /* 32px */
+  --space-7: 2.5rem; /* 40px */
+  --space-8: 3rem; /* 48px */
+  --space-9: 4rem; /* 64px */
+  --space-10: 6rem; /* 96px */
+  --space-11: 8rem; /* 128px */
+  --space-12: 12rem; /* 192px */
+
+  /* Type scale — minor third-ish, rem-based */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.25rem;
+  --text-4xl: 3rem;
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-loose: 1.7;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+
+  /* Shadows (color-mixed so they follow dark/light reasonably) */
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.12);
+  --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.14);
+  --shadow-3: 0 12px 32px rgba(0, 0, 0, 0.18);
+
+  /* Motion */
+  --motion-fast: 120ms ease;
+  --motion-normal: 240ms ease;
+
+  /* Interaction */
+  --touch-target: 44px;
+
+  /* Breakpoints (informational — see breakpoints.ts for the source of truth) */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+}
+
+/* Reduced motion: collapse motion tokens and suppress animations globally */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-normal: 0ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Visible keyboard focus everywhere; mouse clicks stay clean via :focus-visible */
+:focus-visible {
+  outline: 2px solid var(--color-border-focus, currentColor);
+  outline-offset: 2px;
+}

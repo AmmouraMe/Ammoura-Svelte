@@ -461,9 +461,10 @@ export async function getDefaultRevisionsSummary(
  *
  * Version history:
  * - v1: Initial release (migrations 0033-0059)
- * - v2: [Add description of changes here when incrementing]
+ * - v2: Navbar links collapse behind a hamburger on mobile
+ *       (containerMobileCollapse on nav-links-container)
  */
-export const CURRENT_BUILTIN_VERSION = 1;
+export const CURRENT_BUILTIN_VERSION = 2;
 
 /**
  * All built-in component definitions
@@ -893,19 +894,26 @@ export async function seedBuiltinPage(
 ): Promise<SeedResult> {
   const { id: pageId, title, slug, description: _description, getWidgets } = definition;
 
-  // Check if page exists (use the stable builtin ID pattern)
+  // pages.id is a global primary key, so the stable builtin id must be
+  // site-scoped or seeding any second site collides with the first.
+  // default-site keeps the bare id for backwards compatibility.
+  const sitePageId = siteId === 'default-site' ? pageId : `${pageId}--${siteId}`;
+
+  // Check if page exists (either id form, always scoped to this site)
   const existingPage = await db
-    .prepare('SELECT id FROM pages WHERE site_id = ? AND id = ?')
-    .bind(siteId, pageId)
+    .prepare('SELECT id FROM pages WHERE site_id = ? AND id IN (?, ?)')
+    .bind(siteId, pageId, sitePageId)
     .first<{ id: string }>();
 
-  if (!existingPage) {
-    // Also check by slug in case it was created without the builtin ID
-    const pageBySlug = await db
-      .prepare('SELECT id FROM pages WHERE site_id = ? AND slug = ? AND is_builtin = 1')
-      .bind(siteId, slug)
-      .first<{ id: string }>();
+  // Also check by slug in case it was created without the builtin ID
+  const pageBySlug = existingPage
+    ? null
+    : await db
+        .prepare('SELECT id FROM pages WHERE site_id = ? AND slug = ? AND is_builtin = 1')
+        .bind(siteId, slug)
+        .first<{ id: string }>();
 
+  if (!existingPage) {
     if (!pageBySlug) {
       // A) Create the page if it doesn't exist
       const now = Math.floor(Date.now() / 1000);
@@ -916,14 +924,14 @@ export async function seedBuiltinPage(
           VALUES (?, ?, ?, ?, 'published', 1, ?, ?)
         `
         )
-        .bind(pageId, siteId, title, slug, now, now)
+        .bind(sitePageId, siteId, title, slug, now, now)
         .run();
 
       const widgets = getWidgets();
 
       // Create the initial default revision using page_revisions table
-      const revisionId = `${pageId}-rev-${defaultVersion}`;
-      const revisionHash = generateRevisionHash(pageId, defaultVersion);
+      const revisionId = `${sitePageId}-rev-${defaultVersion}`;
+      const revisionHash = generateRevisionHash(sitePageId, defaultVersion);
 
       await db
         .prepare(
@@ -937,7 +945,7 @@ export async function seedBuiltinPage(
         )
         .bind(
           revisionId,
-          pageId,
+          sitePageId,
           revisionHash,
           title,
           slug,
@@ -951,7 +959,7 @@ export async function seedBuiltinPage(
         action: 'created',
         entityType: 'page',
         entityName: title,
-        entityId: pageId,
+        entityId: sitePageId,
         siteId,
         newVersion: defaultVersion,
         message: `Created new built-in page "${title}" with default v${defaultVersion}`
@@ -960,7 +968,7 @@ export async function seedBuiltinPage(
   }
 
   // Page exists - check if we need to add a new default revision
-  const actualPageId = existingPage?.id || pageId;
+  const actualPageId = existingPage?.id || pageBySlug?.id || sitePageId;
 
   // Get latest default revision from page_revisions table
   const latestDefault = await getLatestDefaultPageRevision(db, actualPageId);
@@ -1126,9 +1134,11 @@ async function isCurrentPageRevisionDefault(
  * Generate a short revision hash for pages
  */
 function generateRevisionHash(pageId: string, version: number): string {
-  const timestamp = Date.now().toString(36);
-  const idPart = pageId.substring(0, 4);
-  return `${idPart}${version}${timestamp}`.substring(0, 8);
+  // revision_hash is globally UNIQUE; the previous prefix+version+timestamp
+  // scheme collided when seeding several pages/sites in the same instant.
+  void pageId;
+  void version;
+  return crypto.randomUUID().replace(/-/g, '').substring(0, 8);
 }
 
 /**

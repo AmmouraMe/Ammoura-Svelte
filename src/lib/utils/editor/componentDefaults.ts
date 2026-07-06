@@ -1950,6 +1950,9 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
                     containerWidth: { desktop: 'auto', tablet: 'auto', mobile: 'auto' },
                     containerGridCols: { desktop: 3, tablet: 2, mobile: 1 },
                     containerGridAutoFlow: { desktop: 'row', tablet: 'row', mobile: 'row' },
+                    // Collapse nav links behind a hamburger on mobile (≤768px)
+                    containerMobileCollapse: true,
+                    containerMobileCollapseLabel: '',
                     children: [
                       {
                         id: 'products-link',

@@ -85,7 +85,7 @@
     justify-content: center;
     gap: 0.5rem;
     padding: 0.75rem 1rem;
-    background: var(--color-warning, #f59e0b);
+    background: var(--color-warning);
     color: white;
     font-weight: 500;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);

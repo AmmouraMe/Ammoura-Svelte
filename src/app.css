@@ -1,5 +1,8 @@
 /* Global styles for Hermes eCommerce platform */
 
+/* Design tokens: spacing, type scale, radius, shadows, motion, focus */
+@import './lib/styles/tokens.css';
+
 /* CSS Custom Properties - Theme System */
 /* NOTE: Theme colors (primary, secondary, backgrounds, text, borders) are now */
 /* dynamically loaded from the database via +layout.server.ts */
@@ -218,13 +221,11 @@ html.theme-loaded:not(.hydration-complete) {
   visibility: hidden;
 }
 
-/* Set html background to match theme to prevent flash during hidden period */
-html[data-theme='light'] {
-  background-color: #fdf2f8; /* Light theme bg-secondary */
-}
-
-html[data-theme='dark'] {
-  background-color: #0f172a; /* Dark theme bg-secondary */
+/* Set html background to match the theme to prevent flash during the hidden
+   period. Uses the same variable as body so html and body can never disagree
+   (the hardcoded values here previously split from DB-driven site themes). */
+html {
+  background-color: var(--color-bg-secondary);
 }
 
 html.theme-loaded.hydration-complete {
