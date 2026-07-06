@@ -8,5 +8,10 @@ export default defineConfig({
   plugins: [sveltekit()],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version)
+  },
+  server: {
+    // Allow dev tunnels (cloudflared → dev-<hash>.ammoura.me) and
+    // slug.localhost tenant subdomains through Vite's Host check
+    allowedHosts: ['.ammoura.me', '.localhost']
   }
 });
