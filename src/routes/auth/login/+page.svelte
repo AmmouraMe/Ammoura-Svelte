@@ -80,11 +80,6 @@
       handleLogin();
     }
   }
-
-  function fillCredentials(userEmail: string, userPassword: string) {
-    email = userEmail;
-    password = userPassword;
-  }
 </script>
 
 <svelte:head>
@@ -167,47 +162,6 @@
         </Button>
       </div>
     </form>
-
-    <div class="demo-credentials">
-      <p><strong>Demo Credentials:</strong></p>
-      <div class="credential-item">
-        <p class="credential-title">Regular User:</p>
-        <button
-          type="button"
-          class="credential-group clickable"
-          on:click={() => fillCredentials('user@hermes.local', 'TfppPEsXnfZluUi52ne538O')}
-          disabled={isLoading}
-        >
-          <p>Email: user@hermes.local</p>
-          <p>Password: TfppPEsXnfZluUi52ne538O</p>
-        </button>
-      </div>
-      <div class="credential-item">
-        <p class="credential-title">Site Owner (Admin):</p>
-        <button
-          type="button"
-          class="credential-group clickable"
-          on:click={() => fillCredentials('owner@hermes.local', '4a6lJebYdNkr2zjq5j59rTt')}
-          disabled={isLoading}
-        >
-          <p>Email: owner@hermes.local</p>
-          <p>Password: 4a6lJebYdNkr2zjq5j59rTt</p>
-        </button>
-      </div>
-      <div class="credential-item">
-        <p class="credential-title">Platform Engineer:</p>
-        <button
-          type="button"
-          class="credential-group clickable"
-          on:click={() => fillCredentials('engineer@hermes.local', 'engineer123')}
-          disabled={isLoading}
-          title="Demo password - change immediately in production"
-        >
-          <p>Email: engineer@hermes.local</p>
-          <p>Password: engineer123</p>
-        </button>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -393,78 +347,6 @@
     font-weight: 500;
   }
 
-  .demo-credentials {
-    margin-top: 2rem;
-    padding-top: 2rem;
-    border-top: 1px solid var(--color-border-secondary);
-    text-align: left;
-  }
-
-  .demo-credentials > p:first-child {
-    text-align: center;
-    margin-bottom: 1rem;
-  }
-
-  .credential-item {
-    margin-bottom: 1.25rem;
-  }
-
-  .credential-title {
-    font-weight: 600;
-    color: var(--color-text-primary);
-    margin: 0 0 0.5rem 0 !important;
-    font-size: 0.95rem;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-  }
-
-  .credential-group {
-    padding: 0.75rem;
-    background: var(--color-bg-secondary);
-    border-radius: 6px;
-    border: 1px solid var(--color-border-secondary);
-    width: 100%;
-    text-align: left;
-    font: inherit;
-    transition:
-      background-color var(--transition-normal),
-      border-color var(--transition-normal),
-      transform var(--transition-fast);
-  }
-
-  .credential-group.clickable {
-    cursor: pointer;
-  }
-
-  .credential-group.clickable:hover:not(:disabled) {
-    background: var(--color-bg-accent);
-    border-color: var(--color-primary);
-    transform: translateY(-2px);
-  }
-
-  .credential-group.clickable:active:not(:disabled) {
-    transform: translateY(0);
-  }
-
-  .credential-group:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .demo-credentials p {
-    color: var(--color-text-secondary);
-    font-size: 0.9rem;
-    margin: 0.25rem 0;
-    transition: color var(--transition-normal);
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-  }
-
-  .demo-credentials strong {
-    color: var(--color-text-primary);
-    transition: color var(--transition-normal);
-  }
-
   @media (max-width: 768px) {
     .login-container {
       padding: 1rem;
@@ -491,15 +373,6 @@
     .sso-name {
       font-size: 0.9rem;
     }
-
-    .demo-credentials p {
-      font-size: 0.85rem;
-      line-height: 1.4;
-    }
-
-    .credential-title {
-      font-size: 0.9rem;
-    }
   }
 
   @media (max-width: 480px) {
@@ -517,14 +390,6 @@
 
     .login-header p {
       font-size: 0.9rem;
-    }
-
-    .demo-credentials p {
-      font-size: 0.8rem;
-    }
-
-    .credential-title {
-      font-size: 0.85rem;
     }
 
     input {

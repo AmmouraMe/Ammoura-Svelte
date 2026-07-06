@@ -3,6 +3,7 @@
 
   import BuildInfo from '../lib/components/BuildInfo.svelte';
   import ConfirmModal from '../lib/components/ConfirmModal.svelte';
+  import DevLoginPanel from '../lib/components/dev/DevLoginPanel.svelte';
   import FrontendComponentRenderer from '../lib/components/FrontendComponentRenderer.svelte';
   import PromptModal from '../lib/components/PromptModal.svelte';
   import ThemePreviewIndicator from '../lib/components/ThemePreviewIndicator.svelte';
@@ -11,7 +12,7 @@
   import { themeStore } from '../lib/stores/theme';
 
   import '../app.css';
-  import { browser } from '$app/environment';
+  import { browser, dev } from '$app/environment';
   import { page } from '$app/stores';
   import { goto, invalidateAll } from '$app/navigation';
   import type { LayoutData } from './$types';
@@ -311,6 +312,9 @@
 <ConfirmModal />
 <ThemePreviewIndicator />
 <BuildInfo userRole={$authState.user?.role} />
+{#if dev}
+  <DevLoginPanel />
+{/if}
 
 <style>
   :global(body) {

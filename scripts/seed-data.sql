@@ -88,61 +88,10 @@ VALUES
     '["footwear", "running", "sports"]'
   );
 
--- Insert demo users for default site
--- These are demo accounts for development and testing purposes
--- Note: Currently using simple authentication for demo purposes
-
--- Regular User Account
--- Email: user@hermes.local
--- Password: TfppPEsXnfZluUi52ne538O (23-character random alphanumeric)
--- SHA-256 hash: 5f24110047b63ba5e3aa6da96bae758f18f576b05e3872a3e33207422c4acbfa
-INSERT OR IGNORE INTO users (id, site_id, email, name, password_hash, role, permissions, status, grace_period_days)
-VALUES (
-  'user-1',
-  'default-site',
-  'user@hermes.local',
-  'Demo User',
-  '5f24110047b63ba5e3aa6da96bae758f18f576b05e3872a3e33207422c4acbfa',
-  'user',
-  '[]',
-  'active',
-  0
-);
-
--- Site Owner/Admin Account
--- Email: owner@hermes.local
--- Password: 4a6lJebYdNkr2zjq5j59rTt (23-character random alphanumeric)
--- SHA-256 hash: 848182b0ad7be9c4994b06e335776bfe576cf91044896aea4622445dffed8f33
-INSERT OR IGNORE INTO users (id, site_id, email, name, password_hash, role, permissions, status, grace_period_days)
-VALUES (
-  'admin-1',
-  'default-site',
-  'owner@hermes.local',
-  'Site Owner',
-  '848182b0ad7be9c4994b06e335776bfe576cf91044896aea4622445dffed8f33',
-  'admin',
-  '[]',
-  'active',
-  0
-);
-
--- Platform Engineer Account
--- Email: engineer@hermes.local
--- Password: engineer123 (for demo/development only)
--- SHA-256 hash: 80ca306ac6e68366dd0a26125c9647e0c61fac6668cec6016f5fe30fb12e99bd
--- Note: In production, change this password immediately after first login
-INSERT OR IGNORE INTO users (id, site_id, email, name, password_hash, role, permissions, status, grace_period_days)
-VALUES (
-  'engineer-1',
-  'default-site',
-  'engineer@hermes.local',
-  'Platform Engineer',
-  '80ca306ac6e68366dd0a26125c9647e0c61fac6668cec6016f5fe30fb12e99bd',
-  'platform_engineer',
-  '[]',
-  'active',
-  0
-);
+-- Demo users removed: in development, use the DEV panel (bottom-left) to log
+-- in with one click as a new user, the stable dev user, or a superadmin
+-- (POST /api/dev/login-as — only exists in `vite dev`).
+-- Production access is bootstrapped via PLATFORM_ENGINEER_EMAIL.
 
 -- Built-in Home page for default site
 -- This is a system page that comes with every site automatically
