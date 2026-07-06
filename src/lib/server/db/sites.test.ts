@@ -16,6 +16,7 @@ describe('Sites Repository', () => {
     id: 'site-1',
     name: 'Test Site',
     domain: 'test.example.com',
+    slug: null,
     description: 'Test site description',
     settings: '{"theme": "dark"}',
     status: 'active',

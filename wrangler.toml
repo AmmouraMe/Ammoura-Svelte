@@ -8,6 +8,17 @@ pages_build_output_dir = ".svelte-kit/cloudflare"
 # For local development, create a .dev.vars file with:
 # PLATFORM_ENGINEER_PASSWORD=your_secure_password_here
 
+# Tenancy (see Ammoura planning repo, plans/tenancy.md)
+# PLATFORM_SITES_DOMAIN: wildcard domain for free platform subdomains
+#   (slug.<domain>). Unset locally → defaults to `localhost`, so sites are
+#   reachable at http://<slug>.localhost:4236 in dev.
+# SITE_ROUTES (optional KV binding): hostname → site id route cache. Create
+#   with `wrangler kv namespace create SITE_ROUTES`, then add:
+#   [[kv_namespaces]]
+#   binding = "SITE_ROUTES"
+#   id = "<namespace-id>"
+# Routing works without it (direct D1 lookups per request).
+
 # D1 Database Configuration
 # Production database
 [[d1_databases]]

@@ -11,6 +11,7 @@ export * from './sites.js';
 export * from './accounts.js';
 export * from './account-sessions.js';
 export * from './site-members.js';
+export * from './site-domains.js';
 export * from './products.js';
 export * from './users.js';
 export * from './orders.js';

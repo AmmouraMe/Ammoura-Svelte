@@ -1,6 +1,7 @@
 import type { Handle } from '@sveltejs/kit';
-import { getDB, getSiteByDomain, getAccountBySessionToken } from '$lib/server/db';
+import { getDB, getAccountBySessionToken } from '$lib/server/db';
 import { ACCOUNT_SESSION_COOKIE } from '$lib/server/db/account-sessions';
+import { resolveSiteIdForHostname } from '$lib/server/site-routing';
 import { dev } from '$app/environment';
 import type { DBUser } from '$lib/server/db/users';
 
@@ -11,17 +12,20 @@ export const handle: Handle = async ({ event, resolve }) => {
   // Get the hostname from the request
   const hostname = event.url.hostname;
 
-  // Try to get the site from the database based on domain
-  // In development, default to 'default-site'
+  // Resolve the site from the hostname via site_domains (KV-cached when a
+  // SITE_ROUTES namespace is bound), falling back to the legacy sites.domain
+  // column. Unknown hosts still fall back to 'default-site' until the strict
+  // 404 cutover (tenancy plan §2.3 / §6).
   let siteId = 'default-site';
 
   try {
     if (event.platform?.env?.DB) {
       const db = getDB(event.platform);
-      const site = await getSiteByDomain(db, hostname);
+      const kv = event.platform.env.SITE_ROUTES as KVNamespace | undefined;
+      const resolved = await resolveSiteIdForHostname(db, kv, hostname);
 
-      if (site) {
-        siteId = site.id;
+      if (resolved) {
+        siteId = resolved;
       }
     }
   } catch (error) {

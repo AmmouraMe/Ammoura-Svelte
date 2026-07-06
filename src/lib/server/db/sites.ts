@@ -8,6 +8,7 @@ export interface Site {
   id: string;
   name: string;
   domain: string;
+  slug: string | null;
   description: string | null;
   settings: string | null;
   status: 'active' | 'inactive' | 'maintenance';

@@ -22,6 +22,8 @@ declare global {
       env: {
         DB: D1Database;
         MEDIA_BUCKET: R2Bucket;
+        SITE_ROUTES?: KVNamespace; // hostname → site id route cache (optional binding)
+        PLATFORM_SITES_DOMAIN?: string; // wildcard domain for free platform subdomains
         PLATFORM_ENGINEER_PASSWORD?: string;
         PLATFORM_ENGINEER_EMAIL?: string; // Email address that identifies the platform engineer
         ENCRYPTION_KEY?: string; // Base64-encoded AES-256 key for encrypting secrets
