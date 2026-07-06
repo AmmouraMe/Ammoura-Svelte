@@ -132,11 +132,14 @@
             <span class="site-name">{site.name}</span>
             <span class="site-role">{site.member_role}</span>
           </div>
-          {#if site.slug}
-            <a class="site-link" href={siteUrl(site)} target="_blank" rel="noopener">
-              {site.slug}.{data.platformSitesDomain}
-            </a>
-          {/if}
+          <div class="site-actions">
+            {#if site.slug}
+              <a class="site-link" href={siteUrl(site)} target="_blank" rel="noopener">
+                {site.slug}.{data.platformSitesDomain}
+              </a>
+            {/if}
+            <a class="site-link" href={`/account/sites/${site.id}/domains`}>Domains</a>
+          </div>
         </li>
       {/each}
     </ul>
@@ -269,6 +272,12 @@
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
+  }
+
+  .site-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
   }
 
   .site-link {
