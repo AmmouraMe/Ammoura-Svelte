@@ -1,5 +1,6 @@
 import type { Handle } from '@sveltejs/kit';
-import { getDB, getSiteByDomain } from '$lib/server/db';
+import { getDB, getSiteByDomain, getAccountBySessionToken } from '$lib/server/db';
+import { ACCOUNT_SESSION_COOKIE } from '$lib/server/db/account-sessions';
 import { dev } from '$app/environment';
 import type { DBUser } from '$lib/server/db/users';
 
@@ -33,6 +34,25 @@ export const handle: Handle = async ({ event, resolve }) => {
 
   // Set the site ID in locals for use in endpoints and pages
   event.locals.siteId = siteId;
+
+  // Resolve platform account from the server-side session (tenancy plan T1).
+  // The cookie holds an opaque token; identity/role always comes from the DB.
+  const accountToken = event.cookies?.get(ACCOUNT_SESSION_COOKIE);
+  if (accountToken && event.platform?.env?.DB) {
+    try {
+      const db = getDB(event.platform);
+      const result = await getAccountBySessionToken(db, accountToken);
+      if (result) {
+        event.locals.account = result.account;
+      } else {
+        event.cookies.delete(ACCOUNT_SESSION_COOKIE, { path: '/' });
+      }
+    } catch (error) {
+      if (!dev) {
+        console.error('Error resolving account session:', error);
+      }
+    }
+  }
 
   // Check for user session cookie and load current user
   const userSession = event.cookies?.get('user_session');

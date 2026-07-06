@@ -9,6 +9,8 @@ declare global {
     interface Locals {
       siteId: string;
       isAdmin: boolean;
+      /** Platform account (site owner/collaborator), from the account_session cookie */
+      account?: import('$lib/server/db/accounts').Account;
       currentUser?: import('$lib/server/db/users').DBUser;
       user?: {
         id: string;
