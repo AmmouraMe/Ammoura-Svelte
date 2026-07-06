@@ -26,6 +26,8 @@ declare global {
         PLATFORM_SITES_DOMAIN?: string; // wildcard domain for free platform subdomains
         CLOUDFLARE_API_TOKEN?: string; // secret: Cloudflare for SaaS custom hostnames
         CLOUDFLARE_ZONE_ID?: string; // zone id custom hostnames are provisioned on
+        RESEND_API_KEY?: string; // secret: outbound email; absent in dev → console log
+        EMAIL_FROM?: string; // From header for outbound email
         PLATFORM_ENGINEER_PASSWORD?: string;
         PLATFORM_ENGINEER_EMAIL?: string; // Email address that identifies the platform engineer
         ENCRYPTION_KEY?: string; // Base64-encoded AES-256 key for encrypting secrets
