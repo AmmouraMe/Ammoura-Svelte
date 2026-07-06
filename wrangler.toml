@@ -1,6 +1,18 @@
 name = "hermes"
 compatibility_date = "2024-09-23"
-pages_build_output_dir = ".svelte-kit/cloudflare"
+
+# Workers deployment with static assets (migrated from Cloudflare Pages —
+# tenancy plan §8). `wrangler deploy` after `npm run build`.
+main = ".svelte-kit/cloudflare/_worker.js"
+
+[assets]
+binding = "ASSETS"
+directory = ".svelte-kit/cloudflare"
+
+[vars]
+# Wildcard domain for free platform subdomains (slug.<domain>).
+# Local dev leaves this unset and falls back to `localhost`.
+PLATFORM_SITES_DOMAIN = "ammoura.me"
 
 # Environment Variables
 # Set PLATFORM_ENGINEER_PASSWORD as a secret:
