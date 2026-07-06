@@ -1,13 +1,13 @@
 <script lang="ts">
   /**
-   * Dev-only quick login panel (rendered from +layout.svelte only when
-   * `dev` is true). One click logs in as a fresh user, the stable dev
-   * user, or a platform engineer — no passwords anywhere.
+   * Dev-only quick logins, embedded on the login screens. Renders nothing
+   * outside `vite dev`; the API it calls (/api/dev/login-as) 404s in
+   * production builds regardless.
    */
+  import { dev } from '$app/environment';
   import { invalidateAll, goto } from '$app/navigation';
 
   let busy = '';
-  let open = false;
 
   async function loginAs(as: 'new' | 'existing' | 'superadmin') {
     busy = as;
@@ -23,110 +23,71 @@
         if (result.goto) {
           await goto(result.goto);
         }
-        open = false;
       }
-    } finally {
-      busy = '';
-    }
-  }
-
-  async function signOut() {
-    busy = 'signout';
-    try {
-      await fetch('/api/dev/login-as', { method: 'DELETE' });
-      await invalidateAll();
-      await goto('/');
-      open = false;
     } finally {
       busy = '';
     }
   }
 </script>
 
-<div class="dev-panel" class:open>
-  <button class="dev-chip" on:click={() => (open = !open)} aria-expanded={open}> DEV </button>
-  {#if open}
-    <div class="dev-actions">
-      <button disabled={!!busy} on:click={() => loginAs('new')}>
-        {busy === 'new' ? '…' : 'Log in as new user'}
+{#if dev}
+  <div class="dev-logins">
+    <span class="dev-label">DEV</span>
+    <div class="dev-buttons">
+      <button type="button" disabled={!!busy} on:click={() => loginAs('new')}>
+        {busy === 'new' ? '…' : 'New user'}
       </button>
-      <button disabled={!!busy} on:click={() => loginAs('existing')}>
-        {busy === 'existing' ? '…' : 'Log in as existing user'}
+      <button type="button" disabled={!!busy} on:click={() => loginAs('existing')}>
+        {busy === 'existing' ? '…' : 'Existing user'}
       </button>
-      <button disabled={!!busy} on:click={() => loginAs('superadmin')}>
-        {busy === 'superadmin' ? '…' : 'Log in as superadmin'}
-      </button>
-      <button class="signout" disabled={!!busy} on:click={signOut}>
-        {busy === 'signout' ? '…' : 'Sign out'}
+      <button type="button" disabled={!!busy} on:click={() => loginAs('superadmin')}>
+        {busy === 'superadmin' ? '…' : 'Superadmin'}
       </button>
     </div>
-  {/if}
-</div>
+  </div>
+{/if}
 
 <style>
-  .dev-panel {
-    position: fixed;
-    bottom: 12px;
-    left: 12px;
-    z-index: 9999;
-    display: flex;
-    flex-direction: column-reverse;
-    align-items: flex-start;
-    gap: 6px;
-    font-family: monospace;
-  }
-
-  .dev-chip {
-    background: #f59e0b;
-    color: #1a1a1a;
-    border: none;
-    border-radius: 6px;
-    font-weight: 700;
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    padding: 4px 8px;
-    cursor: pointer;
-    opacity: 0.75;
-  }
-
-  .dev-chip:hover,
-  .dev-panel.open .dev-chip {
-    opacity: 1;
-  }
-
-  .dev-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    background: #1a1a1a;
-    border: 1px solid #f59e0b;
+  .dev-logins {
+    margin-top: 1.5rem;
+    padding: 0.9rem;
+    border: 1px dashed #f59e0b;
     border-radius: 8px;
-    padding: 8px;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
   }
 
-  .dev-actions button {
-    background: #2a2a2a;
-    color: #eee;
-    border: 1px solid #444;
-    border-radius: 5px;
-    font-family: inherit;
-    font-size: 12px;
-    padding: 6px 10px;
+  .dev-label {
+    font-family: monospace;
+    font-weight: 700;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    color: #f59e0b;
+  }
+
+  .dev-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .dev-buttons button {
+    background: transparent;
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    padding: 0.35rem 0.7rem;
     cursor: pointer;
-    text-align: left;
-    white-space: nowrap;
   }
 
-  .dev-actions button:hover:not(:disabled) {
+  .dev-buttons button:hover:not(:disabled) {
     border-color: #f59e0b;
   }
 
-  .dev-actions button:disabled {
+  .dev-buttons button:disabled {
     opacity: 0.5;
     cursor: wait;
-  }
-
-  .dev-actions .signout {
-    color: #f87171;
   }
 </style>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import DevLoginPanel from '$lib/components/dev/DevLoginPanel.svelte';
 
   let email = '';
   let password = '';
@@ -81,6 +82,8 @@
     <p class="alt-action">
       New here? <a href="/signup">Create an account</a>
     </p>
+
+    <DevLoginPanel />
   </div>
 </div>
 

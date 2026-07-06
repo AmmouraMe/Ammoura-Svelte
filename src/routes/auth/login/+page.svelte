@@ -6,6 +6,7 @@
   import { page } from '$app/stores';
   import type { PageData } from './$types';
   import IconDisplay from '$lib/components/admin/IconDisplay.svelte';
+  import DevLoginPanel from '$lib/components/dev/DevLoginPanel.svelte';
 
   export let data: PageData;
 
@@ -162,6 +163,8 @@
         </Button>
       </div>
     </form>
+
+    <DevLoginPanel />
   </div>
 </div>
 
