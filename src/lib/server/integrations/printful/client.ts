@@ -10,7 +10,9 @@ import type {
   PrintfulProduct,
   PrintfulVariant,
   PrintfulOrder,
-  PrintfulOrderRequest
+  PrintfulOrderRequest,
+  PrintfulStore,
+  PrintfulSyncProduct
 } from './types';
 
 export class PrintfulClient {
@@ -70,8 +72,16 @@ export class PrintfulClient {
   /**
    * Get store information
    */
-  async getStore(): Promise<Record<string, unknown> | null> {
-    return this.request('/store');
+  async getStore(): Promise<PrintfulStore> {
+    return this.request<PrintfulStore>('/store');
+  }
+
+  /**
+   * Get all sync products in the user's Printful store
+   */
+  async getStoreProducts(): Promise<PrintfulSyncProduct[]> {
+    const result = await this.request<PrintfulSyncProduct[]>('/store/products');
+    return result || [];
   }
 
   /**

@@ -83,6 +83,7 @@ export const load: LayoutServerLoad = async ({ platform, locals }) => {
       systemDarkThemeId: 'midnight',
       userColorScheme: null,
       currentUser: locals.currentUser || null,
+      currentAccount: locals.account || null,
       storeName: 'Hermes eCommerce',
       layoutData: {
         navbar: { type: 'navbar' as const, config: defaultNavbarConfig, position: undefined },
@@ -243,6 +244,7 @@ export const load: LayoutServerLoad = async ({ platform, locals }) => {
       systemDarkThemeId: effectiveDarkThemeId,
       userColorScheme: userPrefs?.color_scheme || null,
       currentUser: locals.currentUser || null,
+      currentAccount: locals.account || null,
       storeName: generalSettings.storeName || 'Hermes eCommerce',
       siteContext: createSiteContext(generalSettings),
       layoutData
@@ -256,6 +258,7 @@ export const load: LayoutServerLoad = async ({ platform, locals }) => {
       systemDarkThemeId: 'midnight',
       userColorScheme: null,
       currentUser: locals.currentUser || null,
+      currentAccount: locals.account || null,
       storeName: 'Hermes eCommerce',
       siteContext: createDefaultSiteContext(),
       layoutData: {

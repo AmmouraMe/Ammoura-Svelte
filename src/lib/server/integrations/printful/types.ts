@@ -181,6 +181,30 @@ export interface PrintfulOrderItemResponse extends PrintfulOrderItem {
 }
 
 /**
+ * Printful store info
+ */
+export interface PrintfulStore {
+  id: number;
+  name: string;
+  website: string;
+  currency: string;
+  country?: { code: string; name: string };
+}
+
+/**
+ * Printful sync product (product already set up in the user's Printful store)
+ */
+export interface PrintfulSyncProduct {
+  id: number;
+  external_id: string | null;
+  name: string;
+  variants: number;
+  synced: number;
+  thumbnail_url: string | null;
+  is_ignored: boolean;
+}
+
+/**
  * Webhook event from Printful
  */
 export interface PrintfulWebhookEvent {

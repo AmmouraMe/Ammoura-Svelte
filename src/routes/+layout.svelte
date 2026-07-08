@@ -206,30 +206,32 @@
     }
   });
 
-  // Reactively sync auth state with server data
-  // This runs whenever data.currentUser changes (e.g., after invalidateAll())
+  // Reactively sync auth state with server data.
+  // currentUser (user_session cookie) takes priority; currentAccount (account_session
+  // cookie) is the fallback so platform account logins also update the navbar.
   $: if (browser) {
-    if (data.currentUser) {
-      // Server says user is logged in - update client state if different
-      if (!$authState.isAuthenticated || $authState.user?.id !== data.currentUser.id) {
-        authState.set({
-          user: {
-            id: data.currentUser.id,
-            email: data.currentUser.email,
-            name: data.currentUser.name,
-            role: data.currentUser.role
-          },
-          isAuthenticated: true,
-          isLoading: false
-        });
+    const serverUser = data.currentUser
+      ? {
+          id: data.currentUser.id,
+          email: data.currentUser.email,
+          name: data.currentUser.name,
+          role: data.currentUser.role
+        }
+      : data.currentAccount
+        ? {
+            id: data.currentAccount.id,
+            email: data.currentAccount.email,
+            name: data.currentAccount.name,
+            role: 'user' as const
+          }
+        : null;
+
+    if (serverUser) {
+      if (!$authState.isAuthenticated || $authState.user?.id !== serverUser.id) {
+        authState.set({ user: serverUser, isAuthenticated: true, isLoading: false });
       }
     } else if ($authState.isAuthenticated) {
-      // Server says no user - clear client state
-      authState.set({
-        user: null,
-        isAuthenticated: false,
-        isLoading: false
-      });
+      authState.set({ user: null, isAuthenticated: false, isLoading: false });
     }
   }
 
@@ -277,7 +279,7 @@
   style:padding={isAdminPage ? '0' : layoutPadding}
 >
   {#if !isAdminPage && navbarConfig}
-    {#key data.currentUser?.id}
+    {#key data.currentUser?.id || data.currentAccount?.id}
       <FrontendComponentRenderer
         type="navbar"
         config={navbarConfig}
@@ -285,7 +287,7 @@
         position={effectiveNavbar?.position}
         onLogout={handleLogout}
         siteContext={data.siteContext}
-        user={data.currentUser}
+        user={data.currentUser || data.currentAccount}
       />
     {/key}
   {/if}
@@ -293,14 +295,14 @@
   <slot />
 
   {#if !isAdminPage && footerConfig}
-    {#key data.currentUser?.id}
+    {#key data.currentUser?.id || data.currentAccount?.id}
       <FrontendComponentRenderer
         type="footer"
         config={footerConfig}
         colorTheme={activeColorTheme}
         position={effectiveFooter?.position}
         siteContext={data.siteContext}
-        user={data.currentUser}
+        user={data.currentUser || data.currentAccount}
       />
     {/key}
   {/if}
