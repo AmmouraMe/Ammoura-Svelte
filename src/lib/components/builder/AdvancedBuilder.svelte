@@ -16,6 +16,9 @@
   import BuilderToolbar from './BuilderToolbar.svelte';
   import BuilderCanvas from './BuilderCanvas.svelte';
   import PreviewOverlay from './PreviewOverlay.svelte';
+  import LintPanel from './LintPanel.svelte';
+  import { lintComponents } from '$lib/utils/lint/lintPage';
+  import { resolveThemeColor } from '$lib/utils/editor/colorThemes';
   import BuilderLeftPanel from './BuilderLeftPanel.svelte';
   import BuilderAIPanel from './BuilderAIPanel.svelte';
   import RevisionModal from '../admin/RevisionModal.svelte';
@@ -346,6 +349,12 @@
   // Device preview overlay (F2): renders the real frontend at device widths.
   let showPreview = false;
   let previewNonce = 0;
+  // Accessibility lint panel (F2): contrast / tap-target / alt warnings.
+  let showLint = false;
+  // Resolve theme color refs to concrete hex so the contrast check can run.
+  $: lintResolve = (c: string | undefined | null) =>
+    c ? resolveThemeColor(c, colorTheme as never, undefined, false) : undefined;
+  $: lintWarnings = lintComponents(pageComponents, lintResolve);
   let currentBreakpoint: 'mobile' | 'tablet' | 'desktop' = 'desktop';
 
   // Mobile responsive state
@@ -719,6 +728,24 @@
       console.error('Preview reload save failed', err);
     }
     previewNonce += 1;
+  }
+
+  // Jump from a lint warning to the offending component (searches nested children).
+  function selectComponentById(id: string): void {
+    const find = (list: PageComponent[]): PageComponent | null => {
+      for (const c of list) {
+        if (String(c.id) === id) return c;
+        const kids = (c.config?.children as PageComponent[] | undefined) || [];
+        const found = find(kids);
+        if (found) return found;
+      }
+      return null;
+    };
+    const target = find(pageComponents);
+    if (target) {
+      handleSelectComponent(target);
+      showLint = false;
+    }
   }
 
   async function handlePublishClick() {
@@ -1200,8 +1227,12 @@
     }}
     on:undo={undo}
     on:redo={redo}
+    lintCount={lintWarnings.length}
     on:save={handleSaveClick}
     on:openPreview={openPreview}
+    on:toggleLint={() => {
+      showLint = !showLint;
+    }}
     on:publish={handlePublishClick}
     on:exit={handleExitClick}
     on:toggleAI={() => {
@@ -1372,6 +1403,16 @@
       on:reload={reloadPreview}
       on:close={() => {
         showPreview = false;
+      }}
+    />
+  {/if}
+
+  {#if showLint}
+    <LintPanel
+      warnings={lintWarnings}
+      on:select={(e) => selectComponentById(e.detail)}
+      on:close={() => {
+        showLint = false;
       }}
     />
   {/if}

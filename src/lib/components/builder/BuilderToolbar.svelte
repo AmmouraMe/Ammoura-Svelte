@@ -22,7 +22,8 @@
     Palette,
     Menu,
     PanelLeft,
-    Eye
+    Eye,
+    Accessibility
   } from 'lucide-svelte';
   import { themeStore } from '$lib/stores/theme';
   import type { Theme } from '$lib/types/theme';
@@ -48,6 +49,7 @@
   export let userName: string | undefined = undefined;
   // Mobile view state
   export let isMobileView = false;
+  export let lintCount = 0;
 
   const dispatch = createEventDispatcher();
 
@@ -198,6 +200,17 @@
     >
       <Eye size={16} />
       <span class="btn-preview-label">Preview</span>
+    </button>
+
+    <button
+      class="btn-lint"
+      class:has-warnings={lintCount > 0}
+      on:click={() => dispatch('toggleLint')}
+      title="Accessibility check (contrast, tap targets, alt text)"
+      aria-label="Accessibility check"
+    >
+      <Accessibility size={16} />
+      {#if lintCount > 0}<span class="lint-count">{lintCount}</span>{/if}
     </button>
 
     {#if mode === 'page'}
@@ -724,6 +737,48 @@
     background: var(--color-bg-tertiary);
     color: var(--color-text-primary);
     border-color: var(--color-primary);
+  }
+
+  .btn-lint {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    background: none;
+    border: 1px solid var(--color-border-primary);
+    border-radius: 6px;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-lint:hover {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+    border-color: var(--color-primary);
+  }
+
+  .btn-lint.has-warnings {
+    color: var(--color-warning, #f59e0b);
+    border-color: var(--color-warning, #f59e0b);
+  }
+
+  .lint-count {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: var(--color-warning, #f59e0b);
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 700;
   }
 
   .btn-ai {
