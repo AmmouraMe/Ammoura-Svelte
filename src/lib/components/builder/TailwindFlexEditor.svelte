@@ -7,7 +7,9 @@
     ColorThemeDefinition
   } from '$lib/types/pages';
   import ThemeColorInput from '../admin/ThemeColorInput.svelte';
+  import BreakpointFieldBadge from './BreakpointFieldBadge.svelte';
   import { getThemeColors } from '$lib/utils/editor/colorThemes';
+  import { setBreakpoint, clearBreakpoint } from '$lib/utils/responsiveField';
 
   export let config: WidgetConfig;
   export let currentBreakpoint: Breakpoint = 'desktop';
@@ -98,15 +100,20 @@
     return fallback;
   }
 
-  // Helper to set responsive value
+  // Helper to set responsive value — writes only the current breakpoint's slot
+  // (seeding a desktop base), so tablet/mobile edits are real overrides that can
+  // be reset to inherit, rather than copies of every breakpoint.
   function setResponsiveValue<T>(
     current: ResponsiveValue<T> | undefined,
     newValue: T
   ): ResponsiveValue<T> {
-    if (!current || typeof current !== 'object') {
-      return { desktop: newValue, tablet: newValue, mobile: newValue };
-    }
-    return { ...current, [currentBreakpoint]: newValue };
+    return setBreakpoint(current, currentBreakpoint, newValue);
+  }
+
+  // Clear the current breakpoint's override on a field so it inherits again.
+  function resetField(key: keyof WidgetConfig): void {
+    const current = config[key] as ResponsiveValue<unknown> | undefined;
+    updateConfig({ [key]: clearBreakpoint(current, currentBreakpoint) } as Partial<WidgetConfig>);
   }
 
   // Current values
@@ -271,6 +278,18 @@
 </script>
 
 <div class="flex-editor">
+  <!-- Which breakpoint edits write to (switch it from the toolbar). Fields
+       edited on tablet/mobile become overrides; unset ones inherit desktop. -->
+  <div class="bp-context">
+    <span class="bp-context-label">Editing</span>
+    <span class="bp-context-value">{currentBreakpoint}</span>
+    <span class="bp-context-hint">
+      {currentBreakpoint === 'desktop'
+        ? '· base'
+        : `· inherits from ${currentBreakpoint === 'mobile' ? 'tablet → desktop' : 'desktop'}`}
+    </span>
+  </div>
+
   <div class="editor-section">
     <h4 class="section-title">Quick Presets</h4>
     <div class="presets-grid">
@@ -289,7 +308,14 @@
   </div>
 
   <div class="editor-section">
-    <h4 class="section-title">Flex Direction</h4>
+    <h4 class="section-title">
+      Flex Direction
+      <BreakpointFieldBadge
+        value={config.flexDirection}
+        breakpoint={currentBreakpoint}
+        on:reset={() => resetField('flexDirection')}
+      />
+    </h4>
     <div class="control-group">
       <select
         class="control-select"
@@ -385,7 +411,14 @@
   </div>
 
   <div class="editor-section">
-    <h4 class="section-title">Gap</h4>
+    <h4 class="section-title">
+      Gap
+      <BreakpointFieldBadge
+        value={config.flexGap}
+        breakpoint={currentBreakpoint}
+        on:reset={() => resetField('flexGap')}
+      />
+    </h4>
     <div class="control-group">
       <label class="control-label">
         <span>All ({flexGap}px)</span>
@@ -695,10 +728,38 @@
   }
 
   .section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
     font-size: 0.875rem;
     font-weight: 600;
     color: var(--color-text-primary);
     margin: 0;
+  }
+
+  .bp-context {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-primary);
+    border-radius: 6px;
+    font-size: 11px;
+    color: var(--color-text-secondary);
+  }
+
+  .bp-context-value {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--color-primary);
+  }
+
+  .bp-context-hint {
+    opacity: 0.85;
   }
 
   .presets-grid {

@@ -17,10 +17,10 @@ describe('UniversalStyleEditor', () => {
   };
 
   describe('Rendering', () => {
-    it('renders breakpoint badge', () => {
+    it('renders breakpoint editing context', () => {
       render(UniversalStyleEditor, { props: defaultProps });
 
-      expect(screen.getByText('Breakpoint:')).toBeInTheDocument();
+      expect(screen.getByText('Editing')).toBeInTheDocument();
       expect(screen.getByText('desktop')).toBeInTheDocument();
     });
 

@@ -7,7 +7,9 @@
     ColorThemeDefinition
   } from '$lib/types/pages';
   import ThemeColorInput from '../admin/ThemeColorInput.svelte';
+  import BreakpointFieldBadge from './BreakpointFieldBadge.svelte';
   import { getThemeColors } from '$lib/utils/editor/colorThemes';
+  import { setBreakpoint, clearBreakpoint } from '$lib/utils/responsiveField';
 
   export let config: ComponentConfig;
   export let currentBreakpoint: Breakpoint;
@@ -76,18 +78,16 @@
 
   function setStylesPadding(side: 'top' | 'right' | 'bottom' | 'left', value: number): void {
     if (!config.styles) config.styles = {};
-    const current = getStylesPadding();
-    const updated = { ...current, [side]: value };
+    const updated = { ...getStylesPadding(), [side]: value };
+    // Writes only the edited breakpoint's slot (seeding a desktop base), so a
+    // tablet/mobile edit is a real override rather than a copy of all three.
+    config.styles.padding = setBreakpoint(config.styles.padding, currentBreakpoint, updated);
+    handleUpdate();
+  }
 
-    if (
-      config.styles.padding &&
-      typeof config.styles.padding === 'object' &&
-      'desktop' in config.styles.padding
-    ) {
-      config.styles.padding = { ...config.styles.padding, [currentBreakpoint]: updated };
-    } else {
-      config.styles.padding = { desktop: updated, tablet: updated, mobile: updated };
-    }
+  function resetStylesPadding(): void {
+    if (!config.styles?.padding) return;
+    config.styles.padding = clearBreakpoint(config.styles.padding, currentBreakpoint);
     handleUpdate();
   }
 
@@ -108,15 +108,13 @@
     const current = getStylesMargin();
     const updated = { ...current, [side]: value };
 
-    if (
-      config.styles.margin &&
-      typeof config.styles.margin === 'object' &&
-      'desktop' in config.styles.margin
-    ) {
-      config.styles.margin = { ...config.styles.margin, [currentBreakpoint]: updated };
-    } else {
-      config.styles.margin = { desktop: updated, tablet: updated, mobile: updated };
-    }
+    config.styles.margin = setBreakpoint(config.styles.margin, currentBreakpoint, updated);
+    handleUpdate();
+  }
+
+  function resetStylesMargin(): void {
+    if (!config.styles?.margin) return;
+    config.styles.margin = clearBreakpoint(config.styles.margin, currentBreakpoint);
     handleUpdate();
   }
 
@@ -131,15 +129,13 @@
 
   function setWidth(value: string): void {
     if (!config.styles) config.styles = {};
-    if (
-      config.styles.width &&
-      typeof config.styles.width === 'object' &&
-      'desktop' in config.styles.width
-    ) {
-      config.styles.width = { ...config.styles.width, [currentBreakpoint]: value };
-    } else {
-      config.styles.width = { desktop: value, tablet: value, mobile: value };
-    }
+    config.styles.width = setBreakpoint(config.styles.width, currentBreakpoint, value);
+    handleUpdate();
+  }
+
+  function resetWidth(): void {
+    if (!config.styles?.width) return;
+    config.styles.width = clearBreakpoint(config.styles.width, currentBreakpoint);
     handleUpdate();
   }
 
@@ -153,15 +149,13 @@
 
   function setHeight(value: string): void {
     if (!config.styles) config.styles = {};
-    if (
-      config.styles.height &&
-      typeof config.styles.height === 'object' &&
-      'desktop' in config.styles.height
-    ) {
-      config.styles.height = { ...config.styles.height, [currentBreakpoint]: value };
-    } else {
-      config.styles.height = { desktop: value, tablet: value, mobile: value };
-    }
+    config.styles.height = setBreakpoint(config.styles.height, currentBreakpoint, value);
+    handleUpdate();
+  }
+
+  function resetHeight(): void {
+    if (!config.styles?.height) return;
+    config.styles.height = clearBreakpoint(config.styles.height, currentBreakpoint);
     handleUpdate();
   }
 
@@ -177,15 +171,28 @@
 </script>
 
 <div class="universal-style-editor">
-  <!-- Breakpoint indicator -->
+  <!-- Editing-breakpoint context: which breakpoint edits write to, and how
+       unset fields inherit. Switch breakpoints from the toolbar. -->
   <div class="breakpoint-badge">
-    <span class="badge-label">Breakpoint:</span>
+    <span class="badge-label">Editing</span>
     <span class="badge-value">{currentBreakpoint}</span>
+    <span class="badge-hint">
+      {currentBreakpoint === 'desktop'
+        ? '· base, applies to all screens'
+        : `· overrides inherit from ${currentBreakpoint === 'mobile' ? 'tablet → desktop' : 'desktop'}`}
+    </span>
   </div>
 
   <!-- Spacing Section -->
   <div class="section">
-    <h4>Padding</h4>
+    <h4>
+      Padding
+      <BreakpointFieldBadge
+        value={config.styles?.padding}
+        breakpoint={currentBreakpoint}
+        on:reset={resetStylesPadding}
+      />
+    </h4>
     <div class="spacing-grid">
       <div class="form-group">
         <label for="padding-top">Top</label>
@@ -235,7 +242,14 @@
   </div>
 
   <div class="section">
-    <h4>Margin</h4>
+    <h4>
+      Margin
+      <BreakpointFieldBadge
+        value={config.styles?.margin}
+        breakpoint={currentBreakpoint}
+        on:reset={resetStylesMargin}
+      />
+    </h4>
     <div class="spacing-grid">
       <div class="form-group">
         <label for="margin-top">Top</label>
@@ -297,7 +311,14 @@
   <div class="section">
     <h4>Size</h4>
     <div class="form-group">
-      <label for="element-width">Width</label>
+      <div class="field-head">
+        <label for="element-width">Width</label>
+        <BreakpointFieldBadge
+          value={config.styles?.width}
+          breakpoint={currentBreakpoint}
+          on:reset={resetWidth}
+        />
+      </div>
       <input
         id="element-width"
         type="text"
@@ -316,7 +337,14 @@
       >
     </div>
     <div class="form-group">
-      <label for="element-height">Height</label>
+      <div class="field-head">
+        <label for="element-height">Height</label>
+        <BreakpointFieldBadge
+          value={config.styles?.height}
+          breakpoint={currentBreakpoint}
+          on:reset={resetHeight}
+        />
+      </div>
       <input
         id="element-height"
         type="text"
@@ -536,6 +564,25 @@
   .badge-value {
     text-transform: uppercase;
     letter-spacing: 0.5px;
+  }
+
+  .badge-hint {
+    opacity: 0.85;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .section h4 {
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .field-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
   }
 
   .section {
