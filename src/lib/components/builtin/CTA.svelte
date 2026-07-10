@@ -65,7 +65,8 @@
 
 <style>
   .cta-widget {
-    padding: 4rem 0;
+    /* Mobile-first fluid section padding. */
+    padding: clamp(var(--space-6), 6vw, var(--space-9)) 0;
     background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
   }
 
@@ -73,26 +74,29 @@
     max-width: 800px;
     margin: 0 auto;
     text-align: center;
-    padding: 0 1rem;
+    padding: 0 var(--space-4);
   }
 
+  /* White text is intentional: it sits on the saturated primary gradient in
+     both light and dark themes, so it must NOT follow the theme text color. */
   .cta-content h2 {
-    color: white;
-    font-size: 2.5rem;
+    color: #fff;
+    font-size: clamp(2rem, 4vw + 1rem, 2.5rem);
+    line-height: var(--leading-tight);
     font-weight: 700;
-    margin: 0 0 1rem 0;
+    margin: 0 0 var(--space-4) 0;
   }
 
   .cta-content p {
     color: rgba(255, 255, 255, 0.9);
-    font-size: 1.25rem;
-    line-height: 1.6;
-    margin: 0 0 2rem 0;
+    font-size: clamp(1.125rem, 2vw + 0.5rem, 1.25rem);
+    line-height: var(--leading-normal);
+    margin: 0 0 var(--space-6) 0;
   }
 
   .cta-actions {
     display: flex;
-    gap: 1rem;
+    gap: var(--space-4);
     justify-content: center;
     flex-wrap: wrap;
   }
@@ -100,17 +104,22 @@
   .btn {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
+    justify-content: center;
+    gap: var(--space-2);
+    /* Accessible tap target (F0 --touch-target, 44px). */
+    min-height: var(--touch-target);
+    padding: var(--space-3) var(--space-5);
+    border-radius: var(--radius-md);
     text-decoration: none;
     font-weight: 600;
-    transition: all 0.2s;
+    transition:
+      transform var(--motion-fast),
+      background var(--motion-fast);
     border: none;
   }
 
   .btn-primary {
-    background: white;
+    background: #fff;
     color: var(--color-primary);
   }
 
@@ -121,8 +130,8 @@
 
   .btn-secondary {
     background: transparent;
-    color: white;
-    border: 2px solid white;
+    color: #fff;
+    border: 2px solid #fff;
   }
 
   .btn-secondary:hover {
@@ -130,30 +139,18 @@
   }
 
   .btn-lg {
-    padding: 1rem 2rem;
+    padding: var(--space-4) var(--space-6);
     font-size: 1.125rem;
   }
 
+  /* Type scales fluidly via clamp(); mobile only needs the actions to stack. */
   @media (max-width: 768px) {
-    .cta-widget {
-      padding: 2rem 0;
-    }
-
-    .cta-content h2 {
-      font-size: 2rem;
-    }
-
-    .cta-content p {
-      font-size: 1.125rem;
-    }
-
     .cta-actions {
       flex-direction: column;
     }
 
     .btn {
       width: 100%;
-      justify-content: center;
     }
   }
 </style>

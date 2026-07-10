@@ -415,37 +415,41 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
   }
 
   .hero-overlay {
     position: absolute;
     inset: 0;
-    background: black;
+    background: #000;
   }
 
   .hero-content {
     position: relative;
     z-index: 1;
-    padding: 2rem;
+    /* Mobile-first fluid padding: tighter on phones, roomier on desktop. */
+    padding: clamp(var(--space-5), 5vw, var(--space-8));
     max-width: 800px;
   }
 
   .hero-content h1 {
-    font-size: 2.5rem;
-    margin: 0 0 1rem 0;
+    /* Fluid type scales smoothly from mobile → desktop (no breakpoint needed). */
+    font-size: clamp(2rem, 4vw + 1rem, 2.5rem);
+    line-height: var(--leading-tight);
+    margin: 0 0 var(--space-4) 0;
     padding: 0;
   }
 
   .hero-content p {
-    font-size: 1.25rem;
-    margin: 0 0 1.5rem 0;
+    font-size: clamp(1rem, 2vw + 0.5rem, 1.25rem);
+    line-height: var(--leading-normal);
+    margin: 0 0 var(--space-5) 0;
     opacity: 0.9;
   }
 
   .hero-cta-group {
     display: flex;
-    gap: 1rem;
+    gap: var(--space-4);
     justify-content: center;
     flex-wrap: wrap;
   }
@@ -453,15 +457,19 @@
   .hero-cta {
     display: inline-flex;
     align-items: center;
-    padding: 0.75rem 1.5rem;
-    border-radius: 6px;
+    /* Accessible tap target (F0 --touch-target, 44px). */
+    min-height: var(--touch-target);
+    padding: var(--space-3) var(--space-5);
+    border-radius: var(--radius-sm);
     text-decoration: none;
-    transition: all 0.2s;
+    transition:
+      transform var(--motion-fast),
+      box-shadow var(--motion-fast);
   }
 
   .hero-cta-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-2);
   }
 
   .hero-cta-secondary {
@@ -494,9 +502,9 @@
 
   .hero-content h1.editable:focus,
   .hero-content p.editable:focus {
-    outline: 2px solid rgba(59, 130, 246, 0.5);
+    outline: 2px solid var(--color-border-focus);
     outline-offset: 4px;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
   }
 
   .hero-content p.editable:empty::before {
@@ -514,13 +522,5 @@
     position: relative;
   }
 
-  @media (max-width: 768px) {
-    .hero-content h1 {
-      font-size: 2rem;
-    }
-
-    .hero-content p {
-      font-size: 1rem;
-    }
-  }
+  /* No mobile @media needed: heading/body type scale fluidly via clamp() above. */
 </style>

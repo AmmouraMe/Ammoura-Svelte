@@ -80,19 +80,22 @@
 
 <style>
   .features-widget {
-    padding: 4rem 0;
+    /* Mobile-first fluid section padding. */
+    padding: clamp(var(--space-6), 6vw, var(--space-9)) 0;
   }
 
   .section-header {
     text-align: center;
-    margin-bottom: 3rem;
+    margin-bottom: var(--space-8);
   }
 
   .section-header h2 {
     color: var(--color-text-primary);
-    font-size: 2.5rem;
+    /* Fluid heading — scales smoothly from mobile to desktop. */
+    font-size: clamp(2rem, 4vw + 1rem, 2.5rem);
+    line-height: var(--leading-tight);
     font-weight: 700;
-    margin: 0 0 1rem 0;
+    margin: 0 0 var(--space-4) 0;
   }
 
   .section-header p {
@@ -110,9 +113,12 @@
   }
 
   .feature-card {
-    padding: 2rem;
+    /* Fluid padding: 1.5rem on phones → 2rem on desktop. */
+    padding: clamp(var(--space-5), 3vw, var(--space-6));
     text-align: center;
-    transition: all 0.3s ease;
+    transition:
+      transform var(--motion-normal),
+      box-shadow var(--motion-normal);
   }
 
   /* Hide features beyond the limit for desktop */
@@ -122,20 +128,20 @@
 
   .feature-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-3);
     border-color: var(--color-primary);
   }
 
   .feature-icon {
     font-size: 3rem;
-    margin-bottom: 1rem;
+    margin-bottom: var(--space-4);
   }
 
   .feature-card h3 {
     color: var(--color-text-primary);
     font-size: 1.5rem;
     font-weight: 600;
-    margin: 0 0 1rem 0;
+    margin: 0 0 var(--space-4) 0;
   }
 
   .feature-card p {
@@ -161,21 +167,10 @@
   }
 
   @media (max-width: 768px) {
-    .features-widget {
-      padding: 2rem 0;
-    }
-
-    .section-header h2 {
-      font-size: 2rem;
-    }
-
+    /* Type + padding scale fluidly via clamp(); mobile only changes the grid. */
     .features-grid {
       grid-template-columns: repeat(var(--mobile-columns, 1), 1fr);
       gap: var(--mobile-gap, 16px);
-    }
-
-    .feature-card {
-      padding: 1.5rem;
     }
 
     /* Show tablet-hidden items on mobile, then apply mobile limit */

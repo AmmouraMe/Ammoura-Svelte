@@ -10,19 +10,28 @@
 
 {#if src}
   <div class="image-widget" id={config.anchorName || undefined}>
-    <img {src} {alt} style:max-width={width ? `${width}px` : '100%'} />
+    <!-- Lazy + async by default: content images are rarely the LCP element, and
+         this keeps them off the critical path. (A true responsive srcset needs a
+         media-library variant system — only one thumbnailUrl exists today.) -->
+    <img
+      {src}
+      {alt}
+      loading="lazy"
+      decoding="async"
+      style:max-width={width ? `${width}px` : '100%'}
+    />
   </div>
 {/if}
 
 <style>
   .image-widget {
-    padding: 1rem 0;
+    padding: var(--space-4) 0;
     text-align: center;
   }
 
   img {
     max-width: 100%;
     height: auto;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
   }
 </style>
