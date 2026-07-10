@@ -47,6 +47,13 @@ export async function getSiteByDomain(db: D1Database, domain: string): Promise<S
 }
 
 /**
+ * Get a site by its platform-subdomain slug
+ */
+export async function getSiteBySlug(db: D1Database, slug: string): Promise<Site | null> {
+  return await executeOne<Site>(db, 'SELECT * FROM sites WHERE slug = ?', [slug]);
+}
+
+/**
  * Get all sites
  */
 export async function getAllSites(db: D1Database): Promise<Site[]> {

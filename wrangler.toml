@@ -11,7 +11,9 @@ directory = ".svelte-kit/cloudflare"
 
 [vars]
 # Wildcard domain for free platform subdomains (slug.<domain>).
-# Local dev leaves this unset and falls back to `localhost`.
+# NOTE: these [vars] reach `vite dev` through the adapter's platformProxy,
+# so .dev.vars must override this to `localhost` for local dev
+# (see .dev.vars.example).
 PLATFORM_SITES_DOMAIN = "ammoura.me"
 
 # Environment Variables

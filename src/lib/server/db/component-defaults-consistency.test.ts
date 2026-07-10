@@ -65,90 +65,43 @@ describe('Built-in Component Defaults Consistency', () => {
     );
   });
 
-  describe('Navbar component has full children structure', () => {
-    it('should have children array with main-container', () => {
+  describe('Navbar renders through the NavBar builtin (default v3)', () => {
+    it('should be childless so the renderer picks NavBar.svelte', () => {
       const config = getDefaultConfig('navbar');
-      expect(config.children).toBeDefined();
-      expect(Array.isArray(config.children)).toBe(true);
-      expect((config.children as unknown[]).length).toBeGreaterThan(0);
-
-      const mainContainer = (config.children as Array<{ id: string }>)[0];
-      expect(mainContainer.id).toBe('main-container');
+      expect(config.children).toBeUndefined();
     });
 
-    it('should have logo-container and nav-links-container inside main-container', () => {
+    it('should carry NavBar-native logo, links, and feature toggles', () => {
       const config = getDefaultConfig('navbar');
-      const mainContainer = (
-        config.children as Array<{ config: { children: Array<{ id: string }> } }>
-      )[0];
-      const children = mainContainer.config.children;
-
-      expect(children).toBeDefined();
-      expect(children.length).toBe(2);
-      expect(children[0].id).toBe('logo-container');
-      expect(children[1].id).toBe('nav-links-container');
+      expect(config.logo).toEqual({ text: '${site.name}', url: '/', image: '', imageHeight: 40 });
+      expect(config.links).toEqual([
+        { text: 'Products', url: '/#products' },
+        { text: 'Pricing', url: '/#pricing' }
+      ]);
+      expect(config.showCart).toBe(true);
+      expect(config.showAuth).toBe(true);
+      expect(config.showAccountMenu).toBe(true);
+      expect(config.showThemeToggle).toBe(true);
     });
 
-    it('should have site name heading in logo container', () => {
+    it('should not be sticky by default', () => {
       const config = getDefaultConfig('navbar');
-      const mainContainer = (
-        config.children as Array<{
-          config: {
-            children: Array<{
-              config: {
-                children: Array<{ id: string; type: string; config: { heading: string } }>;
-              };
-            }>;
-          };
-        }>
-      )[0];
-      const logoContainer = mainContainer.config.children[0];
-      const siteNameHeading = logoContainer.config.children[0];
-
-      expect(siteNameHeading.id).toBe('site-name-heading');
-      expect(siteNameHeading.type).toBe('heading');
-      expect(siteNameHeading.config.heading).toBe('${site.name}');
-    });
-
-    it('should have Products, Pricing, Login, Dropdown, Cart buttons and Theme Toggle in nav-links-container', () => {
-      const config = getDefaultConfig('navbar');
-      const mainContainer = (
-        config.children as Array<{
-          config: { children: Array<{ config: { children: Array<{ id: string }> } }> };
-        }>
-      )[0];
-      const navLinksContainer = mainContainer.config.children[1];
-      const navItems = navLinksContainer.config.children;
-
-      expect(navItems.length).toBe(6);
-      expect(navItems[0].id).toBe('products-link');
-      expect(navItems[1].id).toBe('pricing-link');
-      expect(navItems[2].id).toBe('login-button');
-      expect(navItems[3].id).toBe('user-dropdown');
-      expect(navItems[4].id).toBe('cart-button');
-      expect(navItems[5].id).toBe('theme-toggle');
-    });
-
-    it('should have static position config by default (not sticky)', () => {
-      const config = getDefaultConfig('navbar');
-      expect(config.position).toBeDefined();
-      const position = config.position as {
-        desktop: { type: string };
-        tablet: { type: string };
-        mobile: { type: string };
-      };
-      expect(position.desktop.type).toBe('static');
-      expect(position.tablet.type).toBe('static');
-      expect(position.mobile.type).toBe('static');
+      expect(config.sticky).toBe(false);
     });
   });
 
-  describe('Footer component has full children structure', () => {
-    it('should have children array with main-container', () => {
+  describe('Footer renders through the Footer builtin (default v3)', () => {
+    it('should be childless so the renderer picks Footer.svelte', () => {
       const config = getDefaultConfig('footer');
-      expect(config.children).toBeDefined();
-      expect(Array.isArray(config.children)).toBe(true);
-      expect((config.children as unknown[]).length).toBeGreaterThan(0);
+      expect(config.children).toBeUndefined();
+    });
+
+    it('should carry Footer-native link sections and copyright', () => {
+      const config = getDefaultConfig('footer');
+      expect(config.copyright).toBe('© ${site.year} ${site.name}. All rights reserved.');
+      expect(
+        (config.linkSections as Array<{ title: string }>).map((section) => section.title)
+      ).toEqual(['Shop', 'Account', 'Legal']);
     });
   });
 

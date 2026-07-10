@@ -14,6 +14,7 @@
   import {
     substituteTemplate,
     createUserContext,
+    currentYear,
     type SiteContext,
     type UserInfo
   } from '$lib/utils/templateSubstitution';
@@ -35,7 +36,8 @@
     email: '',
     supportEmail: '',
     phone: '',
-    currency: ''
+    currency: '',
+    year: currentYear()
   };
 
   // Reactive template variables that update when user or siteContext changes

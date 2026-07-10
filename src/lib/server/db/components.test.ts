@@ -1220,7 +1220,7 @@ describe('Component Database Functions', () => {
   describe('resetBuiltInComponent', () => {
     const testSiteId = 'test-site-id';
 
-    it('should reset component to default navbar config with main-container wrapper', async () => {
+    it('should reset component to the childless NavBar-native default config', async () => {
       mockDb.run.mockResolvedValue({ success: true });
 
       await resetBuiltInComponent(mockDb as unknown as D1Database, testSiteId, 1, 'navbar');
@@ -1232,36 +1232,18 @@ describe('Component Database Functions', () => {
       const updateBindCall = mockDb.bind.mock.calls[0];
       const parsedConfig = JSON.parse(updateBindCall[0] as string);
 
-      // New architecture: component wrapper has transparent background, main-container has styling
-      expect(parsedConfig.containerPadding).toBeDefined();
-      expect(parsedConfig.containerBackground).toBe('transparent');
-      expect(parsedConfig.children).toBeDefined();
-      expect(parsedConfig.children.length).toBe(1); // main-container
-
-      // Verify main-container structure
-      const mainContainer = parsedConfig.children[0];
-      expect(mainContainer.id).toBe('main-container');
-      expect(mainContainer.type).toBe('container');
-      expect(mainContainer.config.containerBackground).toBe('transparent');
-      expect(mainContainer.config.children).toBeDefined();
-      expect(mainContainer.config.children.length).toBe(2); // logo-container and nav-links-container
-
-      // Verify nested children inside main-container
-      const logoContainer = mainContainer.config.children[0];
-      expect(logoContainer.id).toBe('logo-container');
-      expect(logoContainer.type).toBe('container');
-      expect(logoContainer.config.children).toBeDefined();
-
-      const navLinksContainer = mainContainer.config.children[1];
-      expect(navLinksContainer.id).toBe('nav-links-container');
-      expect(navLinksContainer.type).toBe('container');
+      // Default v3: childless so the renderer picks the NavBar builtin
+      expect(parsedConfig.children).toBeUndefined();
+      expect(parsedConfig.logo.text).toBe('${site.name}');
+      expect(parsedConfig.links.length).toBe(2);
+      expect(parsedConfig.showCart).toBe(true);
 
       // Should delete existing children from component_widgets table
       expect(mockDb.prepare).toHaveBeenCalledWith(
         'DELETE FROM component_widgets WHERE component_id = ?'
       );
 
-      // Should NOT create component_widgets entries (children are now in config)
+      // Should NOT create component_widgets entries (children live in config)
       const insertCalls = mockDb.bind.mock.calls.filter((call) => {
         // INSERT calls would have 8+ parameters
         return call.length >= 8;

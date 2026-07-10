@@ -21,6 +21,7 @@
   import {
     substituteTemplate,
     createUserContext,
+    currentYear,
     type SiteContext,
     type UserInfo
   } from '$lib/utils/templateSubstitution';
@@ -43,7 +44,8 @@
     email: '',
     supportEmail: '',
     phone: '',
-    currency: ''
+    currency: '',
+    year: currentYear()
   };
 
   // Reactive template variables that update when user or siteContext changes
@@ -243,7 +245,7 @@
           <a href={logo.url || '/'} class="logo-link" on:click={handleLinkClick}>
             <img
               src={logo.image}
-              alt={logo.text || 'Logo'}
+              alt={sub(logo.text || '', templateVars) || 'Logo'}
               class="logo-image"
               style="height: {logo.imageHeight || 40}px;"
             />
@@ -255,7 +257,7 @@
             style="color: {textColor};"
             on:click={handleLinkClick}
           >
-            {logo.text || 'Store'}
+            {sub(logo.text || '', templateVars) || 'Store'}
           </a>
         {/if}
       </div>
@@ -649,11 +651,12 @@
     gap: 1rem;
   }
 
-  /* Brand section - flex child */
+  /* Brand section - flex child. min-width: 0 lets a long store name shrink
+     and truncate instead of pushing the actions past the viewport edge. */
   .navbar-brand {
     display: flex;
     align-items: center;
-    flex-shrink: 0;
+    min-width: 0;
   }
 
   .logo-link {
@@ -661,6 +664,10 @@
     font-weight: 700;
     font-size: 1.5rem;
     transition: opacity 0.2s;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .logo-link:hover {
@@ -1008,10 +1015,28 @@
 
     .navbar-content {
       flex-direction: row !important;
+      gap: 0.75rem;
     }
 
     .navbar-links {
       display: none;
+    }
+
+    /* Icon-only actions: the text labels don't fit next to a long store
+       name at phone widths; the 44px tap targets remain. */
+    .navbar-actions {
+      gap: 0.25rem;
+    }
+
+    .login-text,
+    .cart-text {
+      display: none;
+    }
+
+    .login-link,
+    .cart-link {
+      padding: 0.5rem;
+      min-width: var(--touch-target);
     }
   }
 </style>

@@ -18,6 +18,14 @@ export interface SiteContext {
   supportEmail: string;
   phone: string;
   currency: string;
+  year: string;
+}
+
+/**
+ * Current calendar year for ${site.year} — keeps seeded copyright lines from going stale
+ */
+export function currentYear(): string {
+  return String(new Date().getFullYear());
 }
 
 /**
@@ -51,7 +59,8 @@ export function createSiteContext(settings: GeneralSettings): SiteContext {
     email: settings.storeEmail || '',
     supportEmail: settings.supportEmail || '',
     phone: settings.contactPhone || '',
-    currency: settings.currency || 'USD'
+    currency: settings.currency || 'USD',
+    year: currentYear()
   };
 }
 
@@ -66,7 +75,8 @@ export function createDefaultSiteContext(): SiteContext {
     email: '',
     supportEmail: '',
     phone: '',
-    currency: 'USD'
+    currency: 'USD',
+    year: currentYear()
   };
 }
 
@@ -202,6 +212,7 @@ export const AVAILABLE_TEMPLATES = [
   { variable: '${site.supportEmail}', description: 'Support email address' },
   { variable: '${site.phone}', description: 'Contact phone number' },
   { variable: '${site.currency}', description: 'Store currency code' },
+  { variable: '${site.year}', description: 'Current calendar year' },
   {
     variable: '${user.display_name}',
     description: "Logged-in user's full name (empty if not logged in)"

@@ -203,7 +203,8 @@ describe('Footer', () => {
         email: '',
         supportEmail: '',
         phone: '',
-        currency: ''
+        currency: '',
+        year: '2025'
       };
       render(Footer, { props: { config, siteContext } });
       expect(screen.getByText('© 2025 My Store. All rights reserved.')).toBeInTheDocument();

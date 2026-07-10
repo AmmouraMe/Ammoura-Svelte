@@ -463,8 +463,11 @@ export async function getDefaultRevisionsSummary(
  * - v1: Initial release (migrations 0033-0059)
  * - v2: Navbar links collapse behind a hamburger on mobile
  *       (containerMobileCollapse on nav-links-container)
+ * - v3: Navbar and footer defaults are childless, rendering the NavBar and
+ *       Footer builtins natively (hamburger, mobile menu, cart/auth/account,
+ *       theme toggle) instead of the container-children header/footer
  */
-export const CURRENT_BUILTIN_VERSION = 2;
+export const CURRENT_BUILTIN_VERSION = 3;
 
 /**
  * All built-in component definitions
@@ -675,7 +678,11 @@ export async function seedBuiltinLayout(
     const layoutId = insertResult.meta.last_row_id as number;
 
     // Get the widgets with component IDs resolved
-    const widgets = await resolveLayoutWidgetComponentIds(db, siteId, getWidgets());
+    const widgets = await resolveLayoutWidgetComponentIds(
+      db,
+      siteId,
+      scopeLayoutWidgetIds(siteId, getWidgets())
+    );
 
     // Create the initial default revision
     const revisionMessage = `${DEFAULT_REVISION_MESSAGE_PREFIX}${defaultVersion}`;
@@ -750,7 +757,11 @@ export async function seedBuiltinLayout(
     layoutId
   );
 
-  const widgets = await resolveLayoutWidgetComponentIds(db, siteId, getWidgets());
+  const widgets = await resolveLayoutWidgetComponentIds(
+    db,
+    siteId,
+    scopeLayoutWidgetIds(siteId, getWidgets())
+  );
   const revisionMessage = `${DEFAULT_REVISION_MESSAGE_PREFIX}${defaultVersion}`;
   const revisionData: LayoutRevisionData = {
     name,
@@ -818,6 +829,19 @@ export async function seedBuiltinLayout(
     newVersion: defaultVersion,
     message: `Added default v${defaultVersion} for layout "${name}" but site has custom configuration (not upgraded)`
   };
+}
+
+/**
+ * Scope layout widget ids to the site. layout_widgets.id is a global primary
+ * key, but layoutDefaults generates deterministic ids (default-navbar-0), so
+ * seeding a second site collides with the first — the layout analog of the
+ * page-id collision handled in seedBuiltinPage.
+ */
+function scopeLayoutWidgetIds(
+  siteId: string,
+  widgets: LayoutRevisionData['widgets']
+): LayoutRevisionData['widgets'] {
+  return widgets.map((widget) => ({ ...widget, id: `${widget.id}--${siteId}` }));
 }
 
 /**

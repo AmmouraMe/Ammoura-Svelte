@@ -7,6 +7,7 @@ import { createSite, type Site } from './db/sites.js';
 import { executeOne } from './db/connection.js';
 import { addSiteMember } from './db/site-members.js';
 import { addSiteDomain } from './db/site-domains.js';
+import { upsertSiteSetting } from './db/site-settings.js';
 import { validateSlug } from './slugs.js';
 import { purgeRouteCache } from './site-routing.js';
 
@@ -59,6 +60,10 @@ export async function createSiteForAccount(
   const site = await createSite(db, { name: trimmedName, domain: hostname });
 
   await db.prepare('UPDATE sites SET slug = ? WHERE id = ?').bind(slug, site.id).run();
+
+  // Seed the store name so ${site.name} in builtins shows the tenant's own
+  // name instead of the getGeneralSettings platform fallback.
+  await upsertSiteSetting(db, site.id, 'general_store_name', trimmedName);
 
   await addSiteMember(db, site.id, accountId, 'owner');
 

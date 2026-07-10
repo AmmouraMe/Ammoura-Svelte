@@ -20,7 +20,8 @@ describe('Template Substitution', () => {
     email: 'store@example.com',
     supportEmail: 'support@example.com',
     phone: '+1-555-123-4567',
-    currency: 'USD'
+    currency: 'USD',
+    year: '2025'
   };
 
   const mockVariables: TemplateVariables = {
@@ -102,7 +103,8 @@ describe('Template Substitution', () => {
           email: '',
           supportEmail: '',
           phone: '',
-          currency: ''
+          currency: '',
+          year: ''
         }
       };
       const result = substituteTemplate('Welcome to ${site.name}!', emptyContext);

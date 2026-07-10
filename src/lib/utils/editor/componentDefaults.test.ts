@@ -243,67 +243,36 @@ describe('Component Defaults', () => {
 
     it('should return default config for navbar component', () => {
       const config = getDefaultConfig('navbar');
-      expect(config.backgroundColor).toBe('transparent');
-      expect(config.containerBackground).toBe('transparent');
-      // position is now responsive, defaults to static
-      expect(config.position).toEqual({
-        desktop: { type: 'static' },
-        tablet: { type: 'static' },
-        mobile: { type: 'static' }
-      });
-      // children now contains full navbar structure with main-container, logo, links, etc.
-      expect(config.children).toBeDefined();
-      expect(config.children).toBeInstanceOf(Array);
-      expect((config.children as Array<{ id: string }>).length).toBeGreaterThan(0);
-      expect((config.children as Array<{ id: string }>)[0].id).toBe('main-container');
-    });
-
-    it('should include theme toggle in navbar nav-links-container', () => {
-      const config = getDefaultConfig('navbar');
-      // Navigate to the nav-links-container children
-      const mainContainer = (
-        config.children as Array<{
-          id: string;
-          config: {
-            children: Array<{
-              id: string;
-              type: string;
-              config: { children?: Array<{ id: string; type: string }> };
-            }>;
-          };
-        }>
-      )[0];
-      const navLinksContainer = mainContainer.config.children.find(
-        (c) => c.id === 'nav-links-container'
-      );
-      expect(navLinksContainer).toBeDefined();
-
-      // Find the theme toggle in nav-links-container children
-      const themeToggle = navLinksContainer?.config.children?.find((c) => c.id === 'theme-toggle');
-      expect(themeToggle).toBeDefined();
-      expect(themeToggle?.type).toBe('theme_toggle');
+      // Default v3 is childless: it renders through the NavBar builtin, not
+      // the container-children path.
+      expect(config.children).toBeUndefined();
+      expect(config.logo).toEqual({ text: '${site.name}', url: '/', image: '', imageHeight: 40 });
+      expect(config.links).toEqual([
+        { text: 'Products', url: '/#products' },
+        { text: 'Pricing', url: '/#pricing' }
+      ]);
+      expect(config.showCart).toBe(true);
+      expect(config.showAuth).toBe(true);
+      expect(config.showAccountMenu).toBe(true);
+      expect(config.showThemeToggle).toBe(true);
+      expect(config.sticky).toBe(false);
     });
 
     it('should return default config for footer component', () => {
       const config = getDefaultConfig('footer');
-      expect(config.backgroundColor).toBe('transparent');
-      expect(config.copyright).toContain('2025');
-      // New Container-based footer uses linkSections instead of footerLinks
-      expect(config.linkSections).toBeDefined();
+      // Default v3 is childless: it renders through the Footer builtin.
+      expect(config.children).toBeUndefined();
+      expect(config.copyright).toBe('© ${site.year} ${site.name}. All rights reserved.');
+      expect(config.logo).toEqual({ text: '${site.name}', url: '/', image: '', imageHeight: 32 });
+      expect(config.tagline).toBe('${site.tagline}');
       expect(config.linkSections).toHaveLength(3);
-      expect(config.linkSections?.[0].title).toBe('Company');
-      expect(config.socialLinks).toHaveLength(4);
-      expect(config.footerBackground).toBe('transparent');
-      // Legacy footerLinks is now empty for backward compatibility
+      expect(config.linkSections?.map((s: { title: string }) => s.title)).toEqual([
+        'Shop',
+        'Account',
+        'Legal'
+      ]);
+      expect(config.socialLinks).toHaveLength(0);
       expect(config.footerLinks).toHaveLength(0);
-      // Container-based children structure
-      expect(config.children).toBeDefined();
-      expect(config.children).toHaveLength(1);
-      expect(config.children?.[0].id).toBe('main-container');
-      expect(config.children?.[0].type).toBe('container');
-      expect(config.children?.[0].config.children).toHaveLength(2);
-      expect(config.children?.[0].config.children[0].id).toBe('footer-content-row');
-      expect(config.children?.[0].config.children[1].id).toBe('footer-copyright');
     });
 
     it('should return default config for composite component', () => {

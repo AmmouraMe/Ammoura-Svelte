@@ -8,3 +8,9 @@ PLATFORM_ENGINEER_PASSWORD=your_secure_password_here
 # Encryption Key for sensitive data (API keys, secrets)
 # Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ENCRYPTION_KEY=your_generated_encryption_key_here
+
+# Platform sites domain. wrangler.toml [vars] sets the production value
+# (ammoura.me) and it leaks into `vite dev` via the adapter's platformProxy,
+# so dev must override it here: tenant sites are then linked and resolved at
+# http://<slug>.localhost:4236
+PLATFORM_SITES_DOMAIN=localhost

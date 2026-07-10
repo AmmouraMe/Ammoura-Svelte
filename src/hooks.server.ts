@@ -2,6 +2,7 @@ import type { Handle } from '@sveltejs/kit';
 import { getDB, getAccountBySessionToken } from '$lib/server/db';
 import { ACCOUNT_SESSION_COOKIE } from '$lib/server/db/account-sessions';
 import { resolveSiteIdForHostname } from '$lib/server/site-routing';
+import { getPlatformSitesDomain } from '$lib/server/sites-service';
 import { dev } from '$app/environment';
 import type { DBUser } from '$lib/server/db/users';
 
@@ -55,7 +56,12 @@ export const handle: Handle = async ({ event, resolve }) => {
       if (event.platform?.env?.DB) {
         const db = getDB(event.platform);
         const kv = event.platform.env.SITE_ROUTES as KVNamespace | undefined;
-        const resolved = await resolveSiteIdForHostname(db, kv, hostname);
+        const resolved = await resolveSiteIdForHostname(
+          db,
+          kv,
+          hostname,
+          getPlatformSitesDomain(event.platform.env as Record<string, unknown>)
+        );
 
         if (resolved) {
           siteId = resolved;
