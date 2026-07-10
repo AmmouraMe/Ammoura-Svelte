@@ -133,8 +133,10 @@
   $: dropdownTextColor = config.dropdownTextColor || 'var(--theme-text)';
   $: dropdownHoverBackground = config.dropdownHoverBackground || 'var(--theme-background)';
 
-  // Mobile
-  $: mobileBreakpoint = config.mobileBreakpoint || 768;
+  // Mobile: the navbar collapses to a hamburger at the canonical mobile
+  // breakpoint (BREAKPOINTS.md, 768px). This is a fixed design-system value —
+  // there is no per-navbar override, because CSS media queries can't read a
+  // configurable CSS variable (the old `mobileBreakpoint` config never worked).
 
   // State
   let isMobileMenuOpen = false;
@@ -221,7 +223,6 @@
     {navbarHeight > 0 ? `height: ${navbarHeight}px;` : ''}
     {navbarShadow ? 'box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);' : ''}
     --hover-color: {hoverColor};
-    --mobile-breakpoint: {mobileBreakpoint}px;
   "
 >
   <!-- Uses the actual Container component for consistent builder integration -->
@@ -762,7 +763,7 @@
 
   .dropdown-divider {
     height: 1px;
-    background-color: #e5e7eb;
+    background-color: var(--theme-border);
     margin: 0.5rem 0;
   }
 
@@ -813,7 +814,7 @@
     gap: 0.25rem;
     padding: 0.5rem;
     background: transparent;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--theme-border);
     border-radius: 6px;
     cursor: pointer;
     font-size: 0.75rem;
@@ -827,7 +828,7 @@
   .theme-option.active {
     border-color: var(--hover-color);
     background-color: var(--hover-color);
-    color: white;
+    color: var(--color-on-primary, #fff);
   }
 
   .item-icon {
@@ -861,11 +862,14 @@
     background: none;
     border: none;
     padding: 0.5rem 1rem;
+    /* Accessible tap target (F0 --touch-target token, 44px) */
+    min-height: var(--touch-target);
     cursor: pointer;
     color: inherit;
     text-decoration: none;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
     border-radius: 8px;
     transition: all 0.2s;
@@ -873,11 +877,15 @@
     position: relative;
   }
 
+  .action-btn {
+    min-width: var(--touch-target);
+  }
+
   .action-btn:hover,
   .login-link:hover,
   .cart-link:hover,
   .account-button:hover {
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: var(--color-bg-tertiary, rgba(0, 0, 0, 0.05));
     color: var(--hover-color);
   }
 
@@ -893,8 +901,8 @@
     position: absolute;
     top: 0.25rem;
     right: 0.25rem;
-    background: #ef4444;
-    color: white;
+    background: var(--color-error, #ef4444);
+    color: var(--color-on-primary, #fff);
     border-radius: 50%;
     width: 18px;
     height: 18px;
@@ -911,6 +919,11 @@
     background: none;
     border: none;
     padding: 0.5rem;
+    /* Accessible tap target (F0 --touch-target token, 44px) */
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
     color: inherit;
   }
@@ -927,6 +940,11 @@
     display: none;
   }
 
+  /*
+   * Mobile collapse at the canonical breakpoint. The 768px literal mirrors
+   * BREAKPOINTS.md (CSS media queries can't read the token); breakpoints.test.ts
+   * pins it so the two can't drift.
+   */
   @media (max-width: 768px) {
     .desktop-only {
       display: none !important;
@@ -949,6 +967,8 @@
     .mobile-nav-link,
     .mobile-dropdown-trigger {
       padding: 0.75rem 0;
+      /* Accessible tap target (F0 --touch-target token, 44px) */
+      min-height: var(--touch-target);
       text-decoration: none;
       color: inherit;
       font-weight: 500;
@@ -994,7 +1014,4 @@
       display: none;
     }
   }
-
-  /* Note: Custom mobile breakpoint is set via inline styles on navbar, 
-     but media queries can't use CSS variables. Default is 768px. */
 </style>

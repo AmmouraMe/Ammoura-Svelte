@@ -1942,22 +1942,6 @@
                 <span>Sticky Navigation (stays at top when scrolling)</span>
               </label>
             </div>
-            <div class="form-group">
-              <label>
-                <span>Mobile Breakpoint (px)</span>
-                <input
-                  type="number"
-                  bind:value={config.mobileBreakpoint}
-                  on:input={handleUpdate}
-                  min="320"
-                  max="1024"
-                  placeholder="768"
-                />
-              </label>
-              <p class="field-hint">
-                Width below which the mobile menu (hamburger) appears. Default: 768px.
-              </p>
-            </div>
           </div>
         {/if}
       </div>

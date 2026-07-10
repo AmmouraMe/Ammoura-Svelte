@@ -4,10 +4,9 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { BREAKPOINTS, mediaQueryFor } from './breakpoints';
 
-const tokensCss = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), 'tokens.css'),
-  'utf-8'
-);
+const here = dirname(fileURLToPath(import.meta.url));
+const tokensCss = readFileSync(join(here, 'tokens.css'), 'utf-8');
+const navbarSvelte = readFileSync(join(here, '../components/builtin/NavBar.svelte'), 'utf-8');
 
 describe('breakpoints', () => {
   it('should stay in sync with the --breakpoint-* vars in tokens.css', () => {
@@ -25,5 +24,10 @@ describe('breakpoints', () => {
     // The renderer + builder viewport model relies on these two values
     expect(BREAKPOINTS.md).toBe(768);
     expect(BREAKPOINTS.lg).toBe(1024);
+  });
+
+  it('should keep NavBar mobile collapse pinned to BREAKPOINTS.md', () => {
+    // NavBar's hamburger @media literal can't read the token; this guards drift.
+    expect(navbarSvelte).toContain(`@media (max-width: ${BREAKPOINTS.md}px)`);
   });
 });

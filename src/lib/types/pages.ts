@@ -613,7 +613,6 @@ export interface ComponentConfig {
   logoPosition?: 'left' | 'center'; // Logo alignment
   linksPosition?: 'left' | 'center' | 'right'; // Links alignment
   actionsPosition?: 'right' | 'left'; // Actions (cart, auth) alignment
-  mobileBreakpoint?: number; // Width in pixels when mobile menu appears (default: 768)
   dropdownBackground?: string | ThemeSpecificColor; // Dropdown menu background
   dropdownTextColor?: string | ThemeSpecificColor; // Dropdown text color
   dropdownHoverBackground?: string | ThemeSpecificColor; // Dropdown hover background

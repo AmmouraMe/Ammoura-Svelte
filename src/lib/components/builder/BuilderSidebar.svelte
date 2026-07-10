@@ -409,9 +409,7 @@
         // Dropdown styling
         dropdownBackground: '#ffffff',
         dropdownTextColor: '#000000',
-        dropdownHoverBackground: '#f3f4f6',
-        // Mobile
-        mobileBreakpoint: 768
+        dropdownHoverBackground: '#f3f4f6'
       },
       footer: {
         copyright: '© 2025 Store Name. All rights reserved.',
