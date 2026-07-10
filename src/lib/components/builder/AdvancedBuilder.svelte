@@ -15,6 +15,7 @@
   import type { SiteContext, UserInfo } from '$lib/utils/templateSubstitution';
   import BuilderToolbar from './BuilderToolbar.svelte';
   import BuilderCanvas from './BuilderCanvas.svelte';
+  import PreviewOverlay from './PreviewOverlay.svelte';
   import BuilderLeftPanel from './BuilderLeftPanel.svelte';
   import BuilderAIPanel from './BuilderAIPanel.svelte';
   import RevisionModal from '../admin/RevisionModal.svelte';
@@ -342,6 +343,9 @@
   let showAIPanel = false;
   let showRevisionModal = false;
   let showThemePalette = false;
+  // Device preview overlay (F2): renders the real frontend at device widths.
+  let showPreview = false;
+  let previewNonce = 0;
   let currentBreakpoint: 'mobile' | 'tablet' | 'desktop' = 'desktop';
 
   // Mobile responsive state
@@ -692,6 +696,29 @@
     } finally {
       isSaving = false;
     }
+  }
+
+  // Persist the current edits as a draft, then open the device preview. The
+  // preview iframe loads the real storefront route with ?preview, so admins see
+  // exactly this draft rendered by the production frontend (real @media, theme,
+  // navbar/footer). Bumping previewNonce cache-busts the iframe.
+  async function openPreview() {
+    try {
+      await handleSaveClick();
+    } catch (err) {
+      console.error('Preview save failed; showing last saved draft', err);
+    }
+    previewNonce += 1;
+    showPreview = true;
+  }
+
+  async function reloadPreview() {
+    try {
+      await handleSaveClick();
+    } catch (err) {
+      console.error('Preview reload save failed', err);
+    }
+    previewNonce += 1;
   }
 
   async function handlePublishClick() {
@@ -1174,6 +1201,7 @@
     on:undo={undo}
     on:redo={redo}
     on:save={handleSaveClick}
+    on:openPreview={openPreview}
     on:publish={handlePublishClick}
     on:exit={handleExitClick}
     on:toggleAI={() => {
@@ -1336,6 +1364,17 @@
       colorTheme = activeColorTheme;
     }}
   />
+
+  {#if showPreview && mode === 'page'}
+    <PreviewOverlay
+      path={slug}
+      reloadNonce={previewNonce}
+      on:reload={reloadPreview}
+      on:close={() => {
+        showPreview = false;
+      }}
+    />
+  {/if}
 
   <!-- Mobile touch drag cancel zone - appears at bottom when dragging -->
   {#if isTouchDraggingComponent && isMobileView}

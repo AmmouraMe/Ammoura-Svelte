@@ -1,12 +1,12 @@
 import type { PageServerLoad } from './$types';
 import { getDB, getAllProducts, getProductFulfillmentOptions } from '$lib/server/db';
 import * as pagesDb from '$lib/server/db/pages';
-import { getPublishedRevision } from '$lib/server/db/revisions';
+import { getPublishedRevision, getMostRecentDraftRevision } from '$lib/server/db/revisions';
 import { resolveComponentRefs } from '$lib/server/db/components';
 import * as colorThemes from '$lib/server/db/color-themes';
 import type { PageComponent, PageProperties } from '$lib/types/pages';
 
-export const load: PageServerLoad = async ({ platform, locals }) => {
+export const load: PageServerLoad = async ({ platform, locals, url }) => {
   // If platform is not available (development without D1), fall back to empty array
   if (!platform?.env?.DB) {
     return {
@@ -32,13 +32,20 @@ export const load: PageServerLoad = async ({ platform, locals }) => {
     // Check if a page exists for the home route '/'
     const page = await pagesDb.getPageBySlug(db, siteId, '/');
 
+    // Admin preview (?preview) renders the most recent draft revision (matches
+    // the [...slug] route), so the builder's device-width preview iframe shows
+    // unsaved-but-drafted edits. Public viewers always get the published one.
+    const isPreview = url.searchParams.has('preview') && (locals.isAdmin || false);
+
     let components: PageComponent[] = [];
     let pageProperties: PageProperties | undefined;
-    if (page && page.status === 'published') {
-      // Fetch components from published revision (Builder content)
-      const publishedRevision = await getPublishedRevision(db, siteId, page.id);
-      const rawComponents = publishedRevision?.components || [];
-      pageProperties = publishedRevision?.pageProperties;
+    if (page && (page.status === 'published' || isPreview)) {
+      let revision = isPreview ? await getMostRecentDraftRevision(db, siteId, page.id) : null;
+      if (!revision) {
+        revision = await getPublishedRevision(db, siteId, page.id);
+      }
+      const rawComponents = revision?.components || [];
+      pageProperties = revision?.pageProperties;
 
       // Resolve component_ref types to actual component types for frontend rendering
       components = await resolveComponentRefs(db, siteId, rawComponents);

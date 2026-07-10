@@ -21,7 +21,8 @@
     Check,
     Palette,
     Menu,
-    PanelLeft
+    PanelLeft,
+    Eye
   } from 'lucide-svelte';
   import { themeStore } from '$lib/stores/theme';
   import type { Theme } from '$lib/types/theme';
@@ -188,6 +189,16 @@
         <Monitor size={18} />
       </button>
     </div>
+
+    <button
+      class="btn-preview"
+      on:click={() => dispatch('openPreview')}
+      title="Preview at real device widths (renders the live frontend)"
+      aria-label="Preview"
+    >
+      <Eye size={16} />
+      <span class="btn-preview-label">Preview</span>
+    </button>
 
     {#if mode === 'page'}
       <div class="layout-selector-container">
@@ -692,6 +703,27 @@
   .btn-breakpoint.active {
     background: var(--color-primary);
     color: white;
+  }
+
+  .btn-preview {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    background: none;
+    border: 1px solid var(--color-border-primary);
+    border-radius: 6px;
+    color: var(--color-text-secondary);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-preview:hover {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+    border-color: var(--color-primary);
   }
 
   .btn-ai {
