@@ -15,7 +15,7 @@
   $: containerMaxWidth = config.containerMaxWidth || '1200px';
   $: children = config.children || [];
 
-  // Padding now responds per breakpoint via the shared .rs class instead of a
+  // Padding now responds per breakpoint via the shared .responsive class instead of a
   // desktop-only inline value. Margin keeps its bespoke horizontal auto-centering
   // inline (inline wins over .rs, so its margin fallback is harmless).
   $: rs = responsiveStyle({ padding: containerPadding });

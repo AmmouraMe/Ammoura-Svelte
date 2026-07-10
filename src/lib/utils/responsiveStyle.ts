@@ -2,10 +2,10 @@
  * responsiveStyle — the F1 keystone (frontend overhaul).
  *
  * Turns per-breakpoint prop values into a scoped CSS-custom-property block that
- * the global `.rs` class (src/lib/styles/responsive.css) reads through a
+ * the global `.responsive` class (src/lib/styles/responsive.css) reads through a
  * media-query cascade. This is the structural replacement for the inline
  * `style="..."` sprawl in the builtin components: inline styles can't respond to
- * breakpoints, scoped vars + `.rs` can.
+ * breakpoints, scoped vars + `.responsive` can.
  *
  * Data model: consumes the existing `ResponsiveValue<T> = { mobile?, tablet?,
  * desktop }` shape (desktop required). The cascade is desktop-first to match the
@@ -28,8 +28,8 @@
 
 import type { ResponsiveValue, SpacingConfig } from '$lib/types/pages';
 
-/** The single global class that consumes the emitted `--rs-*` vars. */
-export const RESPONSIVE_CLASS = 'rs';
+/** The single global class that consumes the emitted `--responsive-*` vars. */
+export const RESPONSIVE_CLASS = 'responsive';
 
 /** Breakpoint keys of ResponsiveValue, high-to-low (base is desktop). */
 const BREAKPOINT_KEYS = ['desktop', 'tablet', 'mobile'] as const;
@@ -55,7 +55,7 @@ const keyword = (v: string): string => v;
 /**
  * The responsive vocabulary. Each entry maps a prop name to the CSS-var suffix
  * (kebab) used in responsive.css and the formatter for its value. Keep this in
- * lockstep with the `.rs` declarations in responsive.css.
+ * lockstep with the `.responsive` declarations in responsive.css.
  */
 const VOCABULARY = {
   display: { var: 'display', format: keyword },
@@ -97,12 +97,12 @@ export interface ResponsiveStyleProps {
 export interface ResponsiveStyleResult {
   /** Always RESPONSIVE_CLASS; returned so callers can spread it into class=. */
   className: string;
-  /** `--rs-*` custom-property declarations, `; `-joined (no trailing `;`). */
+  /** `--responsive-*` custom-property declarations, `; `-joined (no trailing `;`). */
   style: string;
 }
 
 /**
- * Serialize per-breakpoint props into the `.rs` class + a scoped-var style
+ * Serialize per-breakpoint props into the `.responsive` class + a scoped-var style
  * string. Only breakpoints actually present on each value are emitted, so the
  * media cascade's fallbacks (tablet->desktop, mobile->tablet->desktop) apply.
  */
@@ -117,7 +117,7 @@ export function responsiveStyle(props: ResponsiveStyleProps): ResponsiveStyleRes
     for (const bp of BREAKPOINT_KEYS) {
       const raw = value[bp];
       if (raw === undefined || raw === null) continue;
-      declarations.push(`--rs-${suffix}-${bp}: ${format(raw as never)}`);
+      declarations.push(`--responsive-${suffix}-${bp}: ${format(raw as never)}`);
     }
   }
 

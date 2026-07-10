@@ -3,7 +3,7 @@
 /* Design tokens: spacing, type scale, radius, shadows, motion, focus */
 @import './lib/styles/tokens.css';
 
-/* Responsive layout: the global .rs class consumed by responsiveStyle() */
+/* Responsive layout: the global .responsive class consumed by responsiveStyle() */
 @import './lib/styles/responsive.css';
 
 /* CSS Custom Properties - Theme System */

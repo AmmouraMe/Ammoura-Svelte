@@ -1,110 +1,110 @@
 /**
- * responsive.css — the global `.rs` class consumed by the responsiveStyle()
+ * responsive.css — the global `.responsive` class consumed by the responsiveStyle()
  * utility (src/lib/utils/responsiveStyle.ts). F1 frontend overhaul.
  *
- * A component emits scoped `--rs-<prop>-<breakpoint>` custom properties inline;
+ * A component emits scoped `--responsive-<prop>-<breakpoint>` custom properties inline;
  * this class turns them into real layout properties with a desktop-first
  * media-query cascade:
- *   base            -> --rs-*-desktop   (the required base value)
- *   max-width 1024  -> --rs-*-tablet    (fallback: desktop)
- *   max-width 768   -> --rs-*-mobile    (fallback: tablet -> desktop)
+ *   base            -> --responsive-*-desktop   (the required base value)
+ *   max-width 1024  -> --responsive-*-tablet    (fallback: desktop)
+ *   max-width 768   -> --responsive-*-mobile    (fallback: tablet -> desktop)
  *
  * The 1024 / 768 literals are the ONLY hard-coded breakpoints here (CSS media
  * queries can't read CSS variables). They mirror BREAKPOINTS.lg / BREAKPOINTS.md
  * and are pinned by src/lib/utils/responsiveStyle.test.ts.
  *
  * Fallbacks equal each property's CSS initial value, so a property whose var is
- * never set behaves as if `.rs` weren't there. box-sizing is forced to
+ * never set behaves as if `.responsive` weren't there. box-sizing is forced to
  * border-box so per-breakpoint padding never overflows a width:100% wrapper.
  *
  * Vocabulary and var suffixes are kept in lockstep with VOCABULARY in
  * responsiveStyle.ts. Do not add a property here without adding it there.
  */
 
-.rs {
+.responsive {
   box-sizing: border-box;
-  display: var(--rs-display-desktop, block);
-  flex-direction: var(--rs-flex-direction-desktop, row);
-  flex-wrap: var(--rs-flex-wrap-desktop, nowrap);
-  justify-content: var(--rs-justify-content-desktop, normal);
-  align-items: var(--rs-align-items-desktop, normal);
-  align-content: var(--rs-align-content-desktop, normal);
-  gap: var(--rs-gap-desktop, 0);
-  grid-template-columns: var(--rs-grid-columns-desktop, none);
-  grid-auto-flow: var(--rs-grid-auto-flow-desktop, row);
-  padding: var(--rs-padding-desktop, 0);
-  margin: var(--rs-margin-desktop, 0);
-  min-height: var(--rs-min-height-desktop, 0);
-  max-height: var(--rs-max-height-desktop, none);
-  max-width: var(--rs-max-width-desktop, none);
+  display: var(--responsive-display-desktop, block);
+  flex-direction: var(--responsive-flex-direction-desktop, row);
+  flex-wrap: var(--responsive-flex-wrap-desktop, nowrap);
+  justify-content: var(--responsive-justify-content-desktop, normal);
+  align-items: var(--responsive-align-items-desktop, normal);
+  align-content: var(--responsive-align-content-desktop, normal);
+  gap: var(--responsive-gap-desktop, 0);
+  grid-template-columns: var(--responsive-grid-columns-desktop, none);
+  grid-auto-flow: var(--responsive-grid-auto-flow-desktop, row);
+  padding: var(--responsive-padding-desktop, 0);
+  margin: var(--responsive-margin-desktop, 0);
+  min-height: var(--responsive-min-height-desktop, 0);
+  max-height: var(--responsive-max-height-desktop, none);
+  max-width: var(--responsive-max-width-desktop, none);
 }
 
 /* Tablet: <= BREAKPOINTS.lg. Each property falls back to its desktop value. */
 @media (max-width: 1024px) {
-  .rs {
-    display: var(--rs-display-tablet, var(--rs-display-desktop, block));
-    flex-direction: var(--rs-flex-direction-tablet, var(--rs-flex-direction-desktop, row));
-    flex-wrap: var(--rs-flex-wrap-tablet, var(--rs-flex-wrap-desktop, nowrap));
-    justify-content: var(--rs-justify-content-tablet, var(--rs-justify-content-desktop, normal));
-    align-items: var(--rs-align-items-tablet, var(--rs-align-items-desktop, normal));
-    align-content: var(--rs-align-content-tablet, var(--rs-align-content-desktop, normal));
-    gap: var(--rs-gap-tablet, var(--rs-gap-desktop, 0));
-    grid-template-columns: var(--rs-grid-columns-tablet, var(--rs-grid-columns-desktop, none));
-    grid-auto-flow: var(--rs-grid-auto-flow-tablet, var(--rs-grid-auto-flow-desktop, row));
-    padding: var(--rs-padding-tablet, var(--rs-padding-desktop, 0));
-    margin: var(--rs-margin-tablet, var(--rs-margin-desktop, 0));
-    min-height: var(--rs-min-height-tablet, var(--rs-min-height-desktop, 0));
-    max-height: var(--rs-max-height-tablet, var(--rs-max-height-desktop, none));
-    max-width: var(--rs-max-width-tablet, var(--rs-max-width-desktop, none));
+  .responsive {
+    display: var(--responsive-display-tablet, var(--responsive-display-desktop, block));
+    flex-direction: var(--responsive-flex-direction-tablet, var(--responsive-flex-direction-desktop, row));
+    flex-wrap: var(--responsive-flex-wrap-tablet, var(--responsive-flex-wrap-desktop, nowrap));
+    justify-content: var(--responsive-justify-content-tablet, var(--responsive-justify-content-desktop, normal));
+    align-items: var(--responsive-align-items-tablet, var(--responsive-align-items-desktop, normal));
+    align-content: var(--responsive-align-content-tablet, var(--responsive-align-content-desktop, normal));
+    gap: var(--responsive-gap-tablet, var(--responsive-gap-desktop, 0));
+    grid-template-columns: var(--responsive-grid-columns-tablet, var(--responsive-grid-columns-desktop, none));
+    grid-auto-flow: var(--responsive-grid-auto-flow-tablet, var(--responsive-grid-auto-flow-desktop, row));
+    padding: var(--responsive-padding-tablet, var(--responsive-padding-desktop, 0));
+    margin: var(--responsive-margin-tablet, var(--responsive-margin-desktop, 0));
+    min-height: var(--responsive-min-height-tablet, var(--responsive-min-height-desktop, 0));
+    max-height: var(--responsive-max-height-tablet, var(--responsive-max-height-desktop, none));
+    max-width: var(--responsive-max-width-tablet, var(--responsive-max-width-desktop, none));
   }
 }
 
 /* Mobile: <= BREAKPOINTS.md. Falls back tablet -> desktop. */
 @media (max-width: 768px) {
-  .rs {
-    display: var(--rs-display-mobile, var(--rs-display-tablet, var(--rs-display-desktop, block)));
+  .responsive {
+    display: var(--responsive-display-mobile, var(--responsive-display-tablet, var(--responsive-display-desktop, block)));
     flex-direction: var(
-      --rs-flex-direction-mobile,
-      var(--rs-flex-direction-tablet, var(--rs-flex-direction-desktop, row))
+      --responsive-flex-direction-mobile,
+      var(--responsive-flex-direction-tablet, var(--responsive-flex-direction-desktop, row))
     );
     flex-wrap: var(
-      --rs-flex-wrap-mobile,
-      var(--rs-flex-wrap-tablet, var(--rs-flex-wrap-desktop, nowrap))
+      --responsive-flex-wrap-mobile,
+      var(--responsive-flex-wrap-tablet, var(--responsive-flex-wrap-desktop, nowrap))
     );
     justify-content: var(
-      --rs-justify-content-mobile,
-      var(--rs-justify-content-tablet, var(--rs-justify-content-desktop, normal))
+      --responsive-justify-content-mobile,
+      var(--responsive-justify-content-tablet, var(--responsive-justify-content-desktop, normal))
     );
     align-items: var(
-      --rs-align-items-mobile,
-      var(--rs-align-items-tablet, var(--rs-align-items-desktop, normal))
+      --responsive-align-items-mobile,
+      var(--responsive-align-items-tablet, var(--responsive-align-items-desktop, normal))
     );
     align-content: var(
-      --rs-align-content-mobile,
-      var(--rs-align-content-tablet, var(--rs-align-content-desktop, normal))
+      --responsive-align-content-mobile,
+      var(--responsive-align-content-tablet, var(--responsive-align-content-desktop, normal))
     );
-    gap: var(--rs-gap-mobile, var(--rs-gap-tablet, var(--rs-gap-desktop, 0)));
+    gap: var(--responsive-gap-mobile, var(--responsive-gap-tablet, var(--responsive-gap-desktop, 0)));
     grid-template-columns: var(
-      --rs-grid-columns-mobile,
-      var(--rs-grid-columns-tablet, var(--rs-grid-columns-desktop, none))
+      --responsive-grid-columns-mobile,
+      var(--responsive-grid-columns-tablet, var(--responsive-grid-columns-desktop, none))
     );
     grid-auto-flow: var(
-      --rs-grid-auto-flow-mobile,
-      var(--rs-grid-auto-flow-tablet, var(--rs-grid-auto-flow-desktop, row))
+      --responsive-grid-auto-flow-mobile,
+      var(--responsive-grid-auto-flow-tablet, var(--responsive-grid-auto-flow-desktop, row))
     );
-    padding: var(--rs-padding-mobile, var(--rs-padding-tablet, var(--rs-padding-desktop, 0)));
-    margin: var(--rs-margin-mobile, var(--rs-margin-tablet, var(--rs-margin-desktop, 0)));
+    padding: var(--responsive-padding-mobile, var(--responsive-padding-tablet, var(--responsive-padding-desktop, 0)));
+    margin: var(--responsive-margin-mobile, var(--responsive-margin-tablet, var(--responsive-margin-desktop, 0)));
     min-height: var(
-      --rs-min-height-mobile,
-      var(--rs-min-height-tablet, var(--rs-min-height-desktop, 0))
+      --responsive-min-height-mobile,
+      var(--responsive-min-height-tablet, var(--responsive-min-height-desktop, 0))
     );
     max-height: var(
-      --rs-max-height-mobile,
-      var(--rs-max-height-tablet, var(--rs-max-height-desktop, none))
+      --responsive-max-height-mobile,
+      var(--responsive-max-height-tablet, var(--responsive-max-height-desktop, none))
     );
     max-width: var(
-      --rs-max-width-mobile,
-      var(--rs-max-width-tablet, var(--rs-max-width-desktop, none))
+      --responsive-max-width-mobile,
+      var(--responsive-max-width-tablet, var(--responsive-max-width-desktop, none))
     );
   }
 }

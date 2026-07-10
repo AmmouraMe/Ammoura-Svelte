@@ -864,7 +864,7 @@
   }
 
   /*
-   * Responsive container layout now comes from the shared .rs class
+   * Responsive container layout now comes from the shared .responsive class
    * (src/lib/styles/responsive.css) via responsiveStyle(). The old bespoke
    * --fcr-* vars + the [style*='--fcr-display: grid'] attribute-substring hack
    * were retired here — .rs sets grid-template-columns unconditionally, so grid
