@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { WidgetConfig } from '$lib/types/pages';
+  import { responsiveStyle } from '$lib/utils/responsiveStyle';
 
   export let config: WidgetConfig;
 
@@ -14,20 +15,24 @@
   $: containerMaxWidth = config.containerMaxWidth || '1200px';
   $: children = config.children || [];
 
+  // Padding now responds per breakpoint via the shared .rs class instead of a
+  // desktop-only inline value. Margin keeps its bespoke horizontal auto-centering
+  // inline (inline wins over .rs, so its margin fallback is harmless).
+  $: rs = responsiveStyle({ padding: containerPadding });
+
   // Check if slot content is provided (used when Container wraps other content)
   $: hasSlotContent = $$slots.default;
 </script>
 
 <div
-  class="container-widget"
+  class="container-widget {rs.className}"
   id={config.anchorName || undefined}
   style="
     max-width: {containerMaxWidth};
     background: {containerBackground};
     border-radius: {containerBorderRadius}px;
-    padding: {containerPadding.desktop.top}px {containerPadding.desktop.right}px {containerPadding
-    .desktop.bottom}px {containerPadding.desktop.left}px;
     margin: {containerMargin.desktop.top}px auto {containerMargin.desktop.bottom}px;
+    {rs.style}
   "
 >
   {#if hasSlotContent || children.length > 0}

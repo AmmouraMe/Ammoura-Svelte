@@ -1,0 +1,110 @@
+/**
+ * responsive.css — the global `.rs` class consumed by the responsiveStyle()
+ * utility (src/lib/utils/responsiveStyle.ts). F1 frontend overhaul.
+ *
+ * A component emits scoped `--rs-<prop>-<breakpoint>` custom properties inline;
+ * this class turns them into real layout properties with a desktop-first
+ * media-query cascade:
+ *   base            -> --rs-*-desktop   (the required base value)
+ *   max-width 1024  -> --rs-*-tablet    (fallback: desktop)
+ *   max-width 768   -> --rs-*-mobile    (fallback: tablet -> desktop)
+ *
+ * The 1024 / 768 literals are the ONLY hard-coded breakpoints here (CSS media
+ * queries can't read CSS variables). They mirror BREAKPOINTS.lg / BREAKPOINTS.md
+ * and are pinned by src/lib/utils/responsiveStyle.test.ts.
+ *
+ * Fallbacks equal each property's CSS initial value, so a property whose var is
+ * never set behaves as if `.rs` weren't there. box-sizing is forced to
+ * border-box so per-breakpoint padding never overflows a width:100% wrapper.
+ *
+ * Vocabulary and var suffixes are kept in lockstep with VOCABULARY in
+ * responsiveStyle.ts. Do not add a property here without adding it there.
+ */
+
+.rs {
+  box-sizing: border-box;
+  display: var(--rs-display-desktop, block);
+  flex-direction: var(--rs-flex-direction-desktop, row);
+  flex-wrap: var(--rs-flex-wrap-desktop, nowrap);
+  justify-content: var(--rs-justify-content-desktop, normal);
+  align-items: var(--rs-align-items-desktop, normal);
+  align-content: var(--rs-align-content-desktop, normal);
+  gap: var(--rs-gap-desktop, 0);
+  grid-template-columns: var(--rs-grid-columns-desktop, none);
+  grid-auto-flow: var(--rs-grid-auto-flow-desktop, row);
+  padding: var(--rs-padding-desktop, 0);
+  margin: var(--rs-margin-desktop, 0);
+  min-height: var(--rs-min-height-desktop, 0);
+  max-height: var(--rs-max-height-desktop, none);
+  max-width: var(--rs-max-width-desktop, none);
+}
+
+/* Tablet: <= BREAKPOINTS.lg. Each property falls back to its desktop value. */
+@media (max-width: 1024px) {
+  .rs {
+    display: var(--rs-display-tablet, var(--rs-display-desktop, block));
+    flex-direction: var(--rs-flex-direction-tablet, var(--rs-flex-direction-desktop, row));
+    flex-wrap: var(--rs-flex-wrap-tablet, var(--rs-flex-wrap-desktop, nowrap));
+    justify-content: var(--rs-justify-content-tablet, var(--rs-justify-content-desktop, normal));
+    align-items: var(--rs-align-items-tablet, var(--rs-align-items-desktop, normal));
+    align-content: var(--rs-align-content-tablet, var(--rs-align-content-desktop, normal));
+    gap: var(--rs-gap-tablet, var(--rs-gap-desktop, 0));
+    grid-template-columns: var(--rs-grid-columns-tablet, var(--rs-grid-columns-desktop, none));
+    grid-auto-flow: var(--rs-grid-auto-flow-tablet, var(--rs-grid-auto-flow-desktop, row));
+    padding: var(--rs-padding-tablet, var(--rs-padding-desktop, 0));
+    margin: var(--rs-margin-tablet, var(--rs-margin-desktop, 0));
+    min-height: var(--rs-min-height-tablet, var(--rs-min-height-desktop, 0));
+    max-height: var(--rs-max-height-tablet, var(--rs-max-height-desktop, none));
+    max-width: var(--rs-max-width-tablet, var(--rs-max-width-desktop, none));
+  }
+}
+
+/* Mobile: <= BREAKPOINTS.md. Falls back tablet -> desktop. */
+@media (max-width: 768px) {
+  .rs {
+    display: var(--rs-display-mobile, var(--rs-display-tablet, var(--rs-display-desktop, block)));
+    flex-direction: var(
+      --rs-flex-direction-mobile,
+      var(--rs-flex-direction-tablet, var(--rs-flex-direction-desktop, row))
+    );
+    flex-wrap: var(
+      --rs-flex-wrap-mobile,
+      var(--rs-flex-wrap-tablet, var(--rs-flex-wrap-desktop, nowrap))
+    );
+    justify-content: var(
+      --rs-justify-content-mobile,
+      var(--rs-justify-content-tablet, var(--rs-justify-content-desktop, normal))
+    );
+    align-items: var(
+      --rs-align-items-mobile,
+      var(--rs-align-items-tablet, var(--rs-align-items-desktop, normal))
+    );
+    align-content: var(
+      --rs-align-content-mobile,
+      var(--rs-align-content-tablet, var(--rs-align-content-desktop, normal))
+    );
+    gap: var(--rs-gap-mobile, var(--rs-gap-tablet, var(--rs-gap-desktop, 0)));
+    grid-template-columns: var(
+      --rs-grid-columns-mobile,
+      var(--rs-grid-columns-tablet, var(--rs-grid-columns-desktop, none))
+    );
+    grid-auto-flow: var(
+      --rs-grid-auto-flow-mobile,
+      var(--rs-grid-auto-flow-tablet, var(--rs-grid-auto-flow-desktop, row))
+    );
+    padding: var(--rs-padding-mobile, var(--rs-padding-tablet, var(--rs-padding-desktop, 0)));
+    margin: var(--rs-margin-mobile, var(--rs-margin-tablet, var(--rs-margin-desktop, 0)));
+    min-height: var(
+      --rs-min-height-mobile,
+      var(--rs-min-height-tablet, var(--rs-min-height-desktop, 0))
+    );
+    max-height: var(
+      --rs-max-height-mobile,
+      var(--rs-max-height-tablet, var(--rs-max-height-desktop, none))
+    );
+    max-width: var(
+      --rs-max-width-mobile,
+      var(--rs-max-width-tablet, var(--rs-max-width-desktop, none))
+    );
+  }
+}
