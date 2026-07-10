@@ -1,4 +1,4 @@
-import { fail } from '@sveltejs/kit';
+import { error, fail } from '@sveltejs/kit';
 import { getDB } from '$lib/server/db/connection';
 import { getPaymentSettings, updatePaymentSettings } from '$lib/server/db/site-settings';
 import { createActivityLog } from '$lib/server/db/activity-logs';
@@ -7,8 +7,9 @@ import type { PageServerLoad, Actions } from './$types';
 export const load: PageServerLoad = async ({ platform, locals }) => {
   const db = getDB(platform);
   const siteId = locals.siteId || 'default-site';
+  const encryptionKey = platform?.env?.ENCRYPTION_KEY;
 
-  const settings = await getPaymentSettings(db, siteId);
+  const settings = await getPaymentSettings(db, siteId, encryptionKey);
 
   return {
     settings
@@ -20,9 +21,14 @@ export const actions: Actions = {
     const db = getDB(platform);
     const siteId = locals.siteId || 'default-site';
     const userId = locals.currentUser?.id;
+    const encryptionKey = platform?.env?.ENCRYPTION_KEY;
 
     if (!userId) {
       return fail(401, { error: 'Unauthorized' });
+    }
+
+    if (!encryptionKey) {
+      throw error(500, 'Encryption key not configured');
     }
 
     try {
@@ -34,6 +40,7 @@ export const actions: Actions = {
         stripeModeValue === 'test' || stripeModeValue === 'live' ? stripeModeValue : 'test';
       const stripePublicKey = formData.get('stripePublicKey')?.toString() || '';
       const stripeSecretKey = formData.get('stripeSecretKey')?.toString() || '';
+      const stripeWebhookSecret = formData.get('stripeWebhookSecret')?.toString() || '';
 
       const paypalEnabled = formData.get('paypalEnabled') === 'on';
       const paypalModeValue = formData.get('paypalMode')?.toString() || 'sandbox';
@@ -53,17 +60,23 @@ export const actions: Actions = {
         return fail(400, { error: 'PayPal credentials are required when PayPal is enabled' });
       }
 
-      await updatePaymentSettings(db, siteId, {
-        stripeEnabled,
-        stripeMode,
-        stripePublicKey,
-        stripeSecretKey,
-        paypalEnabled,
-        paypalMode,
-        paypalClientId,
-        paypalClientSecret,
-        testModeEnabled
-      });
+      await updatePaymentSettings(
+        db,
+        siteId,
+        {
+          stripeEnabled,
+          stripeMode,
+          stripePublicKey,
+          stripeSecretKey,
+          stripeWebhookSecret,
+          paypalEnabled,
+          paypalMode,
+          paypalClientId,
+          paypalClientSecret,
+          testModeEnabled
+        },
+        encryptionKey
+      );
 
       await createActivityLog(db, siteId, {
         user_id: userId,

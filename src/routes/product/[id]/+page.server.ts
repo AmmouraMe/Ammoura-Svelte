@@ -5,7 +5,8 @@ import {
   getProductFulfillmentOptions,
   getCustomizationZones,
   getCustomizationFields,
-  getProductEquipmentWithFields
+  getProductEquipmentWithFields,
+  getProductVariants
 } from '$lib/server/db';
 import { getProductShippingOptions } from '$lib/server/db/shipping-options';
 import { error } from '@sveltejs/kit';
@@ -54,6 +55,17 @@ export const load: PageServerLoad = async ({
     // Fetch equipment with fields for this product
     const productEquipment = await getProductEquipmentWithFields(db, siteId, params.id);
 
+    // Fetch variants (size/color, incl. Printful-backed ones)
+    const dbVariants = await getProductVariants(db, siteId, params.id);
+    const variants = dbVariants.map((v) => ({
+      id: v.id,
+      label: v.label,
+      size: v.size || undefined,
+      color: v.color || undefined,
+      price: v.price,
+      stockQuantity: v.stock_quantity
+    }));
+
     const shippingOptions = shippingOptionsRaw.map((opt) => ({
       shippingOptionId: opt.shippingOptionId,
       optionName: opt.optionName || '',
@@ -77,7 +89,8 @@ export const load: PageServerLoad = async ({
       type: dbProduct.type,
       tags: JSON.parse(dbProduct.tags || '[]') as string[],
       fulfillmentOptions,
-      shippingOptions
+      shippingOptions,
+      variants
     };
 
     // Transform media items

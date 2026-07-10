@@ -122,7 +122,14 @@ export interface PrintfulOrderRequest {
 }
 
 export interface PrintfulOrderItem {
-  variant_id: number;
+  /**
+   * Exactly one of variant_id / sync_variant_id is expected by the Printful
+   * API. Ammoura only ever orders already-designed store products, so it
+   * always uses sync_variant_id — the variant's print files are already
+   * attached in the merchant's Printful store and need not be resent.
+   */
+  variant_id?: number;
+  sync_variant_id?: number;
   quantity: number;
   files?: PrintfulFile[];
   options?: Record<string, string>;
@@ -202,6 +209,39 @@ export interface PrintfulSyncProduct {
   synced: number;
   thumbnail_url: string | null;
   is_ignored: boolean;
+}
+
+/**
+ * A single ordering-ready variant of a sync product (a product the merchant
+ * already designed in their Printful store/dashboard). Comes from
+ * GET /store/products/{id}. size/color are best-effort — not every product
+ * type (e.g. mugs) has them, and Printful doesn't guarantee both are always
+ * present at the top level; treat as optional display hints, not required.
+ * NOTE: verify this shape against a live Printful store during rollout —
+ * it's modeled from Printful's documented v1 response, not exercised here.
+ */
+export interface PrintfulSyncVariant {
+  id: number; // sync_variant_id — what Ammoura orders by
+  external_id: string | null;
+  sync_product_id: number;
+  name: string;
+  synced: boolean;
+  variant_id: number; // catalog variant id, display/reference only
+  retail_price: string; // Printful returns this endpoint's prices as strings
+  currency: string;
+  sku: string | null;
+  is_ignored: boolean;
+  size?: string;
+  color?: string;
+  files: PrintfulFile[];
+}
+
+/**
+ * Full detail for one sync product, from GET /store/products/{id}.
+ */
+export interface PrintfulSyncProductDetail {
+  sync_product: PrintfulSyncProduct;
+  sync_variants: PrintfulSyncVariant[];
 }
 
 /**

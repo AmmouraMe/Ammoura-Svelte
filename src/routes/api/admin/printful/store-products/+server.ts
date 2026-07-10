@@ -6,7 +6,10 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDB, execute } from '$lib/server/db/connection';
-import { getFulfillmentProviderById } from '$lib/server/db/fulfillment-providers';
+import {
+  getFulfillmentProviderById,
+  getDecryptedProviderConfig
+} from '$lib/server/db/fulfillment-providers';
 import { PrintfulClient } from '$lib/server/integrations/printful/client';
 
 export const GET: RequestHandler = async ({ url, platform, locals }) => {
@@ -19,6 +22,11 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     throw error(400, 'providerId is required');
   }
 
+  const encryptionKey = platform?.env?.ENCRYPTION_KEY;
+  if (!encryptionKey) {
+    throw error(500, 'Encryption key not configured');
+  }
+
   const db = getDB(platform);
   const siteId = locals.siteId || 'default-site';
 
@@ -27,13 +35,7 @@ export const GET: RequestHandler = async ({ url, platform, locals }) => {
     throw error(404, 'Provider not found');
   }
 
-  let config: { apiKey?: string };
-  try {
-    config = provider.config ? JSON.parse(provider.config) : {};
-  } catch {
-    throw error(500, 'Invalid provider config');
-  }
-
+  const config = await getDecryptedProviderConfig(provider, encryptionKey);
   if (!config.apiKey) {
     throw error(400, 'Printful API key not configured');
   }

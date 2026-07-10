@@ -251,6 +251,12 @@ function isValidExpiryDate(month: string, year: string): boolean {
   return true;
 }
 
+/**
+ * Validates shipping and billing address only. Payment is no longer collected
+ * in this form — checkout hands off to Stripe Checkout, which validates and
+ * collects the card itself — so paymentMethod is not checked here even
+ * though it's still part of CheckoutFormData for now.
+ */
 export function validateCheckoutForm(formData: {
   shippingAddress: ShippingAddress;
   billingAddress: BillingAddress;
@@ -266,11 +272,6 @@ export function validateCheckoutForm(formData: {
   const billingErrors = validateBillingAddress(formData.billingAddress);
   if (Object.keys(billingErrors).length > 0) {
     errors.billingAddress = billingErrors;
-  }
-
-  const paymentErrors = validatePaymentMethod(formData.paymentMethod);
-  if (Object.keys(paymentErrors).length > 0) {
-    errors.paymentMethod = paymentErrors;
   }
 
   return errors;

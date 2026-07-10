@@ -3,6 +3,16 @@ import type { CartItemEquipmentValue } from './equipment';
 
 export type ProductType = 'physical' | 'service' | 'digital';
 
+/** A purchasable size/color option of a product (e.g. a Printful sync variant). */
+export interface ProductVariant {
+  id: string;
+  label: string;
+  size?: string;
+  color?: string;
+  price: number;
+  stockQuantity?: number | null;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -27,6 +37,7 @@ export interface Product {
     priceOverride?: number | null;
     thresholdOverride?: number | null;
   }>;
+  variants?: ProductVariant[];
 }
 
 export interface CartItem extends Product {
@@ -34,6 +45,9 @@ export interface CartItem extends Product {
   customizations?: CartItemCustomization[];
   fieldValues?: CartItemFieldValue[];
   equipmentValues?: CartItemEquipmentValue[];
+  /** Selected variant, if the product has variants — price should already reflect it. */
+  variantId?: string;
+  variantLabel?: string;
 }
 
 // Re-export checkout types

@@ -238,7 +238,7 @@ describe('Checkout Store', () => {
       // Mock fetch for API call
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ success: true, orderId: 'test-order-123' })
+        json: async () => ({ success: true, url: 'https://checkout.stripe.com/pay/cs_test_123' })
       });
 
       const mockCartItems = [
@@ -255,7 +255,7 @@ describe('Checkout Store', () => {
 
       expect(result).toHaveProperty('success');
       if (result.success) {
-        expect(result.orderId).toBeDefined();
+        expect(result.url).toBeDefined();
       }
     }, 10000);
 
@@ -294,7 +294,7 @@ describe('Checkout Store', () => {
       // Mock fetch for API call
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ success: true, orderId: 'test-order-123' })
+        json: async () => ({ success: true, url: 'https://checkout.stripe.com/pay/cs_test_123' })
       });
 
       const mockCartItems = [
@@ -715,7 +715,7 @@ describe('Checkout Store', () => {
 
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ success: true, orderId: 'order-123' })
+        json: async () => ({ success: true, url: 'https://checkout.stripe.com/pay/cs_order-123' })
       });
 
       const mockCartItems = [
@@ -725,7 +725,7 @@ describe('Checkout Store', () => {
       const result = await checkoutStore.submitOrder(mockCartItems, 29.99, 5.99, 2.0, 37.98);
 
       expect(result.success).toBe(true);
-      expect(result.orderId).toBe('order-123');
+      expect(result.url).toBe('https://checkout.stripe.com/pay/cs_order-123');
     }, 10000);
 
     it('should handle API failure during order submission', async () => {
@@ -854,7 +854,7 @@ describe('Checkout Store', () => {
 
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ success: true, orderId: 'order-billing-test' })
+        json: async () => ({ success: true, url: 'https://checkout.stripe.com/pay/cs_order-billing-test' })
       });
 
       const mockCartItems = [

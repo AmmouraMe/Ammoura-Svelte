@@ -366,13 +366,12 @@ describe('Checkout Validation', () => {
       expect(errors.billingAddress?.city).toBeDefined();
     });
 
-    it('should return payment method errors', () => {
+    it('does not validate payment method — Stripe Checkout collects and validates the card', () => {
       const errors = validateCheckoutForm({
         ...validFormData,
         paymentMethod: { ...validFormData.paymentMethod, cvv: '12' }
       });
-      expect(errors.paymentMethod).toBeDefined();
-      expect(errors.paymentMethod?.cvv).toBeDefined();
+      expect(errors.paymentMethod).toBeUndefined();
     });
 
     it('should return multiple section errors', () => {
@@ -383,7 +382,7 @@ describe('Checkout Validation', () => {
       });
       expect(errors.shippingAddress).toBeDefined();
       expect(errors.billingAddress).toBeDefined();
-      expect(errors.paymentMethod).toBeDefined();
+      expect(errors.paymentMethod).toBeUndefined();
     });
   });
 

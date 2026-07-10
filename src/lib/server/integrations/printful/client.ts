@@ -12,7 +12,8 @@ import type {
   PrintfulOrder,
   PrintfulOrderRequest,
   PrintfulStore,
-  PrintfulSyncProduct
+  PrintfulSyncProduct,
+  PrintfulSyncProductDetail
 } from './types';
 
 export class PrintfulClient {
@@ -82,6 +83,14 @@ export class PrintfulClient {
   async getStoreProducts(): Promise<PrintfulSyncProduct[]> {
     const result = await this.request<PrintfulSyncProduct[]>('/store/products');
     return result || [];
+  }
+
+  /**
+   * Get one sync product's full detail, including its ordering-ready
+   * sync variants (each with a sync_variant_id and its own retail price).
+   */
+  async getStoreProduct(syncProductId: number): Promise<PrintfulSyncProductDetail> {
+    return this.request<PrintfulSyncProductDetail>(`/store/products/${syncProductId}`);
   }
 
   /**

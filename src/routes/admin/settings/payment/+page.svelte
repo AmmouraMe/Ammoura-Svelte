@@ -81,6 +81,22 @@
           />
           <p class="help-text">⚠️ Keys are stored securely but handle with care</p>
         </div>
+
+        <div class="form-group">
+          <label for="stripeWebhookSecret">Webhook Signing Secret</label>
+          <input
+            id="stripeWebhookSecret"
+            name="stripeWebhookSecret"
+            type="password"
+            value={paymentSettings.stripeWebhookSecret}
+            placeholder="whsec_..."
+            autocomplete="off"
+          />
+          <p class="help-text">
+            From the webhook endpoint you register in your Stripe Dashboard pointing at
+            <code>/api/webhooks/stripe</code> on this site.
+          </p>
+        </div>
       </div>
 
       <div class="form-section">

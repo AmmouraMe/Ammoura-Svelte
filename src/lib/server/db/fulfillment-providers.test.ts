@@ -9,6 +9,7 @@ import {
   getProductFulfillmentOptions,
   setProductFulfillmentOptions
 } from './fulfillment-providers';
+import { generateEncryptionKey } from '../crypto';
 import type { DBFulfillmentProvider, DBProductFulfillmentOption } from '$lib/types/fulfillment';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -40,6 +41,7 @@ describe('fulfillment-providers', () => {
           config: null,
           is_default: 1,
           is_active: 1,
+          webhook_token: null,
           created_at: Date.now(),
           updated_at: Date.now()
         },
@@ -52,6 +54,7 @@ describe('fulfillment-providers', () => {
           config: null,
           is_default: 0,
           is_active: 1,
+          webhook_token: null,
           created_at: Date.now(),
           updated_at: Date.now()
         }
@@ -87,6 +90,7 @@ describe('fulfillment-providers', () => {
         config: null,
         is_default: 1,
         is_active: 1,
+        webhook_token: null,
         created_at: Date.now(),
         updated_at: Date.now()
       };
@@ -122,6 +126,7 @@ describe('fulfillment-providers', () => {
         config: null,
         is_default: 0,
         is_active: 1,
+        webhook_token: null,
         created_at: expect.any(Number),
         updated_at: expect.any(Number)
       };
@@ -149,6 +154,7 @@ describe('fulfillment-providers', () => {
         config: null,
         is_default: 0,
         is_active: 1,
+        webhook_token: null,
         created_at: expect.any(Number),
         updated_at: expect.any(Number)
       };
@@ -174,6 +180,7 @@ describe('fulfillment-providers', () => {
         config: null,
         is_default: 0,
         is_active: 1,
+        webhook_token: null,
         created_at: Date.now(),
         updated_at: Date.now()
       };
@@ -216,6 +223,7 @@ describe('fulfillment-providers', () => {
         config: null,
         is_default: 0,
         is_active: 1,
+        webhook_token: null,
         created_at: Date.now(),
         updated_at: Date.now()
       };
@@ -431,6 +439,7 @@ describe('fulfillment-providers', () => {
         config: null,
         is_default: 0,
         is_active: 0,
+        webhook_token: null,
         created_at: 12345,
         updated_at: 12345
       };
@@ -466,6 +475,7 @@ describe('fulfillment-providers', () => {
         name: 'Provider',
         description: 'Test',
         is_active: 0,
+        webhook_token: null,
         sort_order: 0,
         created_at: 1000,
         updated_at: 2000
@@ -525,6 +535,7 @@ describe('fulfillment-providers', () => {
         name: 'Provider',
         description: 'Test',
         is_active: 1,
+        webhook_token: null,
         sort_order: 0,
         created_at: 1000,
         updated_at: 2000
@@ -560,6 +571,7 @@ describe('fulfillment-providers', () => {
           config: null,
           is_default: 0,
           is_active: 1,
+          webhook_token: null,
           created_at: Date.now(),
           updated_at: Date.now()
         }
@@ -597,6 +609,7 @@ describe('fulfillment-providers', () => {
         config: JSON.stringify({ apiKey: 'test-key' }),
         is_default: 0,
         is_active: 1,
+        webhook_token: null,
         created_at: Date.now(),
         updated_at: Date.now()
       };
@@ -604,12 +617,17 @@ describe('fulfillment-providers', () => {
       mockDb.run.mockResolvedValue({ success: true });
       mockDb.first.mockResolvedValue(mockProvider);
 
-      const result = await createFulfillmentProvider(mockDb, testSiteId, {
-        name: 'Printful Store',
-        description: 'Print on demand',
-        providerType: 'printful',
-        config: { apiKey: 'test-key' }
-      });
+      const result = await createFulfillmentProvider(
+        mockDb,
+        testSiteId,
+        {
+          name: 'Printful Store',
+          description: 'Print on demand',
+          providerType: 'printful',
+          config: { apiKey: 'test-key' }
+        },
+        await generateEncryptionKey()
+      );
 
       expect(result.provider_type).toBe('printful');
       expect(result.config).toBe(JSON.stringify({ apiKey: 'test-key' }));
@@ -626,6 +644,7 @@ describe('fulfillment-providers', () => {
         config: null,
         is_default: 0,
         is_active: 1,
+        webhook_token: null,
         created_at: Date.now(),
         updated_at: Date.now()
       };
@@ -652,6 +671,7 @@ describe('fulfillment-providers', () => {
         config: null,
         is_default: 0,
         is_active: 1,
+        webhook_token: null,
         created_at: Date.now(),
         updated_at: Date.now()
       };
@@ -681,6 +701,7 @@ describe('fulfillment-providers', () => {
         config: null,
         is_default: 0,
         is_active: 1,
+        webhook_token: null,
         created_at: Date.now(),
         updated_at: Date.now()
       };
@@ -692,12 +713,93 @@ describe('fulfillment-providers', () => {
 
       mockDb.first.mockResolvedValueOnce(existing).mockResolvedValueOnce(updated);
 
-      const result = await updateFulfillmentProvider(mockDb, testSiteId, testProviderId, {
-        config: { apiKey: 'new-key' }
-      });
+      const result = await updateFulfillmentProvider(
+        mockDb,
+        testSiteId,
+        testProviderId,
+        { config: { apiKey: 'new-key' } },
+        await generateEncryptionKey()
+      );
 
       expect(result?.config).toBe(JSON.stringify({ apiKey: 'new-key' }));
       expect(mockDb.prepare).toHaveBeenCalledWith(expect.stringContaining('config = ?'));
+    });
+
+    it('throws when config is provided without an encryption key', async () => {
+      await expect(
+        createFulfillmentProvider(mockDb, testSiteId, {
+          name: 'Printful Store',
+          providerType: 'printful',
+          config: { apiKey: 'test-key' }
+        })
+      ).rejects.toThrow('Encryption key is required to store provider config');
+    });
+  });
+
+  describe('getDecryptedProviderConfig', () => {
+    it('decrypts a config that was encrypted at rest', async () => {
+      const { encrypt } = await import('../crypto');
+      const encryptionKey = await generateEncryptionKey();
+      const provider: DBFulfillmentProvider = {
+        id: testProviderId,
+        site_id: testSiteId,
+        name: 'Printful',
+        description: null,
+        provider_type: 'printful',
+        config: await encrypt(JSON.stringify({ apiKey: 'secret-key' }), encryptionKey),
+        is_default: 0,
+        is_active: 1,
+        webhook_token: null,
+        created_at: Date.now(),
+        updated_at: Date.now()
+      };
+
+      const { getDecryptedProviderConfig } = await import('./fulfillment-providers');
+      const config = await getDecryptedProviderConfig(provider, encryptionKey);
+
+      expect(config).toEqual({ apiKey: 'secret-key' });
+    });
+
+    it('returns an empty object when there is no config', async () => {
+      const provider: DBFulfillmentProvider = {
+        id: testProviderId,
+        site_id: testSiteId,
+        name: 'Manual',
+        description: null,
+        provider_type: 'manual',
+        config: null,
+        is_default: 0,
+        is_active: 1,
+        webhook_token: null,
+        created_at: Date.now(),
+        updated_at: Date.now()
+      };
+
+      const { getDecryptedProviderConfig } = await import('./fulfillment-providers');
+      const config = await getDecryptedProviderConfig(provider, await generateEncryptionKey());
+
+      expect(config).toEqual({});
+    });
+
+    it('returns an empty object rather than throwing on decrypt failure', async () => {
+      const provider: DBFulfillmentProvider = {
+        id: testProviderId,
+        site_id: testSiteId,
+        name: 'Printful',
+        description: null,
+        provider_type: 'printful',
+        config: 'not-valid-ciphertext',
+        is_default: 0,
+        is_active: 1,
+        webhook_token: null,
+        created_at: Date.now(),
+        updated_at: Date.now()
+      };
+
+      const { getDecryptedProviderConfig } = await import('./fulfillment-providers');
+      const config = await getDecryptedProviderConfig(provider, await generateEncryptionKey());
+
+      expect(config).toEqual({});
     });
   });
 });

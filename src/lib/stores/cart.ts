@@ -50,9 +50,9 @@ cartItems.subscribe((items) => {
   currentCartItems = items;
 });
 
-// Helper to get item by ID from current cart state
-function getItemByIdHelper(productId: string): CartItem | undefined {
-  return currentCartItems.find((item) => item.id === productId);
+// Helper to get item by ID (and, if the product has variants, the selected variant) from current cart state
+function getItemByIdHelper(productId: string, variantId?: string): CartItem | undefined {
+  return currentCartItems.find((item) => item.id === productId && item.variantId === variantId);
 }
 
 // Persist cart changes to localStorage
@@ -69,11 +69,11 @@ if (browser) {
 export interface CartStore {
   subscribe: typeof cartItems.subscribe;
   addItem: (product: Product | CartItem, quantity?: number) => void;
-  removeItem: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  removeItem: (productId: string, variantId?: string) => void;
+  updateQuantity: (productId: string, quantity: number, variantId?: string) => void;
   clear: () => void;
   clearCart: () => void;
-  getItemQuantity: (items: CartItem[], productId: string) => number;
+  getItemQuantity: (items: CartItem[], productId: string, variantId?: string) => number;
   getTotalItems: (items: CartItem[]) => number;
   getTotalPrice: (items: CartItem[]) => number;
 }
@@ -109,6 +109,7 @@ export const cartStore: CartStore = {
       const existingItem = items.find(
         (item) =>
           item.id === product.id &&
+          item.variantId === cartProduct.variantId &&
           !item.customizations?.length &&
           !item.fieldValues?.length &&
           !item.equipmentValues?.length
@@ -133,9 +134,11 @@ export const cartStore: CartStore = {
     });
   },
 
-  removeItem: (productId: string): void => {
-    const item = getItemByIdHelper(productId);
-    cartItems.update((items: CartItem[]) => items.filter((item) => item.id !== productId));
+  removeItem: (productId: string, variantId?: string): void => {
+    const item = getItemByIdHelper(productId, variantId);
+    cartItems.update((items: CartItem[]) =>
+      items.filter((item) => !(item.id === productId && item.variantId === variantId))
+    );
 
     // Log cart action
     if (item) {
@@ -143,15 +146,15 @@ export const cartStore: CartStore = {
     }
   },
 
-  updateQuantity: (productId: string, quantity: number): void => {
+  updateQuantity: (productId: string, quantity: number, variantId?: string): void => {
     if (quantity <= 0) {
-      cartStore.removeItem(productId);
+      cartStore.removeItem(productId, variantId);
       return;
     }
 
-    const item = getItemByIdHelper(productId);
+    const item = getItemByIdHelper(productId, variantId);
     cartItems.update((items: CartItem[]) => {
-      const item = items.find((item) => item.id === productId);
+      const item = items.find((item) => item.id === productId && item.variantId === variantId);
       if (item) {
         item.quantity = quantity;
       }
@@ -179,8 +182,8 @@ export const cartStore: CartStore = {
     cartStore.clear();
   },
 
-  getItemQuantity: (items: CartItem[], productId: string): number => {
-    const item = items.find((item) => item.id === productId);
+  getItemQuantity: (items: CartItem[], productId: string, variantId?: string): number => {
+    const item = items.find((item) => item.id === productId && item.variantId === variantId);
     return item ? item.quantity : 0;
   },
 

@@ -539,6 +539,54 @@ export async function saveOrderItemEquipmentValues(
   }
 }
 
+export interface OrderItemEquipmentValueSubmission {
+  equipmentId: string;
+  fieldId: string;
+  fieldName: string;
+  value: string;
+}
+
+export interface OrderItemWithEquipmentValues {
+  product_id?: string;
+  equipment_values?: OrderItemEquipmentValueSubmission[];
+}
+
+/**
+ * Save equipment values for every order item that has them, resolving each
+ * item's order_item_id by product_id — shared by every order-creation path
+ * (Stripe checkout, and any other/manual order-creation endpoint) so
+ * equipment-customized products carry their field values regardless of how
+ * the order was paid for.
+ */
+export async function saveEquipmentValuesForOrderItems(
+  db: D1Database,
+  orderId: string,
+  items: OrderItemWithEquipmentValues[]
+): Promise<void> {
+  for (const item of items) {
+    if (!item.equipment_values?.length || !item.product_id) continue;
+
+    const orderItems = await db
+      .prepare('SELECT id FROM order_items WHERE order_id = ? AND product_id = ?')
+      .bind(orderId, item.product_id)
+      .all<{ id: string }>();
+
+    const orderItemId = orderItems.results?.[0]?.id;
+    if (orderItemId) {
+      await saveOrderItemEquipmentValues(
+        db,
+        orderItemId,
+        item.equipment_values.map((ev) => ({
+          equipmentId: ev.equipmentId,
+          equipmentFieldId: ev.fieldId,
+          fieldName: ev.fieldName,
+          value: ev.value
+        }))
+      );
+    }
+  }
+}
+
 /**
  * Get equipment values for an order item
  */

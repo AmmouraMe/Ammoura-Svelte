@@ -11,7 +11,7 @@ import {
 import type { CartItem } from '../types';
 
 type SubmitOrderItem = Pick<CartItem, 'id' | 'name' | 'price' | 'quantity' | 'image'> &
-  Partial<Pick<CartItem, 'equipmentValues'>>;
+  Partial<Pick<CartItem, 'equipmentValues' | 'variantId'>>;
 
 // Initial form data
 const initialFormData: CheckoutFormData = {
@@ -104,7 +104,7 @@ async function submitOrder(
   shippingCost: number,
   tax: number,
   total: number
-): Promise<{ success: boolean; orderId?: string; error?: string }> {
+): Promise<{ success: boolean; url?: string; error?: string }> {
   checkoutState.update((state) => ({ ...state, isSubmitting: true }));
 
   try {
@@ -176,6 +176,7 @@ async function submitOrder(
     const orderData = {
       items: cartItems.map((item) => ({
         product_id: item.id,
+        variant_id: item.variantId,
         name: item.name,
         price: item.price,
         quantity: item.quantity,
@@ -190,12 +191,11 @@ async function submitOrder(
       billing_address: currentState.formData.sameAsShipping
         ? copyShippingToBilling(currentState.formData.shippingAddress)
         : currentState.formData.billingAddress,
-      payment_method: currentState.formData.paymentMethod,
       shipping_details: shippingDetails
     };
 
-    // Call the API to create the order
-    const response = await fetch('/api/orders', {
+    // Create the order (unpaid) and a Stripe Checkout Session for it
+    const response = await fetch('/api/checkout/session', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -205,13 +205,14 @@ async function submitOrder(
 
     const result = (await response.json()) as {
       success: boolean;
+      url?: string;
       orderId?: string;
       error?: string;
     };
 
-    if (!response.ok || !result.success) {
+    if (!response.ok || !result.success || !result.url) {
       checkoutState.update((state) => ({ ...state, isSubmitting: false }));
-      return { success: false, error: result.error || 'Failed to process order' };
+      return { success: false, error: result.error || 'Failed to start checkout' };
     }
 
     checkoutState.update((state) => ({
@@ -219,7 +220,7 @@ async function submitOrder(
       isSubmitting: false
     }));
 
-    return { success: true, orderId: result.orderId };
+    return { success: true, url: result.url };
   } catch (error) {
     checkoutState.update((state) => ({
       ...state,

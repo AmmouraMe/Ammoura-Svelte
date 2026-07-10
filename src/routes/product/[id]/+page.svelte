@@ -32,6 +32,10 @@
   let fieldValues: CartItemFieldValue[] = [];
   let equipmentValues: CartItemEquipmentValue[] = [];
 
+  $: hasVariants = (product.variants?.length ?? 0) > 0;
+  let selectedVariantId: string | undefined = product.variants?.[0]?.id;
+  $: selectedVariant = product.variants?.find((v) => v.id === selectedVariantId);
+
   $: hasCustomizationZones = customizationZones.length > 0;
   $: hasCustomizationFields = customizationFields.length > 0;
   $: hasEquipment = productEquipment.length > 0;
@@ -40,9 +44,15 @@
     (sum: number, fv: CartItemFieldValue) => sum + fv.priceModifier,
     0
   );
-  $: displayPrice = product.price + fieldPriceModifier;
-  $: cartQuantity = cartStore.getItemQuantity($cartItems, product.id);
-  $: totalStock = calculateTotalStock(product.fulfillmentOptions);
+  $: basePrice = selectedVariant ? selectedVariant.price : product.price;
+  $: displayPrice = basePrice + fieldPriceModifier;
+  $: cartQuantity = cartStore.getItemQuantity($cartItems, product.id, selectedVariantId);
+  // A null variant stockQuantity means it isn't tracked locally (Printful is the
+  // source of truth for print-on-demand inventory) — treat as always available.
+  $: variantStock = selectedVariant?.stockQuantity ?? null;
+  $: totalStock = hasVariants
+    ? (variantStock ?? Number.MAX_SAFE_INTEGER)
+    : calculateTotalStock(product.fulfillmentOptions);
   $: hasShippingOptions =
     product.type === 'physical' && product.shippingOptions && product.shippingOptions.length > 0;
 
@@ -75,10 +85,12 @@
     const hasFieldCustomizations = fieldValues.length > 0;
     const hasEquipmentValues = hasEquipment && equipmentValues.length > 0;
 
-    const productToAdd = { ...product } as Product & {
+    const productToAdd = { ...product, price: basePrice } as Product & {
       customizations?: CartItemCustomization[];
       fieldValues?: CartItemFieldValue[];
       equipmentValues?: CartItemEquipmentValue[];
+      variantId?: string;
+      variantLabel?: string;
     };
 
     if (hasZoneCustomizations) {
@@ -90,8 +102,16 @@
     if (hasEquipmentValues) {
       productToAdd.equipmentValues = equipmentValues;
     }
+    if (selectedVariant) {
+      productToAdd.variantId = selectedVariant.id;
+      productToAdd.variantLabel = selectedVariant.label;
+    }
 
     cartStore.addItem(productToAdd, 1);
+  }
+
+  function selectVariant(variantId: string): void {
+    selectedVariantId = variantId;
   }
 
   function handleCustomizationsChange(e: CustomEvent<CartItemCustomization[]>): void {
@@ -107,11 +127,11 @@
   }
 
   function incrementCartQuantity(): void {
-    cartStore.updateQuantity(product.id, cartQuantity + 1);
+    cartStore.updateQuantity(product.id, cartQuantity + 1, selectedVariantId);
   }
 
   function decrementCartQuantity(): void {
-    cartStore.updateQuantity(product.id, cartQuantity - 1);
+    cartStore.updateQuantity(product.id, cartQuantity - 1, selectedVariantId);
   }
 
   function formatEstimatedDelivery(option: ShippingOptionDisplay): string {
@@ -155,11 +175,35 @@
       <div class="price-display">
         <span class="price">${displayPrice.toFixed(2)}</span>
         {#if fieldPriceModifier > 0}
-          <span class="base-price">(Base: ${product.price.toFixed(2)})</span>
+          <span class="base-price">(Base: ${basePrice.toFixed(2)})</span>
         {/if}
       </div>
-      <span class="stock">{totalStock} in stock</span>
+      <span class="stock">
+        {#if hasVariants && variantStock === null}
+          In stock
+        {:else}
+          {totalStock} in stock
+        {/if}
+      </span>
     </div>
+
+    {#if hasVariants}
+      <div class="variant-picker">
+        <span class="variant-picker-label">Options</span>
+        <div class="variant-options">
+          {#each product.variants ?? [] as variant (variant.id)}
+            <button
+              type="button"
+              class="variant-option"
+              class:selected={variant.id === selectedVariantId}
+              on:click={() => selectVariant(variant.id)}
+            >
+              {variant.label}
+            </button>
+          {/each}
+        </div>
+      </div>
+    {/if}
 
     {#if hasCustomizationFields}
       <ProductCustomizationFields
@@ -322,6 +366,48 @@
   .stock {
     color: var(--color-text-secondary);
     transition: color var(--transition-normal);
+  }
+
+  .variant-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .variant-picker-label {
+    font-size: 0.85rem;
+    color: var(--color-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .variant-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .variant-option {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--color-border-primary);
+    border-radius: 6px;
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition:
+      border-color var(--transition-normal),
+      background-color var(--transition-normal);
+  }
+
+  .variant-option:hover {
+    border-color: var(--color-primary);
+  }
+
+  .variant-option.selected {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: var(--color-bg-primary);
   }
 
   .shipping-info {

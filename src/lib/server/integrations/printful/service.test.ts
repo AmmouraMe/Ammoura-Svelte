@@ -1,11 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PrintfulService } from './service';
 import { PrintfulClient } from './client';
+import { encrypt, generateEncryptionKey } from '$lib/server/crypto';
 import type { DBFulfillmentProvider } from '$lib/types/fulfillment';
-import type { D1Database } from '@cloudflare/workers-types';
 
 describe('PrintfulService', () => {
-  let mockDb: D1Database;
   let mockClientInstance: Record<string, ReturnType<typeof vi.fn>>;
   let service: PrintfulService;
 
@@ -21,21 +20,12 @@ describe('PrintfulService', () => {
     config: JSON.stringify({ apiKey: 'test-key' }),
     is_default: 0,
     is_active: 1,
+    webhook_token: null,
     created_at: Date.now(),
     updated_at: Date.now()
   };
 
   beforeEach(() => {
-    mockDb = {
-      prepare: vi.fn().mockReturnValue({
-        bind: vi.fn().mockReturnValue({
-          first: vi.fn(),
-          all: vi.fn(),
-          run: vi.fn()
-        })
-      })
-    } as unknown as D1Database;
-
     mockClientInstance = {
       getProducts: vi.fn(),
       getProductById: vi.fn(),
@@ -45,7 +35,7 @@ describe('PrintfulService', () => {
       cancelOrder: vi.fn()
     };
 
-    service = new PrintfulService(mockDb, mockProvider);
+    service = new PrintfulService(mockProvider, { apiKey: 'test-key' });
     service['client'] = mockClientInstance as unknown as PrintfulClient; // Inject mock client
   });
 
@@ -60,18 +50,40 @@ describe('PrintfulService', () => {
         provider_type: 'manual'
       };
 
-      expect(() => new PrintfulService(mockDb, invalidProvider)).toThrow(
+      expect(() => new PrintfulService(invalidProvider, { apiKey: 'test-key' })).toThrow(
         'Provider is not Printful type'
       );
     });
 
     it('throws error if API key is missing from config', () => {
-      const noKeyProvider: DBFulfillmentProvider = {
+      expect(() => new PrintfulService(mockProvider, { apiKey: '' })).toThrow();
+    });
+  });
+
+  describe('fromProvider', () => {
+    it('decrypts the provider config and builds a working service', async () => {
+      const encryptionKey = await generateEncryptionKey();
+      const encryptedProvider: DBFulfillmentProvider = {
         ...mockProvider,
-        config: JSON.stringify({})
+        config: await encrypt(JSON.stringify({ apiKey: 'test-key' }), encryptionKey)
       };
 
-      expect(() => new PrintfulService(mockDb, noKeyProvider)).toThrow();
+      const built = await PrintfulService.fromProvider(encryptedProvider, encryptionKey);
+
+      expect(built.isConfigValid()).toBe(true);
+      expect(built.getPrintfulConfig()).toEqual({ apiKey: 'test-key' });
+    });
+
+    it('throws if the decrypted config has no API key', async () => {
+      const encryptionKey = await generateEncryptionKey();
+      const encryptedProvider: DBFulfillmentProvider = {
+        ...mockProvider,
+        config: await encrypt(JSON.stringify({}), encryptionKey)
+      };
+
+      await expect(PrintfulService.fromProvider(encryptedProvider, encryptionKey)).rejects.toThrow(
+        'Printful API key is required'
+      );
     });
   });
 
@@ -357,12 +369,7 @@ describe('PrintfulService', () => {
     });
 
     it('throws error when trying to create service with invalid config', () => {
-      const invalidProvider: DBFulfillmentProvider = {
-        ...mockProvider,
-        config: JSON.stringify({})
-      };
-
-      expect(() => new PrintfulService(mockDb, invalidProvider)).toThrow(
+      expect(() => new PrintfulService(mockProvider, {} as { apiKey: string })).toThrow(
         'Printful API key is required'
       );
     });

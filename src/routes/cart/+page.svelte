@@ -8,12 +8,12 @@
   $: totalItems = cartStore.getTotalItems($cartStore);
   $: totalPrice = cartStore.getTotalPrice($cartStore);
 
-  function updateQuantity(productId: string, quantity: number) {
-    cartStore.updateQuantity(productId, quantity);
+  function updateQuantity(productId: string, quantity: number, variantId?: string) {
+    cartStore.updateQuantity(productId, quantity, variantId);
   }
 
-  function removeItem(productId: string) {
-    cartStore.removeItem(productId);
+  function removeItem(productId: string, variantId?: string) {
+    cartStore.removeItem(productId, variantId);
   }
 
   function clearCart() {
@@ -49,27 +49,32 @@
           <img src={item.image} alt={item.name} />
           <div class="item-details">
             <h3>{item.name}</h3>
+            {#if item.variantLabel}
+              <p class="item-variant">{item.variantLabel}</p>
+            {/if}
             <p class="item-price">${item.price}</p>
             <p class="item-category">{item.category}</p>
           </div>
           <div class="item-controls">
             <div class="quantity-controls">
               <button
-                on:click={() => updateQuantity(item.id, item.quantity - 1)}
+                on:click={() => updateQuantity(item.id, item.quantity - 1, item.variantId)}
                 disabled={item.quantity <= 1}
               >
                 -
               </button>
               <span class="quantity">{item.quantity}</span>
               <button
-                on:click={() => updateQuantity(item.id, item.quantity + 1)}
+                on:click={() => updateQuantity(item.id, item.quantity + 1, item.variantId)}
                 disabled={item.quantity >= totalStock}
               >
                 +
               </button>
             </div>
             <p class="item-total">${(item.price * item.quantity).toFixed(2)}</p>
-            <Button variant="danger" on:click={() => removeItem(item.id)}>Remove</Button>
+            <Button variant="danger" on:click={() => removeItem(item.id, item.variantId)}
+              >Remove</Button
+            >
           </div>
         </div>
       {/each}
@@ -183,6 +188,12 @@
     margin: 0 0 0.5rem 0;
     color: var(--color-text-primary);
     transition: color var(--transition-normal);
+  }
+
+  .item-variant {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+    margin: 0 0 0.25rem 0;
   }
 
   .item-price {

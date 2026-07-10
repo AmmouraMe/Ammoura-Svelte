@@ -1,14 +1,18 @@
 import type { PageServerLoad } from './$types';
 import { getDB } from '$lib/server/db/connection';
-import { getFulfillmentProvidersByType } from '$lib/server/db/fulfillment-providers';
+import {
+  getFulfillmentProvidersByType,
+  getDecryptedProviderConfig
+} from '$lib/server/db/fulfillment-providers';
 import { PrintfulClient } from '$lib/server/integrations/printful/client';
 import type { PrintfulStore } from '$lib/server/integrations/printful/types';
 
-export const load: PageServerLoad = async ({ platform, locals }) => {
-  if (!platform?.env?.DB) {
+export const load: PageServerLoad = async ({ platform, locals, url }) => {
+  if (!platform?.env?.DB || !platform?.env?.ENCRYPTION_KEY) {
     return { provider: null, store: null };
   }
 
+  const encryptionKey = platform.env.ENCRYPTION_KEY;
   const db = getDB(platform);
   const siteId = locals.siteId || 'default-site';
 
@@ -18,15 +22,13 @@ export const load: PageServerLoad = async ({ platform, locals }) => {
   }
 
   const provider = providers[0];
-  let config: { apiKey?: string } = {};
-  try {
-    config = provider.config ? JSON.parse(provider.config) : {};
-  } catch {
-    // invalid config — treat as not connected
-  }
+  const config = await getDecryptedProviderConfig(provider, encryptionKey);
+  const webhookUrl = provider.webhook_token
+    ? `${url.origin}/api/webhooks/printful?token=${provider.webhook_token}`
+    : null;
 
   if (!config.apiKey) {
-    return { provider: { id: provider.id }, store: null };
+    return { provider: { id: provider.id }, store: null, webhookUrl };
   }
 
   let store: PrintfulStore | null = null;
@@ -37,5 +39,5 @@ export const load: PageServerLoad = async ({ platform, locals }) => {
     // API key may be invalid; let the page handle the disconnected state
   }
 
-  return { provider: { id: provider.id }, store };
+  return { provider: { id: provider.id }, store, webhookUrl };
 };

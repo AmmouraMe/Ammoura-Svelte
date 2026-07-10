@@ -6,7 +6,6 @@
   import { checkoutStore } from '../../lib/stores/checkout';
   import ShippingAddressForm from '../../lib/components/ShippingAddressForm.svelte';
   import BillingAddressForm from '../../lib/components/BillingAddressForm.svelte';
-  import PaymentMethodForm from '../../lib/components/PaymentMethodForm.svelte';
   import ShippingOptionsSelector from '../../lib/components/ShippingOptionsSelector.svelte';
   import ShippingGroupsSelector from '../../lib/components/ShippingGroupsSelector.svelte';
   import Button from '../../lib/components/Button.svelte';
@@ -144,14 +143,10 @@
 
     const result = await checkoutStore.submitOrder(cartItems, subtotal, shippingCost, tax, total);
 
-    if (result.success && result.orderId) {
-      // Clear cart after successful order
-      cartStore.clearCart();
-
-      // Navigate to success page with order details
-      goto(
-        `/checkout/success?orderId=${result.orderId}&total=${total.toFixed(2)}&email=${checkoutState.formData.shippingAddress.email}`
-      );
+    if (result.success && result.url) {
+      // Leave the cart as-is until Stripe confirms payment — the success
+      // page clears it once the customer is actually redirected back paid.
+      window.location.href = result.url;
     } else {
       errorMessage = result.error || 'Failed to process order';
       setTimeout(() => (errorMessage = ''), 5000);
@@ -243,7 +238,13 @@
           {:else if currentStep === 3}
             <BillingAddressForm errors={validationErrors.billingAddress || {}} />
           {:else if currentStep === 4}
-            <PaymentMethodForm errors={validationErrors.paymentMethod || {}} />
+            <div class="stripe-redirect-notice">
+              <h3>Payment</h3>
+              <p>
+                You'll be securely redirected to Stripe to enter your card details. We never see or
+                store your card number.
+              </p>
+            </div>
           {/if}
         </div>
 
@@ -508,6 +509,24 @@
 
   .step-content {
     margin-bottom: 2rem;
+  }
+
+  .stripe-redirect-notice {
+    padding: 1.5rem;
+    background: var(--color-bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--color-border-primary);
+  }
+
+  .stripe-redirect-notice h3 {
+    margin: 0 0 0.5rem 0;
+    color: var(--color-text-primary);
+  }
+
+  .stripe-redirect-notice p {
+    margin: 0;
+    color: var(--color-text-secondary);
+    line-height: 1.6;
   }
 
   .step-navigation {

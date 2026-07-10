@@ -7,23 +7,34 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDB } from '$lib/server/db/connection';
+import { getFulfillmentProvidersByType } from '$lib/server/db/fulfillment-providers';
 import { updatePrintfulOrderStatus } from '$lib/server/integrations/printful/db';
 import { logActivity } from '$lib/server/activity-logger';
 import type { PrintfulWebhookEvent } from '$lib/server/integrations/printful/types';
 
 /**
- * POST /api/webhooks/printful
- * Receive webhook events from Printful
+ * POST /api/webhooks/printful?token=...
+ * Receive webhook events from Printful. Printful v1 has no HMAC signature to
+ * verify, so authenticity is checked via a shared-secret token embedded in
+ * the webhook URL the owner registers (generated at connect time).
  */
-export const POST: RequestHandler = async ({ request, platform, locals }) => {
+export const POST: RequestHandler = async ({ request, platform, locals, url }) => {
   if (!platform?.env?.DB) {
     throw error(503, 'Database not available');
   }
 
-  try {
-    const db = getDB(platform);
-    const siteId = locals.siteId || 'default-site';
+  const db = getDB(platform);
+  const siteId = locals.siteId || 'default-site';
 
+  const token = url.searchParams.get('token');
+  const providers = await getFulfillmentProvidersByType(db, siteId, 'printful');
+  const provider = providers[0];
+
+  if (!provider?.webhook_token || token !== provider.webhook_token) {
+    throw error(401, 'Invalid webhook token');
+  }
+
+  try {
     // Parse webhook payload
     const body = (await request.json()) as PrintfulWebhookEvent;
 

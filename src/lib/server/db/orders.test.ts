@@ -7,6 +7,9 @@ import {
   createOrder,
   updateOrderStatus,
   deleteOrder,
+  getOrderByStripeSessionId,
+  setOrderStripeSession,
+  markOrderPaid,
   type DBOrder,
   type DBOrderItem,
   type CreateOrderData
@@ -19,6 +22,9 @@ describe('Orders Repository', () => {
     site_id: siteId,
     user_id: 'user-1',
     status: 'pending',
+    payment_status: 'unpaid',
+    stripe_session_id: null,
+    stripe_payment_intent_id: null,
     subtotal: 100,
     shipping_cost: 10,
     tax: 5,
@@ -35,6 +41,7 @@ describe('Orders Repository', () => {
     id: 'item-1',
     order_id: 'order-1',
     product_id: 'product-1',
+    variant_id: null,
     name: 'Test Product',
     price: 50.0,
     quantity: 2,
@@ -539,6 +546,9 @@ describe('Orders Repository', () => {
         site_id: siteId,
         user_id: null,
         status: 'pending',
+        payment_status: 'unpaid',
+        stripe_session_id: null,
+        stripe_payment_intent_id: null,
         total: 100,
         subtotal: 90,
         shipping_cost: 5,
@@ -591,6 +601,9 @@ describe('Orders Repository', () => {
         site_id: siteId,
         user_id: null,
         status: 'pending',
+        payment_status: 'unpaid',
+        stripe_session_id: null,
+        stripe_payment_intent_id: null,
         total: 100,
         subtotal: 90,
         shipping_cost: 5,
@@ -623,6 +636,62 @@ describe('Orders Repository', () => {
         payment_method: { type: 'credit-card' }
       } as CreateOrderData);
       expect(result).toBeDefined();
+    });
+  });
+
+  describe('getOrderByStripeSessionId', () => {
+    it('looks up an order by its Stripe Checkout Session id, scoped by site', async () => {
+      const mockFirst = vi.fn().mockResolvedValue(mockOrder);
+      const mockBind = vi.fn().mockReturnValue({ first: mockFirst });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await getOrderByStripeSessionId(mockDB, siteId, 'cs_test_123');
+
+      expect(mockBind).toHaveBeenCalledWith(siteId, 'cs_test_123');
+      expect(result).toEqual(mockOrder);
+    });
+  });
+
+  describe('setOrderStripeSession', () => {
+    it('stores the Stripe Checkout Session id on the order', async () => {
+      const mockRun = vi.fn().mockResolvedValue({});
+      const mockBind = vi.fn().mockReturnValue({ run: mockRun });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      await setOrderStripeSession(mockDB, siteId, 'order-1', 'cs_test_123');
+
+      expect(mockBind).toHaveBeenCalledWith('cs_test_123', expect.any(Number), 'order-1', siteId);
+      expect(mockRun).toHaveBeenCalled();
+    });
+  });
+
+  describe('markOrderPaid', () => {
+    it('flips an unpaid order to paid and returns true', async () => {
+      const mockRun = vi.fn().mockResolvedValue({ meta: { changes: 1 } });
+      const mockBind = vi.fn().mockReturnValue({ run: mockRun });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await markOrderPaid(mockDB, siteId, 'order-1', 'pi_test_123');
+
+      expect(mockPrepare).toHaveBeenCalledWith(
+        expect.stringContaining("payment_status = 'unpaid'")
+      );
+      expect(mockBind).toHaveBeenCalledWith('pi_test_123', expect.any(Number), 'order-1', siteId);
+      expect(result).toBe(true);
+    });
+
+    it('returns false (no-op) when the order was already paid — retried webhook', async () => {
+      const mockRun = vi.fn().mockResolvedValue({ meta: { changes: 0 } });
+      const mockBind = vi.fn().mockReturnValue({ run: mockRun });
+      const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+      const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+      const result = await markOrderPaid(mockDB, siteId, 'order-1', 'pi_test_123');
+
+      expect(result).toBe(false);
     });
   });
 });

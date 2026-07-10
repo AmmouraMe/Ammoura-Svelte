@@ -1,4 +1,5 @@
 import type { D1Database } from '@cloudflare/workers-types';
+import { encrypt, decrypt } from '../crypto.js';
 
 export interface SiteSetting {
   id: string;
@@ -67,12 +68,20 @@ export interface PaymentSettings {
   stripeMode: 'test' | 'live';
   stripePublicKey: string;
   stripeSecretKey: string;
+  stripeWebhookSecret: string;
   paypalEnabled: boolean;
   paypalMode: 'sandbox' | 'live';
   paypalClientId: string;
   paypalClientSecret: string;
   testModeEnabled: boolean;
 }
+
+/** Settings keys whose values are encrypted at rest (secrets, not just config). */
+const ENCRYPTED_PAYMENT_KEYS = new Set<keyof PaymentSettings>([
+  'stripeSecretKey',
+  'stripeWebhookSecret',
+  'paypalClientSecret'
+]);
 
 export interface EmailSettings {
   provider: 'sendmail' | 'smtp';
@@ -382,40 +391,60 @@ export async function updateTaxSettings(
 }
 
 /**
- * Get payment settings
- * Note: Sensitive values should be decrypted at application level
+ * Get payment settings. Encrypted secrets (Stripe secret key, Stripe webhook
+ * secret, PayPal client secret) are decrypted here if an encryptionKey is
+ * given; otherwise those fields come back blank rather than as ciphertext.
  */
-export async function getPaymentSettings(db: D1Database, siteId: string): Promise<PaymentSettings> {
+export async function getPaymentSettings(
+  db: D1Database,
+  siteId: string,
+  encryptionKey?: string
+): Promise<PaymentSettings> {
   const settings = await getSiteSettings(db, siteId);
   const settingsMap = new Map(settings.map((s) => [s.setting_key, s.setting_value]));
+
+  const decryptField = async (key: string): Promise<string> => {
+    const raw = settingsMap.get(key);
+    if (!raw) return '';
+    if (!encryptionKey) return '';
+    try {
+      return await decrypt(raw, encryptionKey);
+    } catch (err) {
+      console.error(`Failed to decrypt payment setting ${key}:`, err);
+      return '';
+    }
+  };
 
   return {
     stripeEnabled: settingsMap.get('payment_stripe_enabled') === 'true',
     stripeMode: (settingsMap.get('payment_stripe_mode') as 'test' | 'live') || 'test',
     stripePublicKey: settingsMap.get('payment_stripe_public_key') || '',
-    stripeSecretKey: settingsMap.get('payment_stripe_secret_key') || '',
+    stripeSecretKey: await decryptField('payment_stripe_secret_key'),
+    stripeWebhookSecret: await decryptField('payment_stripe_webhook_secret'),
     paypalEnabled: settingsMap.get('payment_paypal_enabled') === 'true',
     paypalMode: (settingsMap.get('payment_paypal_mode') as 'sandbox' | 'live') || 'sandbox',
     paypalClientId: settingsMap.get('payment_paypal_client_id') || '',
-    paypalClientSecret: settingsMap.get('payment_paypal_client_secret') || '',
+    paypalClientSecret: await decryptField('payment_paypal_client_secret'),
     testModeEnabled: settingsMap.get('payment_test_mode_enabled') === 'true'
   };
 }
 
 /**
- * Update payment settings
- * Note: Sensitive values should be encrypted at application level before calling this
+ * Update payment settings. Encrypted secrets require an encryptionKey —
+ * throws rather than silently persisting plaintext.
  */
 export async function updatePaymentSettings(
   db: D1Database,
   siteId: string,
-  settings: Partial<PaymentSettings>
+  settings: Partial<PaymentSettings>,
+  encryptionKey?: string
 ): Promise<void> {
   const settingsMap: Record<keyof PaymentSettings, string> = {
     stripeEnabled: 'payment_stripe_enabled',
     stripeMode: 'payment_stripe_mode',
     stripePublicKey: 'payment_stripe_public_key',
     stripeSecretKey: 'payment_stripe_secret_key',
+    stripeWebhookSecret: 'payment_stripe_webhook_secret',
     paypalEnabled: 'payment_paypal_enabled',
     paypalMode: 'payment_paypal_mode',
     paypalClientId: 'payment_paypal_client_id',
@@ -424,8 +453,17 @@ export async function updatePaymentSettings(
   };
 
   for (const [key, value] of Object.entries(settings)) {
-    if (value !== undefined) {
-      const dbKey = settingsMap[key as keyof PaymentSettings];
+    if (value === undefined) continue;
+    const typedKey = key as keyof PaymentSettings;
+    const dbKey = settingsMap[typedKey];
+
+    if (ENCRYPTED_PAYMENT_KEYS.has(typedKey)) {
+      if (!value) continue; // don't overwrite a stored secret with a blank re-submit
+      if (!encryptionKey) {
+        throw new Error(`Encryption key is required to store ${typedKey}`);
+      }
+      await upsertSiteSetting(db, siteId, dbKey, await encrypt(String(value), encryptionKey));
+    } else {
       await upsertSiteSetting(db, siteId, dbKey, String(value));
     }
   }

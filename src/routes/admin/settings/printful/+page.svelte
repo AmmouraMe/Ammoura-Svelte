@@ -5,6 +5,7 @@
   export let data: {
     provider: { id: string } | null;
     store: { id: number; name: string; currency: string } | null;
+    webhookUrl?: string | null;
   };
 
   // Connection state
@@ -20,7 +21,7 @@
     thumbnail_url: string | null;
     imported: boolean;
     selected: boolean;
-    price: number;
+    markupPercent: number;
   }> = [];
   let loadingProducts = false;
   let productsLoaded = false;
@@ -77,7 +78,7 @@
       products = (body.products || []).map((p) => ({
         ...p,
         selected: false,
-        price: 0
+        markupPercent: 0
       }));
       productsLoaded = true;
     } catch {
@@ -99,7 +100,7 @@
           products: selectedProducts.map((p) => ({
             printfulId: p.id,
             name: p.name,
-            price: p.price,
+            markupPercent: p.markupPercent,
             thumbnailUrl: p.thumbnail_url
           }))
         })
@@ -208,15 +209,33 @@
           Your Printful store <strong>{data.store?.name}</strong> is connected. Products you set up in
           Printful are available to import below.
         </p>
+        {#if data.webhookUrl}
+          <div class="webhook-info">
+            <p class="webhook-label">
+              To get order status updates (shipped, tracking, etc.), add this URL as a webhook in
+              your Printful Dashboard → Settings → Webhooks:
+            </p>
+            <code class="webhook-url">{data.webhookUrl}</code>
+          </div>
+        {/if}
         <details class="update-key">
           <summary>Update API key</summary>
           <div class="key-form">
-            <input
-              type={showKey ? 'text' : 'password'}
-              bind:value={apiKey}
-              placeholder="Paste new API key"
-              class="key-input"
-            />
+            {#if showKey}
+              <input
+                type="text"
+                bind:value={apiKey}
+                placeholder="Paste new API key"
+                class="key-input"
+              />
+            {:else}
+              <input
+                type="password"
+                bind:value={apiKey}
+                placeholder="Paste new API key"
+                class="key-input"
+              />
+            {/if}
             <button class="toggle-visibility" on:click={() => (showKey = !showKey)} type="button">
               {showKey ? 'Hide' : 'Show'}
             </button>
@@ -239,13 +258,23 @@
           </a>. Create a store-level token with at least <em>sync products</em> read access.
         </p>
         <div class="key-form">
-          <input
-            type={showKey ? 'text' : 'password'}
-            bind:value={apiKey}
-            placeholder="Paste your Printful API key"
-            class="key-input"
-            on:keydown={(e) => e.key === 'Enter' && handleConnect()}
-          />
+          {#if showKey}
+            <input
+              type="text"
+              bind:value={apiKey}
+              placeholder="Paste your Printful API key"
+              class="key-input"
+              on:keydown={(e) => e.key === 'Enter' && handleConnect()}
+            />
+          {:else}
+            <input
+              type="password"
+              bind:value={apiKey}
+              placeholder="Paste your Printful API key"
+              class="key-input"
+              on:keydown={(e) => e.key === 'Enter' && handleConnect()}
+            />
+          {/if}
           <button class="toggle-visibility" on:click={() => (showKey = !showKey)} type="button">
             {showKey ? 'Hide' : 'Show'}
           </button>
@@ -364,15 +393,14 @@
                   <span class="imported-badge">Imported</span>
                 {:else}
                   <div class="price-field">
-                    <span class="currency">$</span>
                     <input
                       type="number"
-                      bind:value={product.price}
-                      min="0"
-                      step="0.01"
-                      placeholder="0.00"
+                      bind:value={product.markupPercent}
+                      step="1"
+                      placeholder="0"
                       class="price-input"
                     />
+                    <span class="currency">% markup</span>
                   </div>
                 {/if}
               </div>
@@ -382,8 +410,8 @@
 
         <div class="import-footer">
           <p class="price-note">
-            Set the retail price for each product before importing. You can edit prices later in
-            Products.
+            Each variant is priced at its Printful retail price plus the markup you set here (0% =
+            sell at Printful's price). You can edit variant prices later in Products.
           </p>
           <button
             class="btn-primary large"
@@ -558,6 +586,27 @@
     color: var(--color-text-secondary);
     font-size: 0.9rem;
     line-height: 1.5;
+  }
+
+  .webhook-info {
+    margin: 0.75rem 0;
+    padding: 0.75rem;
+    background: var(--color-bg-secondary);
+    border-radius: 6px;
+  }
+
+  .connected-info .webhook-label {
+    margin: 0 0 0.5rem 0;
+  }
+
+  .webhook-url {
+    display: block;
+    padding: 0.5rem;
+    background: var(--color-bg-primary);
+    border-radius: 4px;
+    font-size: 0.8rem;
+    word-break: break-all;
+    color: var(--color-text-primary);
   }
 
   .update-key {

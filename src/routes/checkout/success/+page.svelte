@@ -1,23 +1,22 @@
-<script>
+<script lang="ts">
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { cartStore } from '../../../lib/stores/cart';
   import Button from '../../../lib/components/Button.svelte';
+  import type { PageData } from './$types';
 
-  let orderId = '';
-  let orderTotal = '';
-  let customerEmail = '';
+  export let data: PageData;
+
+  $: order = data.order;
+  $: orderId = order?.id || '';
+  $: orderTotal = order ? order.total.toFixed(2) : '';
+  $: customerEmail = order?.email || '';
+  $: paymentPending = order?.paymentStatus === 'unpaid';
 
   onMount(() => {
-    // Get order details from URL parameters
-    const url = new URL(window.location.href);
-    orderId = url.searchParams.get('orderId') || '';
-    orderTotal = url.searchParams.get('total') || '';
-    customerEmail = url.searchParams.get('email') || '';
-
-    // Only clear the cart if we have valid order parameters
-    // This prevents clearing the cart during preloads or accidental navigation
-    if (orderId && orderTotal && customerEmail) {
+    // Order lookup succeeded (by Stripe session id from the server load) —
+    // Stripe only redirects here after payment, so it's safe to clear now.
+    if (order) {
       cartStore.clear();
     }
   });
@@ -36,55 +35,72 @@
   <title>Order Confirmation - {$page.data.storeName || 'Hermes eCommerce'}</title>
 </svelte:head>
 
-<div class="checkout-success">
-  <div class="success-icon">
-    <svg
-      width="64"
-      height="64"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-    >
-      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-      <polyline points="22 4 12 14.01 9 11.01" />
-    </svg>
-  </div>
-
-  <h1>Order Confirmed!</h1>
-  <p class="success-message">
-    Thank you for your purchase. A confirmation email has been sent to <strong
-      >{customerEmail}</strong
-    >.
-  </p>
-
-  <div class="order-details">
-    <h2>Order Details</h2>
-    <div class="detail-row">
-      <span>Order Number:</span>
-      <span class="order-id">{orderId}</span>
+{#if order}
+  <div class="checkout-success">
+    <div class="success-icon">
+      <svg
+        width="64"
+        height="64"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+        <polyline points="22 4 12 14.01 9 11.01" />
+      </svg>
     </div>
-    <div class="detail-row">
-      <span>Total Amount:</span>
-      <span class="order-total">${orderTotal}</span>
+
+    <h1>Order Confirmed!</h1>
+    <p class="success-message">
+      Thank you for your purchase. A confirmation email has been sent to <strong
+        >{customerEmail}</strong
+      >.
+    </p>
+
+    {#if paymentPending}
+      <p class="payment-pending-note">Finalizing your payment confirmation — just a moment.</p>
+    {/if}
+
+    <div class="order-details">
+      <h2>Order Details</h2>
+      <div class="detail-row">
+        <span>Order Number:</span>
+        <span class="order-id">{orderId}</span>
+      </div>
+      <div class="detail-row">
+        <span>Total Amount:</span>
+        <span class="order-total">${orderTotal}</span>
+      </div>
+    </div>
+
+    <div class="next-steps">
+      <h3>What happens next?</h3>
+      <ul>
+        <li>You'll receive a confirmation email shortly</li>
+        <li>We'll process your order within 1-2 business days</li>
+        <li>You'll receive tracking information once your order ships</li>
+        <li>Your items should arrive within 5-7 business days</li>
+      </ul>
+    </div>
+
+    <div class="action-buttons">
+      <Button variant="primary" on:click={continueShopping}>Continue Shopping</Button>
+      <Button variant="secondary" on:click={viewOrders}>View Your Orders</Button>
     </div>
   </div>
-
-  <div class="next-steps">
-    <h3>What happens next?</h3>
-    <ul>
-      <li>You'll receive a confirmation email shortly</li>
-      <li>We'll process your order within 1-2 business days</li>
-      <li>You'll receive tracking information once your order ships</li>
-      <li>Your items should arrive within 5-7 business days</li>
-    </ul>
+{:else}
+  <div class="checkout-success">
+    <h1>We couldn't find that order</h1>
+    <p class="success-message">
+      If you just completed a payment, check your email for a confirmation — otherwise, return to
+      the store and try again.
+    </p>
+    <div class="action-buttons">
+      <Button variant="primary" on:click={continueShopping}>Continue Shopping</Button>
+    </div>
   </div>
-
-  <div class="action-buttons">
-    <Button variant="primary" on:click={continueShopping}>Continue Shopping</Button>
-    <Button variant="secondary" on:click={viewOrders}>View Your Orders</Button>
-  </div>
-</div>
+{/if}
 
 <style>
   .checkout-success {
@@ -122,6 +138,12 @@
 
   .success-message strong {
     color: var(--color-text-primary);
+  }
+
+  .payment-pending-note {
+    color: var(--color-text-tertiary);
+    font-size: 0.9rem;
+    margin: -1rem 0 1.5rem 0;
   }
 
   .order-details {

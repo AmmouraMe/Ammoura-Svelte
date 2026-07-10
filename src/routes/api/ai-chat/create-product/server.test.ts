@@ -630,6 +630,7 @@ describe('POST /api/ai-chat/create-product', () => {
       config: null,
       is_default: 0,
       is_active: 1,
+      webhook_token: null,
       created_at: Date.now(),
       updated_at: Date.now()
     };
@@ -732,6 +733,7 @@ describe('POST /api/ai-chat/create-product', () => {
       config: null,
       is_default: 0,
       is_active: 1,
+      webhook_token: null,
       created_at: Date.now(),
       updated_at: Date.now()
     };

@@ -28,6 +28,7 @@ export async function load({ platform, locals, params }: ServerLoadEvent) {
     const order = {
       id: dbOrder.id,
       status: dbOrder.status,
+      payment_status: dbOrder.payment_status,
       subtotal: dbOrder.subtotal,
       shipping_cost: dbOrder.shipping_cost,
       tax: dbOrder.tax,

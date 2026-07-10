@@ -14,6 +14,7 @@ export * from './site-members.js';
 export * from './site-domains.js';
 export * from './email-verification.js';
 export * from './products.js';
+export * from './product-variants.js';
 export * from './users.js';
 export * from './orders.js';
 export * from './pages.js';

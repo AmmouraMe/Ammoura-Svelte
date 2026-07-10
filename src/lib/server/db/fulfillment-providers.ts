@@ -4,6 +4,7 @@
  */
 
 import { executeOne, execute, generateId, getCurrentTimestamp } from './connection.js';
+import { encrypt, decrypt } from '../crypto.js';
 import type {
   DBFulfillmentProvider,
   CreateFulfillmentProviderData,
@@ -11,6 +12,40 @@ import type {
   ProductFulfillmentOption,
   DBProductFulfillmentOption
 } from '$lib/types/fulfillment';
+
+/**
+ * Encrypt a provider config object for storage. Throws if the config is
+ * non-empty and no encryption key was supplied — provider config routinely
+ * carries API keys and must never be persisted in plaintext.
+ */
+async function encryptProviderConfig(
+  config: Record<string, string> | undefined,
+  encryptionKey?: string
+): Promise<string | null> {
+  if (!config) return null;
+  if (!encryptionKey) {
+    throw new Error('Encryption key is required to store provider config');
+  }
+  return encrypt(JSON.stringify(config), encryptionKey);
+}
+
+/**
+ * Decrypt a provider's stored config. Returns {} if there's no config or it
+ * fails to decrypt (e.g. wrong key, or a legacy plaintext row from before
+ * config encryption was added).
+ */
+export async function getDecryptedProviderConfig(
+  provider: DBFulfillmentProvider,
+  encryptionKey: string
+): Promise<Record<string, string>> {
+  if (!provider.config) return {};
+  try {
+    return JSON.parse(await decrypt(provider.config, encryptionKey));
+  } catch (err) {
+    console.error(`Failed to decrypt config for provider ${provider.id}:`, err);
+    return {};
+  }
+}
 
 /**
  * Get all fulfillment providers for a site
@@ -60,15 +95,18 @@ export async function getFulfillmentProvidersByType(
 
 /**
  * Create a new fulfillment provider (scoped by site)
+ * Config is encrypted at rest (it typically carries a provider API key) —
+ * an encryptionKey is required whenever config is provided.
  */
 export async function createFulfillmentProvider(
   db: D1Database,
   siteId: string,
-  data: CreateFulfillmentProviderData
+  data: CreateFulfillmentProviderData,
+  encryptionKey?: string
 ): Promise<DBFulfillmentProvider> {
   const id = generateId();
   const timestamp = getCurrentTimestamp();
-  const configJson = data.config ? JSON.stringify(data.config) : null;
+  const configJson = await encryptProviderConfig(data.config, encryptionKey);
 
   await db
     .prepare(
@@ -103,7 +141,8 @@ export async function updateFulfillmentProvider(
   db: D1Database,
   siteId: string,
   providerId: string,
-  data: UpdateFulfillmentProviderData
+  data: UpdateFulfillmentProviderData,
+  encryptionKey?: string
 ): Promise<DBFulfillmentProvider | null> {
   const provider = await getFulfillmentProviderById(db, siteId, providerId);
   if (!provider) {
@@ -128,7 +167,7 @@ export async function updateFulfillmentProvider(
   }
   if (data.config !== undefined) {
     updates.push('config = ?');
-    params.push(JSON.stringify(data.config));
+    params.push(await encryptProviderConfig(data.config, encryptionKey));
   }
   if (data.isActive !== undefined) {
     updates.push('is_active = ?');
@@ -150,6 +189,26 @@ export async function updateFulfillmentProvider(
     .run();
 
   return await getFulfillmentProviderById(db, siteId, providerId);
+}
+
+/**
+ * Set (or rotate) a provider's webhook shared-secret token — used by
+ * providers like Printful that have no HMAC signature to verify inbound
+ * webhooks against.
+ */
+export async function setProviderWebhookToken(
+  db: D1Database,
+  siteId: string,
+  providerId: string,
+  webhookToken: string
+): Promise<void> {
+  const timestamp = getCurrentTimestamp();
+  await db
+    .prepare(
+      'UPDATE fulfillment_providers SET webhook_token = ?, updated_at = ? WHERE id = ? AND site_id = ?'
+    )
+    .bind(webhookToken, timestamp, providerId, siteId)
+    .run();
 }
 
 /**

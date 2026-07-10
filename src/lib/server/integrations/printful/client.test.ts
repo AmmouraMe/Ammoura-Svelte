@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PrintfulClient } from './client';
-import type { PrintfulProduct, PrintfulVariant, PrintfulOrder } from './types';
+import type {
+  PrintfulProduct,
+  PrintfulVariant,
+  PrintfulOrder,
+  PrintfulSyncProductDetail
+} from './types';
 
 describe('PrintfulClient', () => {
   let client: PrintfulClient;
@@ -127,6 +132,52 @@ describe('PrintfulClient', () => {
       const products = await client.getProducts();
 
       expect(products).toEqual([]);
+    });
+  });
+
+  describe('getStoreProduct', () => {
+    it('fetches a sync product with its orderable sync variants', async () => {
+      const mockDetail: PrintfulSyncProductDetail = {
+        sync_product: {
+          id: 555,
+          external_id: null,
+          name: 'Hoodie',
+          variants: 2,
+          synced: 2,
+          thumbnail_url: null,
+          is_ignored: false
+        },
+        sync_variants: [
+          {
+            id: 111,
+            external_id: null,
+            sync_product_id: 555,
+            name: 'Hoodie - M / Black',
+            synced: true,
+            variant_id: 4012,
+            retail_price: '39.99',
+            currency: 'USD',
+            sku: 'HOOD-M-BLK',
+            is_ignored: false,
+            size: 'M',
+            color: 'Black',
+            files: []
+          }
+        ]
+      };
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ code: 200, result: mockDetail })
+      });
+
+      const detail = await client.getStoreProduct(555);
+
+      expect(detail).toEqual(mockDetail);
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.printful.com/store/products/555',
+        expect.any(Object)
+      );
     });
   });
 

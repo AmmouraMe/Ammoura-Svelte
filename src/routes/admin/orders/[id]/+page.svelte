@@ -24,6 +24,7 @@
   interface Order {
     id: string;
     status: string;
+    payment_status: string;
     subtotal: number;
     shipping_cost: number;
     tax: number;
@@ -52,10 +53,10 @@
     };
     payment_method: {
       type: string;
-      cardNumber: string;
-      cardHolderName: string;
-      expiryMonth: string;
-      expiryYear: string;
+      cardNumber?: string;
+      cardHolderName?: string;
+      expiryMonth?: string;
+      expiryYear?: string;
     };
     shipping_details: {
       groups: ShippingGroup[];
@@ -360,19 +361,29 @@
           <span class="value">{order.payment_method.type}</span>
         </div>
         <div class="info-item">
-          <span class="label">Card Number:</span>
-          <span class="value monospace">{order.payment_method.cardNumber}</span>
+          <span class="label">Payment Status:</span>
+          <span class="value">{order.payment_status}</span>
         </div>
-        <div class="info-item">
-          <span class="label">Cardholder:</span>
-          <span class="value">{order.payment_method.cardHolderName}</span>
-        </div>
-        <div class="info-item">
-          <span class="label">Expiry:</span>
-          <span class="value"
-            >{order.payment_method.expiryMonth}/{order.payment_method.expiryYear}</span
-          >
-        </div>
+        {#if order.payment_method.cardNumber}
+          <div class="info-item">
+            <span class="label">Card Number:</span>
+            <span class="value monospace">{order.payment_method.cardNumber}</span>
+          </div>
+        {/if}
+        {#if order.payment_method.cardHolderName}
+          <div class="info-item">
+            <span class="label">Cardholder:</span>
+            <span class="value">{order.payment_method.cardHolderName}</span>
+          </div>
+        {/if}
+        {#if order.payment_method.expiryMonth && order.payment_method.expiryYear}
+          <div class="info-item">
+            <span class="label">Expiry:</span>
+            <span class="value"
+              >{order.payment_method.expiryMonth}/{order.payment_method.expiryYear}</span
+            >
+          </div>
+        {/if}
       </div>
     </div>
   </div>

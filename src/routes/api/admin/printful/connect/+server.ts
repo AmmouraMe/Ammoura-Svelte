@@ -10,9 +10,17 @@ import { getDB } from '$lib/server/db/connection';
 import {
   getFulfillmentProvidersByType,
   createFulfillmentProvider,
-  updateFulfillmentProvider
+  updateFulfillmentProvider,
+  setProviderWebhookToken
 } from '$lib/server/db/fulfillment-providers';
 import { PrintfulClient } from '$lib/server/integrations/printful/client';
+
+function generateWebhookToken(): string {
+  return btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(24))))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
 
 export const POST: RequestHandler = async ({ request, platform, locals }) => {
   if (!platform?.env?.DB) {
@@ -35,29 +43,51 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
     throw error(400, 'Invalid API key — could not connect to Printful');
   }
 
+  const encryptionKey = platform?.env?.ENCRYPTION_KEY;
+  if (!encryptionKey) {
+    throw error(500, 'Encryption key not configured');
+  }
+
   const db = getDB(platform);
   const siteId = locals.siteId || 'default-site';
 
   // Find an existing Printful provider or create one
   const existing = await getFulfillmentProvidersByType(db, siteId, 'printful');
   let providerId: string;
+  let webhookToken: string | null;
 
   if (existing.length > 0) {
     const provider = existing[0];
     providerId = provider.id;
-    await updateFulfillmentProvider(db, siteId, provider.id, {
-      config: { apiKey }
-    });
+    webhookToken = provider.webhook_token;
+    await updateFulfillmentProvider(db, siteId, provider.id, { config: { apiKey } }, encryptionKey);
   } else {
-    const created = await createFulfillmentProvider(db, siteId, {
-      name: `Printful — ${store.name}`,
-      description: 'Print-on-demand fulfillment via Printful',
-      providerType: 'printful',
-      config: { apiKey },
-      isActive: true
-    });
+    const created = await createFulfillmentProvider(
+      db,
+      siteId,
+      {
+        name: `Printful — ${store.name}`,
+        description: 'Print-on-demand fulfillment via Printful',
+        providerType: 'printful',
+        config: { apiKey },
+        isActive: true
+      },
+      encryptionKey
+    );
     providerId = created.id;
+    webhookToken = null;
   }
 
-  return json({ success: true, providerId, store });
+  // Generate the webhook shared secret once, on first connect
+  if (!webhookToken) {
+    webhookToken = generateWebhookToken();
+    await setProviderWebhookToken(db, siteId, providerId, webhookToken);
+  }
+
+  return json({
+    success: true,
+    providerId,
+    store,
+    webhookUrl: `${new URL(request.url).origin}/api/webhooks/printful?token=${webhookToken}`
+  });
 };

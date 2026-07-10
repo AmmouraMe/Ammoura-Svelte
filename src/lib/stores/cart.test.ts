@@ -115,6 +115,25 @@ describe('Cart Store', () => {
         href: '/cart'
       });
     });
+
+    it('should treat different variants of the same product as separate line items', () => {
+      cartStore.addItem({ ...mockProduct, variantId: 'variant-a', variantLabel: 'Small' });
+      cartStore.addItem({ ...mockProduct, variantId: 'variant-b', variantLabel: 'Large' });
+      const items = get(cartItems);
+
+      expect(items).toHaveLength(2);
+      expect(items[0].variantId).toBe('variant-a');
+      expect(items[1].variantId).toBe('variant-b');
+    });
+
+    it('should increment quantity when the same variant is added again', () => {
+      cartStore.addItem({ ...mockProduct, variantId: 'variant-a' }, 2);
+      cartStore.addItem({ ...mockProduct, variantId: 'variant-a' }, 3);
+      const items = get(cartItems);
+
+      expect(items).toHaveLength(1);
+      expect(items[0].quantity).toBe(5);
+    });
   });
 
   describe('removeItem', () => {

@@ -5,6 +5,7 @@
  */
 
 import { PrintfulClient } from './client';
+import { getDecryptedProviderConfig } from '$lib/server/db/fulfillment-providers';
 import type { DBFulfillmentProvider } from '$lib/types/fulfillment';
 import type { PrintfulProduct, PrintfulOrderRequest, PrintfulOrder } from './types';
 
@@ -14,23 +15,11 @@ interface PrintfulServiceConfig {
 
 export class PrintfulService {
   private client: PrintfulClient;
-  private provider: DBFulfillmentProvider;
   private config: PrintfulServiceConfig;
 
-  constructor(db: D1Database, provider: DBFulfillmentProvider) {
+  constructor(provider: DBFulfillmentProvider, config: PrintfulServiceConfig) {
     if (provider.provider_type !== 'printful') {
       throw new Error('Provider is not Printful type');
-    }
-
-    this.provider = provider;
-
-    // Parse config
-    let config: PrintfulServiceConfig;
-    try {
-      const parsed = provider.config ? JSON.parse(provider.config) : {};
-      config = parsed as PrintfulServiceConfig;
-    } catch (_error) {
-      throw new Error('Invalid Printful provider config');
     }
 
     if (!config.apiKey?.trim()) {
@@ -39,6 +28,19 @@ export class PrintfulService {
 
     this.config = config;
     this.client = new PrintfulClient({ apiKey: config.apiKey });
+  }
+
+  /**
+   * Build a PrintfulService from a stored provider row, decrypting its
+   * config. Provider config is stored encrypted at rest (see
+   * fulfillment-providers.ts), so this is async unlike the constructor.
+   */
+  static async fromProvider(
+    provider: DBFulfillmentProvider,
+    encryptionKey: string
+  ): Promise<PrintfulService> {
+    const decrypted = await getDecryptedProviderConfig(provider, encryptionKey);
+    return new PrintfulService(provider, decrypted as unknown as PrintfulServiceConfig);
   }
 
   /**

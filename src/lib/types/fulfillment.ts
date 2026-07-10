@@ -54,6 +54,8 @@ export interface DBFulfillmentProvider {
   config: string | null;
   is_default: number;
   is_active: number;
+  /** Shared secret embedded in this provider's webhook URL (e.g. Printful, which has no HMAC signature to verify against). */
+  webhook_token: string | null;
   created_at: number;
   updated_at: number;
 }

@@ -16,6 +16,9 @@ export interface DBOrder {
   site_id: string;
   user_id: string | null;
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  payment_status: 'unpaid' | 'paid' | 'refunded' | 'failed';
+  stripe_session_id: string | null;
+  stripe_payment_intent_id: string | null;
   subtotal: number;
   shipping_cost: number;
   tax: number;
@@ -32,6 +35,7 @@ export interface DBOrderItem {
   id: string;
   order_id: string;
   product_id: string | null;
+  variant_id: string | null;
   name: string;
   price: number;
   quantity: number;
@@ -43,6 +47,7 @@ export interface CreateOrderData {
   user_id?: string;
   items: {
     product_id?: string;
+    variant_id?: string;
     name: string;
     price: number;
     quantity: number;
@@ -168,12 +173,13 @@ export async function createOrder(
   for (const item of data.items) {
     const itemId = generateId();
     statements.push({
-      sql: `INSERT INTO order_items (id, order_id, product_id, name, price, quantity, image, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      sql: `INSERT INTO order_items (id, order_id, product_id, variant_id, name, price, quantity, image, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       params: [
         itemId,
         orderId,
         item.product_id || null,
+        item.variant_id || null,
         item.name,
         item.price,
         item.quantity,
@@ -213,6 +219,60 @@ export async function updateOrderStatus(
     .run();
 
   return await getOrderById(db, siteId, orderId);
+}
+
+/**
+ * Get an order by its Stripe Checkout Session ID (scoped by site)
+ */
+export async function getOrderByStripeSessionId(
+  db: D1Database,
+  siteId: string,
+  stripeSessionId: string
+): Promise<DBOrder | null> {
+  return await executeOne<DBOrder>(
+    db,
+    'SELECT * FROM orders WHERE site_id = ? AND stripe_session_id = ?',
+    [siteId, stripeSessionId]
+  );
+}
+
+/**
+ * Record the Stripe Checkout Session an order is waiting payment on
+ */
+export async function setOrderStripeSession(
+  db: D1Database,
+  siteId: string,
+  orderId: string,
+  stripeSessionId: string
+): Promise<void> {
+  const timestamp = getCurrentTimestamp();
+  await db
+    .prepare('UPDATE orders SET stripe_session_id = ?, updated_at = ? WHERE id = ? AND site_id = ?')
+    .bind(stripeSessionId, timestamp, orderId, siteId)
+    .run();
+}
+
+/**
+ * Mark an order paid, transitioning it from 'unpaid' only — a no-op (and
+ * returns false) if it's already paid/refunded/failed, so a retried Stripe
+ * webhook delivery can't double-trigger downstream effects (like relaying a
+ * second order to Printful).
+ */
+export async function markOrderPaid(
+  db: D1Database,
+  siteId: string,
+  orderId: string,
+  stripePaymentIntentId: string | null
+): Promise<boolean> {
+  const timestamp = getCurrentTimestamp();
+  const result = await db
+    .prepare(
+      `UPDATE orders SET payment_status = 'paid', stripe_payment_intent_id = ?, updated_at = ?
+       WHERE id = ? AND site_id = ? AND payment_status = 'unpaid'`
+    )
+    .bind(stripePaymentIntentId, timestamp, orderId, siteId)
+    .run();
+  return (result.meta?.changes || 0) > 0;
 }
 
 /**

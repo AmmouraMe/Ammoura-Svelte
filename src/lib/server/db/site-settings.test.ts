@@ -1021,6 +1021,73 @@ describe('Site Settings Database Functions', () => {
       expect(mockDb.prepare).toHaveBeenCalled();
     });
 
+    it('throws when a secret field is set without an encryption key', async () => {
+      const { updatePaymentSettings } = await import('./site-settings');
+
+      await expect(
+        updatePaymentSettings(mockDb, siteId, { stripeSecretKey: 'sk_test_123' })
+      ).rejects.toThrow('Encryption key is required to store stripeSecretKey');
+    });
+
+    it('round-trips encrypted secrets through get/update', async () => {
+      const { generateEncryptionKey } = await import('../crypto');
+      const encryptionKey = await generateEncryptionKey();
+
+      const store = new Map<string, string>();
+      const mockStatement = {
+        bind: vi.fn((...args: unknown[]) => {
+          // upsertSiteSetting binds (id, siteId, key, value, value)
+          const [, , key, value] = args as [string, string, string, string, string];
+          store.set(key, value);
+          return { run: vi.fn().mockResolvedValue({ meta: { changes: 1 } }) };
+        })
+      };
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const { updatePaymentSettings, getPaymentSettings } = await import('./site-settings');
+
+      await updatePaymentSettings(
+        mockDb,
+        siteId,
+        { stripeSecretKey: 'sk_test_123', stripeWebhookSecret: 'whsec_abc' },
+        encryptionKey
+      );
+
+      const storedSecret = store.get('payment_stripe_secret_key');
+      expect(storedSecret).toBeDefined();
+      expect(storedSecret).not.toBe('sk_test_123'); // stored ciphertext, not plaintext
+
+      const readStatement = {
+        bind: vi.fn().mockReturnValue({
+          all: vi.fn().mockResolvedValue({
+            results: [
+              {
+                id: '1',
+                site_id: siteId,
+                setting_key: 'payment_stripe_secret_key',
+                setting_value: storedSecret,
+                created_at: 0,
+                updated_at: 0
+              },
+              {
+                id: '2',
+                site_id: siteId,
+                setting_key: 'payment_stripe_webhook_secret',
+                setting_value: store.get('payment_stripe_webhook_secret'),
+                created_at: 0,
+                updated_at: 0
+              }
+            ]
+          })
+        })
+      };
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(readStatement);
+
+      const settings = await getPaymentSettings(mockDb, siteId, encryptionKey);
+      expect(settings.stripeSecretKey).toBe('sk_test_123');
+      expect(settings.stripeWebhookSecret).toBe('whsec_abc');
+    });
+
     it('should return API settings with defaults when empty', async () => {
       const mockStatement = {
         bind: vi.fn().mockReturnValue({
