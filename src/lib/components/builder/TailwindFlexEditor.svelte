@@ -8,8 +8,10 @@
   } from '$lib/types/pages';
   import ThemeColorInput from '../admin/ThemeColorInput.svelte';
   import BreakpointFieldBadge from './BreakpointFieldBadge.svelte';
+  import TokenScalePicker from './TokenScalePicker.svelte';
   import { getThemeColors } from '$lib/utils/editor/colorThemes';
   import { setBreakpoint, clearBreakpoint } from '$lib/utils/responsiveField';
+  import { SPACE_SCALE } from '$lib/utils/designScales';
 
   export let config: WidgetConfig;
   export let currentBreakpoint: Breakpoint = 'desktop';
@@ -432,6 +434,7 @@
           class="control-range"
         />
       </label>
+      <TokenScalePicker scale={SPACE_SCALE} value={flexGap} onPick={updateFlexGap} />
     </div>
     <div class="control-group">
       <label class="control-label">

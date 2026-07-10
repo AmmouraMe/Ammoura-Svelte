@@ -8,8 +8,23 @@
   } from '$lib/types/pages';
   import ThemeColorInput from '../admin/ThemeColorInput.svelte';
   import BreakpointFieldBadge from './BreakpointFieldBadge.svelte';
+  import TokenScalePicker from './TokenScalePicker.svelte';
   import { getThemeColors } from '$lib/utils/editor/colorThemes';
   import { setBreakpoint, clearBreakpoint } from '$lib/utils/responsiveField';
+  import { SPACE_SCALE, RADIUS_SCALE } from '$lib/utils/designScales';
+
+  // Highlight a scale step only when all four sides share one numeric value.
+  function uniformSide(s: {
+    top?: unknown;
+    right?: unknown;
+    bottom?: unknown;
+    left?: unknown;
+  }): number {
+    const { top, right, bottom, left } = s;
+    return typeof top === 'number' && top === right && right === bottom && bottom === left
+      ? top
+      : -1;
+  }
 
   export let config: ComponentConfig;
   export let currentBreakpoint: Breakpoint;
@@ -22,14 +37,16 @@
 
   const dispatch = createEventDispatcher<{ update: ComponentConfig }>();
 
-  // Helper to get responsive value
+  // Helper to get responsive value. Takes the breakpoint explicitly so callers
+  // (the reactive derivations below) declare it as a dependency to Svelte.
   function getResponsiveValue<T>(
     responsiveValue: T | { desktop?: T; tablet?: T; mobile?: T } | undefined,
-    fallback: T
+    fallback: T,
+    bp: Breakpoint
   ): T {
     if (responsiveValue === undefined || responsiveValue === null) return fallback;
     if (typeof responsiveValue === 'object' && responsiveValue !== null) {
-      const val = (responsiveValue as Record<string, T>)[currentBreakpoint];
+      const val = (responsiveValue as Record<string, T>)[bp];
       if (val !== undefined) return val;
       // Fallback to desktop
       const desktopVal = (responsiveValue as Record<string, T>)['desktop'];
@@ -69,16 +86,16 @@
     config.styles = {};
   }
 
-  // Padding helpers
-  function getStylesPadding(): SpacingConfig {
-    const padding = config.styles?.padding;
+  // Padding helpers. Pure over (cfg, bp) so the reactive derivation tracks both.
+  function getStylesPadding(cfg: ComponentConfig, bp: Breakpoint): SpacingConfig {
+    const padding = cfg.styles?.padding;
     if (!padding) return { top: 0, right: 0, bottom: 0, left: 0 };
-    return getResponsiveValue(padding, { top: 0, right: 0, bottom: 0, left: 0 });
+    return getResponsiveValue(padding, { top: 0, right: 0, bottom: 0, left: 0 }, bp);
   }
 
   function setStylesPadding(side: 'top' | 'right' | 'bottom' | 'left', value: number): void {
     if (!config.styles) config.styles = {};
-    const updated = { ...getStylesPadding(), [side]: value };
+    const updated = { ...getStylesPadding(config, currentBreakpoint), [side]: value };
     // Writes only the edited breakpoint's slot (seeding a desktop base), so a
     // tablet/mobile edit is a real override rather than a copy of all three.
     config.styles.padding = setBreakpoint(config.styles.padding, currentBreakpoint, updated);
@@ -91,13 +108,25 @@
     handleUpdate();
   }
 
-  $: currentPadding = getStylesPadding();
+  // Token quick-pick: set all four padding sides to one scale value.
+  function setAllPadding(value: number): void {
+    if (!config.styles) config.styles = {};
+    const updated = { top: value, right: value, bottom: value, left: value };
+    config.styles.padding = setBreakpoint(config.styles.padding, currentBreakpoint, updated);
+    handleUpdate();
+  }
+
+  // Passing (config, currentBreakpoint) makes Svelte re-derive when either
+  // changes; otherwise the inputs and token-scale highlight go stale after a
+  // programmatic set (the deps are invisible inside the getter).
+  $: currentPadding = getStylesPadding(config, currentBreakpoint);
+  $: paddingUniform = uniformSide(currentPadding);
 
   // Margin helpers
-  function getStylesMargin(): SpacingConfig {
-    const margin = config.styles?.margin;
+  function getStylesMargin(cfg: ComponentConfig, bp: Breakpoint): SpacingConfig {
+    const margin = cfg.styles?.margin;
     if (!margin) return { top: 0, right: 0, bottom: 0, left: 0 };
-    return getResponsiveValue(margin, { top: 0, right: 0, bottom: 0, left: 0 });
+    return getResponsiveValue(margin, { top: 0, right: 0, bottom: 0, left: 0 }, bp);
   }
 
   function setStylesMargin(
@@ -105,7 +134,7 @@
     value: number | 'auto'
   ): void {
     if (!config.styles) config.styles = {};
-    const current = getStylesMargin();
+    const current = getStylesMargin(config, currentBreakpoint);
     const updated = { ...current, [side]: value };
 
     config.styles.margin = setBreakpoint(config.styles.margin, currentBreakpoint, updated);
@@ -118,13 +147,22 @@
     handleUpdate();
   }
 
-  $: currentMargin = getStylesMargin();
+  // Token quick-pick: set all four margin sides to one scale value.
+  function setAllMargin(value: number): void {
+    if (!config.styles) config.styles = {};
+    const updated = { top: value, right: value, bottom: value, left: value };
+    config.styles.margin = setBreakpoint(config.styles.margin, currentBreakpoint, updated);
+    handleUpdate();
+  }
+
+  $: currentMargin = getStylesMargin(config, currentBreakpoint);
+  $: marginUniform = uniformSide(currentMargin);
 
   // Size helpers
-  function getWidth(): string {
-    const width = config.styles?.width;
+  function getWidth(cfg: ComponentConfig, bp: Breakpoint): string {
+    const width = cfg.styles?.width;
     if (!width) return 'auto';
-    return getResponsiveValue(width, 'auto');
+    return getResponsiveValue(width, 'auto', bp);
   }
 
   function setWidth(value: string): void {
@@ -139,12 +177,12 @@
     handleUpdate();
   }
 
-  $: currentWidth = getWidth();
+  $: currentWidth = getWidth(config, currentBreakpoint);
 
-  function getHeight(): string {
-    const height = config.styles?.height;
+  function getHeight(cfg: ComponentConfig, bp: Breakpoint): string {
+    const height = cfg.styles?.height;
     if (!height) return 'auto';
-    return getResponsiveValue(height, 'auto');
+    return getResponsiveValue(height, 'auto', bp);
   }
 
   function setHeight(value: string): void {
@@ -159,7 +197,7 @@
     handleUpdate();
   }
 
-  $: currentHeight = getHeight();
+  $: currentHeight = getHeight(config, currentBreakpoint);
 
   // Background - use existing backgroundColor field for compatibility
   $: backgroundColor = config.backgroundColor ?? 'transparent';
@@ -239,6 +277,12 @@
         />
       </div>
     </div>
+    <TokenScalePicker
+      scale={SPACE_SCALE}
+      value={paddingUniform}
+      label="All sides"
+      onPick={setAllPadding}
+    />
   </div>
 
   <div class="section">
@@ -292,6 +336,12 @@
         />
       </div>
     </div>
+    <TokenScalePicker
+      scale={SPACE_SCALE}
+      value={marginUniform}
+      label="All sides"
+      onPick={setAllMargin}
+    />
     <div class="quick-actions">
       <button
         type="button"
@@ -481,58 +531,14 @@
         min="0"
         placeholder="0"
       />
-      <div class="quick-radius">
-        <button
-          type="button"
-          class="quick-btn"
-          on:click={() => {
-            config.borderRadius = 0;
-            handleUpdate();
-          }}
-        >
-          0
-        </button>
-        <button
-          type="button"
-          class="quick-btn"
-          on:click={() => {
-            config.borderRadius = 4;
-            handleUpdate();
-          }}
-        >
-          4
-        </button>
-        <button
-          type="button"
-          class="quick-btn"
-          on:click={() => {
-            config.borderRadius = 8;
-            handleUpdate();
-          }}
-        >
-          8
-        </button>
-        <button
-          type="button"
-          class="quick-btn"
-          on:click={() => {
-            config.borderRadius = 16;
-            handleUpdate();
-          }}
-        >
-          16
-        </button>
-        <button
-          type="button"
-          class="quick-btn"
-          on:click={() => {
-            config.borderRadius = 9999;
-            handleUpdate();
-          }}
-        >
-          Full
-        </button>
-      </div>
+      <TokenScalePicker
+        scale={RADIUS_SCALE}
+        value={borderRadius}
+        onPick={(v) => {
+          config.borderRadius = v;
+          handleUpdate();
+        }}
+      />
     </div>
   </div>
 </div>
@@ -664,8 +670,7 @@
   }
 
   .quick-actions,
-  .quick-widths,
-  .quick-radius {
+  .quick-widths {
     display: flex;
     gap: 6px;
     flex-wrap: wrap;

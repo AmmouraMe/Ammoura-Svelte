@@ -144,14 +144,16 @@ describe('UniversalStyleEditor', () => {
       expect(borderStyleSelect).toBeInTheDocument();
     });
 
-    it('has quick border radius buttons', () => {
+    it('has radius token-scale buttons', () => {
       render(UniversalStyleEditor, { props: defaultProps });
 
-      // Find all quick radius buttons (0, 4, 8, 16, Full)
-      const quickButtons = screen
+      // The radius picker uses the --radius-* token scale (None/SM/MD/LG/Full).
+      const radiusButtons = screen
         .getAllByRole('button')
-        .filter((btn) => ['0', '4', '8', '16', 'Full'].includes(btn.textContent || ''));
-      expect(quickButtons.length).toBeGreaterThanOrEqual(5);
+        .filter((btn) =>
+          ['None', 'SM', 'MD', 'LG', 'Full'].includes(btn.textContent?.trim() || '')
+        );
+      expect(radiusButtons.length).toBeGreaterThanOrEqual(5);
     });
   });
 
