@@ -61,6 +61,7 @@
     FilterConfig,
     ComponentConfig
   } from '$lib/types/pages';
+  import { responsiveStyle, type ResponsiveStyleProps } from '$lib/utils/responsiveStyle';
 
   // Props
   export let type: string;
@@ -153,35 +154,33 @@
     return value as T;
   }
 
-  // Generate CSS custom properties for responsive layout values
-  function generateResponsiveVars(): string {
-    const gap = config.containerGap;
-    const gapDesktop = getBreakpointValue(gap, 'desktop', 16);
-    const gapTablet = getBreakpointValue(gap, 'tablet', gapDesktop);
-    const gapMobile = getBreakpointValue(gap, 'mobile', gapTablet);
+  // Build the per-breakpoint layout props for the shared responsiveStyle()/.rs
+  // system. Preserves the smart storefront defaults that used to live in the
+  // bespoke --fcr-* generator: flex-direction stacks to column on mobile, grid
+  // collapses 3->2->1 cols, and mobile gets 16px horizontal padding by default.
+  // Takes `cfg` explicitly so Svelte tracks config as a reactive dependency.
+  function buildContainerResponsive(cfg: ComponentConfig): ResponsiveStyleProps {
+    const gapDesktop = getBreakpointValue(cfg.containerGap, 'desktop', 16);
+    const gapTablet = getBreakpointValue(cfg.containerGap, 'tablet', gapDesktop);
+    const gapMobile = getBreakpointValue(cfg.containerGap, 'mobile', gapTablet);
 
-    const display = config.containerDisplay;
-    const displayDesktop = getBreakpointValue(display, 'desktop', 'flex');
-    const displayTablet = getBreakpointValue(display, 'tablet', displayDesktop);
-    const displayMobile = getBreakpointValue(display, 'mobile', displayTablet);
+    const displayDesktop = getBreakpointValue(cfg.containerDisplay, 'desktop', 'flex');
+    const displayTablet = getBreakpointValue(cfg.containerDisplay, 'tablet', displayDesktop);
+    const displayMobile = getBreakpointValue(cfg.containerDisplay, 'mobile', displayTablet);
 
-    const flexDir = config.containerFlexDirection;
-    const flexDirDesktop = getBreakpointValue(flexDir, 'desktop', 'row');
-    const flexDirTablet = getBreakpointValue(flexDir, 'tablet', flexDirDesktop);
-    const flexDirMobile = getBreakpointValue(flexDir, 'mobile', 'column');
+    const flexDirDesktop = getBreakpointValue(cfg.containerFlexDirection, 'desktop', 'row');
+    const flexDirTablet = getBreakpointValue(cfg.containerFlexDirection, 'tablet', flexDirDesktop);
+    const flexDirMobile = getBreakpointValue(cfg.containerFlexDirection, 'mobile', 'column');
 
-    const gridCols = config.containerGridCols;
-    const gridColsDesktop = getBreakpointValue(gridCols, 'desktop', 3);
-    const gridColsTablet = getBreakpointValue(gridCols, 'tablet', 2);
-    const gridColsMobile = getBreakpointValue(gridCols, 'mobile', 1);
+    const gridColsDesktop = getBreakpointValue(cfg.containerGridCols, 'desktop', 3);
+    const gridColsTablet = getBreakpointValue(cfg.containerGridCols, 'tablet', 2);
+    const gridColsMobile = getBreakpointValue(cfg.containerGridCols, 'mobile', 1);
 
-    const minHeight = config.containerMinHeight;
-    const minHeightDesktop = getBreakpointValue(minHeight, 'desktop', 'auto');
-    const minHeightTablet = getBreakpointValue(minHeight, 'tablet', minHeightDesktop);
-    const minHeightMobile = getBreakpointValue(minHeight, 'mobile', minHeightTablet);
+    const minHeightDesktop = getBreakpointValue(cfg.containerMinHeight, 'desktop', 'auto');
+    const minHeightTablet = getBreakpointValue(cfg.containerMinHeight, 'tablet', minHeightDesktop);
+    const minHeightMobile = getBreakpointValue(cfg.containerMinHeight, 'mobile', minHeightTablet);
 
-    // Padding responsive values
-    const padding = config.containerPadding;
+    const padding = cfg.containerPadding;
     const paddingDesktop =
       padding?.desktop ||
       getBreakpointValue(padding, 'desktop', { top: 0, right: 0, bottom: 0, left: 0 });
@@ -193,29 +192,23 @@
       left: 16
     };
 
-    return `
-      --fcr-gap-desktop: ${gapDesktop}px;
-      --fcr-gap-tablet: ${gapTablet}px;
-      --fcr-gap-mobile: ${gapMobile}px;
-      --fcr-display-desktop: ${displayDesktop};
-      --fcr-display-tablet: ${displayTablet};
-      --fcr-display-mobile: ${displayMobile};
-      --fcr-flex-dir-desktop: ${flexDirDesktop};
-      --fcr-flex-dir-tablet: ${flexDirTablet};
-      --fcr-flex-dir-mobile: ${flexDirMobile};
-      --fcr-grid-cols-desktop: ${gridColsDesktop};
-      --fcr-grid-cols-tablet: ${gridColsTablet};
-      --fcr-grid-cols-mobile: ${gridColsMobile};
-      --fcr-min-height-desktop: ${typeof minHeightDesktop === 'number' ? minHeightDesktop + 'px' : minHeightDesktop};
-      --fcr-min-height-tablet: ${typeof minHeightTablet === 'number' ? minHeightTablet + 'px' : minHeightTablet};
-      --fcr-min-height-mobile: ${typeof minHeightMobile === 'number' ? minHeightMobile + 'px' : minHeightMobile};
-      --fcr-padding-desktop: ${paddingDesktop.top}px ${paddingDesktop.right}px ${paddingDesktop.bottom}px ${paddingDesktop.left}px;
-      --fcr-padding-tablet: ${paddingTablet.top}px ${paddingTablet.right}px ${paddingTablet.bottom}px ${paddingTablet.left}px;
-      --fcr-padding-mobile: ${paddingMobile.top}px ${paddingMobile.right}px ${paddingMobile.bottom}px ${paddingMobile.left}px;
-    `;
+    return {
+      display: { desktop: displayDesktop, tablet: displayTablet, mobile: displayMobile },
+      flexDirection: { desktop: flexDirDesktop, tablet: flexDirTablet, mobile: flexDirMobile },
+      gap: { desktop: gapDesktop, tablet: gapTablet, mobile: gapMobile },
+      gridColumns: { desktop: gridColsDesktop, tablet: gridColsTablet, mobile: gridColsMobile },
+      minHeight: { desktop: minHeightDesktop, tablet: minHeightTablet, mobile: minHeightMobile },
+      padding: { desktop: paddingDesktop, tablet: paddingTablet, mobile: paddingMobile },
+      // Previously single-value inline styles — now under .rs so they can go
+      // per-breakpoint once the config schema exposes them (behavior unchanged
+      // today: one value applied across all breakpoints).
+      justifyContent: { desktop: cfg.containerJustifyContent || 'flex-start' },
+      alignItems: { desktop: cfg.containerAlignItems || 'stretch' },
+      flexWrap: { desktop: cfg.containerWrap || 'nowrap' }
+    };
   }
 
-  $: responsiveVars = generateResponsiveVars();
+  $: containerRs = responsiveStyle(buildContainerResponsive(config));
 
   // Helper to format grid template columns/rows
   function formatGridTemplate(
@@ -542,23 +535,19 @@
   {#if usesContainerChildren}
     <!-- Container-based navbar/footer/hero/features with custom children -->
     <div
-      class="frontend-container frontend-responsive-container {type}-container"
+      class="frontend-container {containerRs.className} {type}-container"
       class:has-overlay={type === 'hero' && config.overlay && config.backgroundImage}
       id={config.anchorName || undefined}
       style="
-        {responsiveVars}
+        {containerRs.style};
         {positionStyle}
         background: {containerBackground};
         {advancedStyles}
-        justify-content: {containerJustifyContent};
-        align-items: {containerAlignItems};
-        flex-wrap: {containerWrap};
         max-width: {containerMaxWidth};
         width: {containerWidth};
         border-radius: {containerBorderRadius}px;
         {borderStyles}
         margin: {marginDesktop.top}px auto {marginDesktop.bottom}px;
-        box-sizing: border-box;
       "
     >
       {#if type === 'hero' && config.overlay && config.backgroundImage}
@@ -587,23 +576,19 @@
   {:else if isContainer}
     <!-- Generic container with children -->
     <div
-      class="frontend-container frontend-responsive-container"
+      class="frontend-container {containerRs.className}"
       class:has-mobile-collapse={hasMobileCollapse}
       id={config.anchorName || undefined}
       style="
-        {responsiveVars}
+        {containerRs.style};
         {positionStyle}
         background: {containerBackground};
         {advancedStyles}
-        justify-content: {containerJustifyContent};
-        align-items: {containerAlignItems};
-        flex-wrap: {containerWrap};
         max-width: {containerMaxWidth};
         width: {containerWidth};
         border-radius: {containerBorderRadius}px;
         {borderStyles}
         margin: {marginDesktop.top}px auto {marginDesktop.bottom}px;
-        box-sizing: border-box;
       "
     >
       {#if hasMobileCollapse}
@@ -878,54 +863,13 @@
     box-sizing: border-box;
   }
 
-  /* Responsive container using CSS custom properties */
-  .frontend-responsive-container {
-    /* Desktop (default - mobile-first reversed to desktop-first for inline override) */
-    display: var(--fcr-display-desktop, flex);
-    flex-direction: var(--fcr-flex-dir-desktop, row);
-    gap: var(--fcr-gap-desktop, 16px);
-    min-height: var(--fcr-min-height-desktop, auto);
-    padding: var(--fcr-padding-desktop, 0);
-  }
-
-  /* Grid display mode for responsive container */
-  .frontend-responsive-container[style*='--fcr-display-desktop: grid'] {
-    display: grid;
-    grid-template-columns: repeat(var(--fcr-grid-cols-desktop, 3), 1fr);
-  }
-
-  /* Tablet breakpoint (max-width: 1024px) */
-  @media (max-width: 1024px) {
-    .frontend-responsive-container {
-      display: var(--fcr-display-tablet, var(--fcr-display-desktop, flex));
-      flex-direction: var(--fcr-flex-dir-tablet, var(--fcr-flex-dir-desktop, row));
-      gap: var(--fcr-gap-tablet, var(--fcr-gap-desktop, 16px));
-      min-height: var(--fcr-min-height-tablet, var(--fcr-min-height-desktop, auto));
-      padding: var(--fcr-padding-tablet, var(--fcr-padding-desktop, 0));
-    }
-
-    .frontend-responsive-container[style*='--fcr-display-tablet: grid'],
-    .frontend-responsive-container[style*='--fcr-display-desktop: grid'] {
-      grid-template-columns: repeat(var(--fcr-grid-cols-tablet, 2), 1fr);
-    }
-  }
-
-  /* Mobile breakpoint (max-width: 768px) */
-  @media (max-width: 768px) {
-    .frontend-responsive-container {
-      display: var(--fcr-display-mobile, var(--fcr-display-tablet, flex));
-      flex-direction: var(--fcr-flex-dir-mobile, column);
-      gap: var(--fcr-gap-mobile, var(--fcr-gap-tablet, 16px));
-      min-height: var(--fcr-min-height-mobile, var(--fcr-min-height-tablet, auto));
-      padding: var(--fcr-padding-mobile, var(--fcr-padding-tablet, 16px));
-    }
-
-    .frontend-responsive-container[style*='--fcr-display-mobile: grid'],
-    .frontend-responsive-container[style*='--fcr-display-tablet: grid'],
-    .frontend-responsive-container[style*='--fcr-display-desktop: grid'] {
-      grid-template-columns: repeat(var(--fcr-grid-cols-mobile, 1), 1fr);
-    }
-  }
+  /*
+   * Responsive container layout now comes from the shared .rs class
+   * (src/lib/styles/responsive.css) via responsiveStyle(). The old bespoke
+   * --fcr-* vars + the [style*='--fcr-display: grid'] attribute-substring hack
+   * were retired here — .rs sets grid-template-columns unconditionally, so grid
+   * mode no longer needs a selector trick.
+   */
 
   .position-wrapper {
     width: 100%;
