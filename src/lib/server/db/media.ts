@@ -64,6 +64,12 @@ export interface CreateMediaLibraryItemData {
   width?: number;
   height?: number;
   duration?: number;
+  /**
+   * Provenance. `library` is the owner's own asset; `customer_design` is
+   * artwork uploaded by a shopper on a storefront, which must never be
+   * offered back as site content.
+   */
+  source?: 'library' | 'customer_design';
 }
 
 /**
@@ -180,15 +186,26 @@ export async function deleteProductMedia(
 }
 
 /**
- * Get all media library items for a site
+ * Get media library items for a site.
+ *
+ * Excludes customer-uploaded design artwork by default: it lives in the same
+ * table but belongs to a shopper's order, not to the site, and must never be
+ * offered back to the owner as site content. Pass `source: 'customer_design'`
+ * to review it deliberately.
  */
 export async function getMediaLibrary(
   db: D1Database,
   siteId: string,
-  type?: 'image' | 'video'
+  type?: 'image' | 'video',
+  source: 'library' | 'customer_design' | 'all' = 'library'
 ): Promise<DBMediaLibraryItem[]> {
   let query = 'SELECT * FROM media_library WHERE site_id = ?';
   const params: unknown[] = [siteId];
+
+  if (source !== 'all') {
+    query += ' AND source = ?';
+    params.push(source);
+  }
 
   if (type) {
     query += ' AND type = ?';
@@ -229,8 +246,8 @@ export async function createMediaLibraryItem(
 
   await db
     .prepare(
-      `INSERT INTO media_library (id, site_id, type, url, thumbnail_url, filename, size, mime_type, width, height, duration, used_count, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO media_library (id, site_id, type, url, thumbnail_url, filename, size, mime_type, width, height, duration, used_count, created_at, updated_at, source)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       id,
@@ -246,7 +263,8 @@ export async function createMediaLibraryItem(
       data.duration || null,
       0,
       timestamp,
-      timestamp
+      timestamp,
+      data.source || 'library'
     )
     .run();
 

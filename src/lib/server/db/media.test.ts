@@ -405,10 +405,11 @@ describe('Product Media Repository', () => {
 
       const result = await getMediaLibrary(mockDB, siteId);
 
+      // Owner-facing listing excludes customer design uploads by default.
       expect(mockPrepare).toHaveBeenCalledWith(
-        'SELECT * FROM media_library WHERE site_id = ? ORDER BY created_at DESC'
+        'SELECT * FROM media_library WHERE site_id = ? AND source = ? ORDER BY created_at DESC'
       );
-      expect(mockBind).toHaveBeenCalledWith(siteId);
+      expect(mockBind).toHaveBeenCalledWith(siteId, 'library');
       expect(result).toEqual([mockMediaLibraryItem]);
     });
 
@@ -421,9 +422,9 @@ describe('Product Media Repository', () => {
       const result = await getMediaLibrary(mockDB, siteId, 'image');
 
       expect(mockPrepare).toHaveBeenCalledWith(
-        'SELECT * FROM media_library WHERE site_id = ? AND type = ? ORDER BY created_at DESC'
+        'SELECT * FROM media_library WHERE site_id = ? AND source = ? AND type = ? ORDER BY created_at DESC'
       );
-      expect(mockBind).toHaveBeenCalledWith(siteId, 'image');
+      expect(mockBind).toHaveBeenCalledWith(siteId, 'library', 'image');
       expect(result).toEqual([mockMediaLibraryItem]);
     });
 
@@ -539,7 +540,8 @@ describe('Product Media Repository', () => {
         null,
         0,
         mockTimestamp,
-        mockTimestamp
+        mockTimestamp,
+        'library'
       );
       expect(result).toEqual(expectedItem);
     });
@@ -613,7 +615,8 @@ describe('Product Media Repository', () => {
         createData.duration,
         0,
         mockTimestamp,
-        mockTimestamp
+        mockTimestamp,
+        'library'
       );
       expect(result).toEqual(expectedItem);
     });
@@ -753,5 +756,34 @@ describe('Product Media Repository', () => {
 
       expect(result).toBeNull();
     });
+  });
+});
+
+describe('media library provenance filter', () => {
+  const siteId = 'test-site';
+
+  it('can list customer design uploads deliberately', async () => {
+    const mockAll = vi.fn().mockResolvedValue({ results: [] });
+    const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+    const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+    const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+    await getMediaLibrary(mockDB, siteId, undefined, 'customer_design');
+
+    expect(mockBind).toHaveBeenCalledWith(siteId, 'customer_design');
+  });
+
+  it('can opt out of the filter entirely', async () => {
+    const mockAll = vi.fn().mockResolvedValue({ results: [] });
+    const mockBind = vi.fn().mockReturnValue({ all: mockAll });
+    const mockPrepare = vi.fn().mockReturnValue({ bind: mockBind });
+    const mockDB = { prepare: mockPrepare } as unknown as D1Database;
+
+    await getMediaLibrary(mockDB, siteId, undefined, 'all');
+
+    expect(mockPrepare).toHaveBeenCalledWith(
+      'SELECT * FROM media_library WHERE site_id = ? ORDER BY created_at DESC'
+    );
+    expect(mockBind).toHaveBeenCalledWith(siteId);
   });
 });
