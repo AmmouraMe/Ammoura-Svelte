@@ -8,6 +8,10 @@ declare global {
     // interface Error {}
     interface Locals {
       siteId: string;
+      /** Resolved locale for this request (cookie → Accept-Language → site default) */
+      locale: string;
+      /** The site's language configuration (validated against supported locales) */
+      i18n: { defaultLocale: string; enabledLocales: string[] };
       isAdmin: boolean;
       /** Platform account (site owner/collaborator), from the account_session cookie */
       account?: import('$lib/server/db/accounts').Account;

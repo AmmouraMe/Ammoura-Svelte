@@ -21,6 +21,8 @@ export interface DBUser {
   grace_period_days: number;
   last_login_at: number | null;
   last_login_ip: string | null;
+  /** Admin UI language preference; NULL/absent = follow site/browser resolution */
+  locale?: string | null;
   created_at: number;
   updated_at: number;
   created_by: string | null;
@@ -50,6 +52,7 @@ export interface UpdateUserData {
   grace_period_days?: number;
   last_login_at?: number | null;
   last_login_ip?: string | null;
+  locale?: string | null;
   updated_by?: string | null;
 }
 
@@ -208,6 +211,10 @@ export async function updateUser(
   if (data.last_login_ip !== undefined) {
     updates.push('last_login_ip = ?');
     params.push(data.last_login_ip);
+  }
+  if (data.locale !== undefined) {
+    updates.push('locale = ?');
+    params.push(data.locale);
   }
   if (data.updated_by !== undefined) {
     updates.push('updated_by = ?');

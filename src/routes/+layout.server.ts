@@ -2,6 +2,7 @@ import { getDB } from '$lib/server/db/connection';
 import * as colorThemes from '$lib/server/db/color-themes';
 import { getUserThemePreferences } from '$lib/server/db/user-theme-preferences';
 import { getGeneralSettings } from '$lib/server/db/site-settings';
+import { translateGeneralSettings } from '$lib/server/i18n/content-translations';
 import { getDefaultLayout, getLayoutComponents } from '$lib/server/db/layouts';
 import { getComponent, getGlobalComponentByName } from '$lib/server/db/components';
 import { createSiteContext, createDefaultSiteContext } from '$lib/utils/templateSubstitution';
@@ -85,6 +86,9 @@ export const load: LayoutServerLoad = async ({ platform, locals }) => {
       currentUser: locals.currentUser || null,
       currentAccount: locals.account || null,
       storeName: 'Hermes eCommerce',
+      locale: locals.locale ?? 'en',
+      i18n: locals.i18n ?? { defaultLocale: 'en', enabledLocales: ['en'] },
+      currency: 'USD',
       layoutData: {
         navbar: { type: 'navbar' as const, config: defaultNavbarConfig, position: undefined },
         footer: null,
@@ -98,13 +102,23 @@ export const load: LayoutServerLoad = async ({ platform, locals }) => {
     const siteId = locals.siteId || 'default-site';
 
     // Get general settings, system default theme IDs, and layout data
-    const [generalSettings, systemLightThemeId, systemDarkThemeId, defaultLayout] =
+    const [generalSettingsRaw, systemLightThemeId, systemDarkThemeId, defaultLayout] =
       await Promise.all([
         getGeneralSettings(db, siteId),
         colorThemes.getThemePreference(db, siteId, 'system-light-theme'),
         colorThemes.getThemePreference(db, siteId, 'system-dark-theme'),
         getDefaultLayout(db, siteId)
       ]);
+
+    // Localize translatable settings so ${site.name}/${site.tagline} render in
+    // the visitor's language (no-op for the default locale)
+    const generalSettings = await translateGeneralSettings(
+      db,
+      siteId,
+      locals.locale,
+      locals.i18n?.defaultLocale ?? 'en',
+      generalSettingsRaw
+    );
 
     // Fetch all themes and user preferences in parallel
     const userId = locals.currentUser?.id;
@@ -247,6 +261,9 @@ export const load: LayoutServerLoad = async ({ platform, locals }) => {
       currentAccount: locals.account || null,
       storeName: generalSettings.storeName || 'Hermes eCommerce',
       siteContext: createSiteContext(generalSettings),
+      locale: locals.locale ?? 'en',
+      i18n: locals.i18n ?? { defaultLocale: 'en', enabledLocales: ['en'] },
+      currency: generalSettings.currency || 'USD',
       layoutData
     };
   } catch (error) {
@@ -261,6 +278,9 @@ export const load: LayoutServerLoad = async ({ platform, locals }) => {
       currentAccount: locals.account || null,
       storeName: 'Hermes eCommerce',
       siteContext: createDefaultSiteContext(),
+      locale: locals.locale ?? 'en',
+      i18n: locals.i18n ?? { defaultLocale: 'en', enabledLocales: ['en'] },
+      currency: 'USD',
       layoutData: {
         navbar: { type: 'navbar' as const, config: defaultNavbarConfig, position: undefined },
         footer: null,

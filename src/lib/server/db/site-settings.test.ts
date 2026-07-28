@@ -1102,4 +1102,84 @@ describe('Site Settings Database Functions', () => {
       expect(result.rateLimit).toBe(100);
     });
   });
+
+  describe('getLanguageSettings', () => {
+    function mockSettingsRows(rows: Array<[string, string]>) {
+      const mockSettings: SiteSetting[] = rows.map(([key, value], i) => ({
+        id: `setting-${i}`,
+        site_id: siteId,
+        setting_key: key,
+        setting_value: value,
+        created_at: 1234567890,
+        updated_at: 1234567890
+      }));
+      const mockStatement = {
+        bind: vi.fn().mockReturnThis(),
+        all: vi.fn().mockResolvedValue({ results: mockSettings })
+      };
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+    }
+
+    it('should default to English only', async () => {
+      mockSettingsRows([]);
+      const { getLanguageSettings } = await import('./site-settings');
+      const result = await getLanguageSettings(mockDb, siteId);
+      expect(result).toEqual({ defaultLocale: 'en', enabledLocales: ['en'] });
+    });
+
+    it('should parse stored locales', async () => {
+      mockSettingsRows([
+        ['i18n_default_locale', 'es'],
+        ['i18n_enabled_locales', '["es","en"]']
+      ]);
+      const { getLanguageSettings } = await import('./site-settings');
+      const result = await getLanguageSettings(mockDb, siteId);
+      expect(result).toEqual({ defaultLocale: 'es', enabledLocales: ['es', 'en'] });
+    });
+
+    it('should always include the default locale in enabled locales', async () => {
+      mockSettingsRows([
+        ['i18n_default_locale', 'es'],
+        ['i18n_enabled_locales', '["en"]']
+      ]);
+      const { getLanguageSettings } = await import('./site-settings');
+      const result = await getLanguageSettings(mockDb, siteId);
+      expect(result.enabledLocales).toEqual(['es', 'en']);
+    });
+
+    it('should fall back on corrupt enabled-locales JSON', async () => {
+      mockSettingsRows([['i18n_enabled_locales', 'not json']]);
+      const { getLanguageSettings } = await import('./site-settings');
+      const result = await getLanguageSettings(mockDb, siteId);
+      expect(result.enabledLocales).toEqual(['en']);
+    });
+  });
+
+  describe('updateLanguageSettings', () => {
+    it('should persist default and enabled locales, enforcing the invariant', async () => {
+      const calls: Array<{ sql?: string; args: unknown[] }> = [];
+      const mockStatement = {
+        bind: vi.fn((...args: unknown[]) => {
+          calls.push({ args });
+          return mockStatement;
+        }),
+        run: vi.fn().mockResolvedValue({}),
+        all: vi.fn().mockResolvedValue({ results: [] })
+      };
+      (mockDb.prepare as ReturnType<typeof vi.fn>).mockReturnValue(mockStatement);
+
+      const { updateLanguageSettings } = await import('./site-settings');
+      await updateLanguageSettings(mockDb, siteId, {
+        defaultLocale: 'es',
+        enabledLocales: ['en']
+      });
+
+      const flatArgs = calls.flatMap((c) => c.args);
+      expect(flatArgs).toContain('i18n_default_locale');
+      expect(flatArgs).toContain('es');
+      expect(flatArgs).toContain('i18n_enabled_locales');
+      // 'es' (the new default) must have been folded into the enabled list
+      expect(flatArgs).toContain(JSON.stringify(['es', 'en']));
+    });
+  });
 });

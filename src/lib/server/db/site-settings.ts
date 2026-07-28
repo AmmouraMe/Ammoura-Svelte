@@ -285,6 +285,65 @@ export async function updateGeneralSettings(
 }
 
 /**
+ * Per-site language configuration (i18n). `enabledLocales` always contains
+ * `defaultLocale`; values are validated against the platform's supported
+ * locales at write time by the settings action, not here.
+ */
+export interface LanguageSettings {
+  defaultLocale: string;
+  enabledLocales: string[];
+}
+
+export async function getLanguageSettings(
+  db: D1Database,
+  siteId: string
+): Promise<LanguageSettings> {
+  const settings = await getSiteSettings(db, siteId);
+  const settingsMap = new Map(settings.map((s) => [s.setting_key, s.setting_value]));
+
+  const defaultLocale = settingsMap.get('i18n_default_locale') || 'en';
+
+  let enabledLocales: string[] = [defaultLocale];
+  const raw = settingsMap.get('i18n_enabled_locales');
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.every((l) => typeof l === 'string')) {
+        enabledLocales = parsed;
+      }
+    } catch {
+      // Corrupt value: fall back to just the default locale
+    }
+  }
+
+  if (!enabledLocales.includes(defaultLocale)) {
+    enabledLocales = [defaultLocale, ...enabledLocales];
+  }
+
+  return { defaultLocale, enabledLocales };
+}
+
+export async function updateLanguageSettings(
+  db: D1Database,
+  siteId: string,
+  settings: Partial<LanguageSettings>
+): Promise<void> {
+  if (settings.defaultLocale !== undefined) {
+    await upsertSiteSetting(db, siteId, 'i18n_default_locale', settings.defaultLocale);
+  }
+  if (settings.enabledLocales !== undefined) {
+    const enabled = [...settings.enabledLocales];
+    // Invariant: the default locale is always enabled
+    const defaultLocale =
+      settings.defaultLocale ?? (await getLanguageSettings(db, siteId)).defaultLocale;
+    if (!enabled.includes(defaultLocale)) {
+      enabled.unshift(defaultLocale);
+    }
+    await upsertSiteSetting(db, siteId, 'i18n_enabled_locales', JSON.stringify(enabled));
+  }
+}
+
+/**
  * Get address settings
  */
 export async function getAddressSettings(db: D1Database, siteId: string): Promise<AddressSettings> {

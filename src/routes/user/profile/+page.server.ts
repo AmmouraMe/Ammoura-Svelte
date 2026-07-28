@@ -1,5 +1,6 @@
 import type { PageServerLoad, Actions } from './$types';
 import { getDB, getUserById, updateUser } from '$lib/server/db';
+import { isSupportedLocale, SUPPORTED_LOCALES } from '$lib/i18n';
 import { createActivityLog } from '$lib/server/db/activity-logs';
 import { error, fail, redirect } from '@sveltejs/kit';
 
@@ -45,7 +46,8 @@ export const load: PageServerLoad = async ({ platform, cookies, locals }) => {
   const { password_hash: _password_hash, ...userWithoutPassword } = user;
 
   return {
-    user: userWithoutPassword
+    user: userWithoutPassword,
+    availableLocales: SUPPORTED_LOCALES.map((l) => ({ ...l }))
   };
 };
 
@@ -70,6 +72,9 @@ export const actions: Actions = {
     const formData = await request.formData();
     const name = formData.get('name')?.toString().trim();
     const email = formData.get('email')?.toString().trim().toLowerCase();
+    const rawLocale = formData.get('locale')?.toString() ?? '';
+    // '' = follow the site/browser resolution (stored as NULL)
+    const locale = rawLocale && isSupportedLocale(rawLocale) ? rawLocale : null;
 
     // Validate required fields
     const errors: Record<string, string> = {};
@@ -103,6 +108,7 @@ export const actions: Actions = {
       await updateUser(db, siteId, currentUser.id, {
         name: name!,
         email: email!,
+        locale,
         updated_by: currentUser.id
       });
 
@@ -110,7 +116,8 @@ export const actions: Actions = {
       const updatedSession = {
         ...sessionUser,
         name: name!,
-        email: email!
+        email: email!,
+        locale
       };
       cookies.set('user_session', encodeURIComponent(JSON.stringify(updatedSession)), {
         path: '/',
