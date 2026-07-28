@@ -20,8 +20,8 @@ export const SYSTEM_THEMES: ColorThemeDefinition[] = [
       text: '#1e1b4b',
       textSecondary: '#6b21a8',
       border: '#f5d0fe',
-      success: '#22c55e',
-      warning: '#fb923c',
+      success: '#1b9c4a',
+      warning: '#db6505',
       error: '#f43f5e'
     }
   },
@@ -100,8 +100,8 @@ export const SYSTEM_THEMES: ColorThemeDefinition[] = [
       text: '#78350f',
       textSecondary: '#92400e',
       border: '#fde68a',
-      success: '#84cc16',
-      warning: '#f59e0b',
+      success: '#639910',
+      warning: '#c07b08',
       error: '#ef4444'
     }
   },
@@ -120,8 +120,8 @@ export const SYSTEM_THEMES: ColorThemeDefinition[] = [
       text: '#164e63',
       textSecondary: '#0e7490',
       border: '#a5f3fc',
-      success: '#14b8a6',
-      warning: '#0ea5e9',
+      success: '#119b8b',
+      warning: '#0c93cf',
       error: '#6366f1'
     }
   },
@@ -140,8 +140,8 @@ export const SYSTEM_THEMES: ColorThemeDefinition[] = [
       text: '#365314',
       textSecondary: '#4d7c0f',
       border: '#d9f99d',
-      success: '#22c55e',
-      warning: '#eab308',
+      success: '#1ca24d',
+      warning: '#af8606',
       error: '#dc2626'
     }
   },
