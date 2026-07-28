@@ -26,7 +26,7 @@
   $: categories = ['all', ...new Set(products.map((p) => p.category))];
 
   function handleAddProduct() {
-    goto('/admin/products/add');
+    goto('/admin/products/new');
   }
 
   function handleEditProduct(product: Product) {

@@ -23,6 +23,7 @@ interface DBCustomizationZone {
   max_file_size: number;
   allowed_types: string;
   sort_order: number;
+  print_area_id: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -39,7 +40,8 @@ function mapToZone(row: DBCustomizationZone): ProductCustomizationZone {
     heightPercent: row.height_percent,
     maxFileSize: row.max_file_size,
     allowedTypes: JSON.parse(row.allowed_types || '[]') as string[],
-    sortOrder: row.sort_order
+    sortOrder: row.sort_order,
+    printAreaId: row.print_area_id ?? null
   };
 }
 
@@ -93,8 +95,8 @@ export async function createCustomizationZone(
   await db
     .prepare(
       `INSERT INTO product_customization_zones
-       (id, site_id, product_id, media_id, name, x_percent, y_percent, width_percent, height_percent, max_file_size, allowed_types, sort_order, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       (id, site_id, product_id, media_id, name, x_percent, y_percent, width_percent, height_percent, max_file_size, allowed_types, sort_order, print_area_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       id,
@@ -109,6 +111,7 @@ export async function createCustomizationZone(
       data.maxFileSize ?? DEFAULT_MAX_FILE_SIZE,
       allowedTypes,
       data.sortOrder ?? 0,
+      data.printAreaId ?? null,
       timestamp,
       timestamp
     )

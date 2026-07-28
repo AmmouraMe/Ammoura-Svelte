@@ -16,6 +16,8 @@ export interface DBProduct {
   stock: number;
   type: 'physical' | 'service' | 'digital';
   tags: string; // JSON array
+  template_id: string | null;
+  fulfillment_mode: string;
   created_at: number;
   updated_at: number;
 }
@@ -29,6 +31,10 @@ export interface CreateProductData {
   stock: number;
   type: 'physical' | 'service' | 'digital';
   tags: string[];
+  /** Curated template this product was authored from, if any. */
+  templateId?: string | null;
+  /** 'manual' (owner prints) | 'printful' (auto-fulfilled). */
+  fulfillmentMode?: string;
 }
 
 export interface UpdateProductData {
@@ -40,6 +46,7 @@ export interface UpdateProductData {
   stock?: number;
   type?: 'physical' | 'service' | 'digital';
   tags?: string[];
+  fulfillmentMode?: string;
 }
 
 /**
@@ -110,8 +117,8 @@ export async function createProduct(
 
   await db
     .prepare(
-      `INSERT INTO products (id, site_id, name, description, price, image, category, stock, type, tags, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO products (id, site_id, name, description, price, image, category, stock, type, tags, template_id, fulfillment_mode, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       id,
@@ -124,6 +131,8 @@ export async function createProduct(
       data.stock,
       data.type,
       tagsJson,
+      data.templateId ?? null,
+      data.fulfillmentMode ?? 'manual',
       timestamp,
       timestamp
     )
@@ -186,6 +195,10 @@ export async function updateProduct(
     updates.push('tags = ?');
     params.push(JSON.stringify(data.tags));
   }
+  if (data.fulfillmentMode !== undefined) {
+    updates.push('fulfillment_mode = ?');
+    params.push(data.fulfillmentMode);
+  }
 
   if (updates.length === 0) {
     return product;
@@ -216,6 +229,15 @@ export async function deleteProduct(
     .prepare('DELETE FROM products WHERE id = ? AND site_id = ?')
     .bind(productId, siteId)
     .run();
+
+  // GC content translations for the product (best-effort)
+  try {
+    const { deleteTranslationsForEntity } = await import('../i18n/content-translations.js');
+    await deleteTranslationsForEntity(db, siteId, 'product', productId);
+  } catch (error) {
+    console.error('Failed to GC product translations:', error);
+  }
+
   return (result.meta?.changes || 0) > 0;
 }
 

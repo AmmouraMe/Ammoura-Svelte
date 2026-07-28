@@ -25,6 +25,8 @@ describe('Products Repository', () => {
     stock: 10,
     type: 'physical',
     tags: '["tag1", "tag2"]',
+    template_id: null,
+    fulfillment_mode: 'manual',
     created_at: 1234567890,
     updated_at: 1234567890
   };
