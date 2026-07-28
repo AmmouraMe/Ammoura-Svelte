@@ -1059,6 +1059,8 @@
     right: 0;
     bottom: 0;
     background: transparent;
+    /* Inherit, or the global filled-button colour makes this unreadable. */
+    color: inherit;
     border: none;
     padding: 0;
     cursor: default;

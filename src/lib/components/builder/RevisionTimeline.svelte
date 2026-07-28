@@ -143,6 +143,8 @@
     gap: 0.75rem;
     padding: 0.75rem;
     background: none;
+    /* Inherit, or the global filled-button colour makes this unreadable. */
+    color: inherit;
     border: none;
     border-bottom: 1px solid var(--color-border-secondary);
     text-align: left;

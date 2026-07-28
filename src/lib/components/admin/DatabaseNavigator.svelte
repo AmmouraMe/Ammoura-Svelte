@@ -668,6 +668,8 @@
     align-items: center;
     padding: 1rem 1.25rem;
     background: transparent;
+    /* Inherit, or the global filled-button colour makes this unreadable. */
+    color: inherit;
     border: none;
     cursor: pointer;
     text-align: left;

@@ -242,6 +242,8 @@
     width: 100%;
     padding: 0.75rem;
     background: transparent;
+    /* Inherit, or the global filled-button colour makes this unreadable. */
+    color: inherit;
     border: 1px solid var(--color-border-secondary);
     border-radius: 8px;
     cursor: pointer;

@@ -151,6 +151,8 @@
     width: 100%;
     padding: 10px;
     background: none;
+    /* Inherit, or the global filled-button colour makes this unreadable. */
+    color: inherit;
     border: none;
     border-radius: 8px;
     text-align: left;

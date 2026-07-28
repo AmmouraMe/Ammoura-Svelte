@@ -982,6 +982,8 @@
     width: 100%;
     padding: 1rem;
     background: none;
+    /* Inherit, or the global filled-button colour makes this unreadable. */
+    color: inherit;
     border: none;
     cursor: pointer;
     transition: background 0.2s;
@@ -1337,6 +1339,8 @@
     flex: 1;
     padding: 0.75rem;
     background: transparent;
+    /* Inherit, or the global filled-button colour makes this unreadable. */
+    color: inherit;
     border: none;
     cursor: pointer;
     text-align: left;
