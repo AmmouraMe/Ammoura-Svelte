@@ -1,4 +1,4 @@
-import type { Handle } from '@sveltejs/kit';
+import { json, type Handle } from '@sveltejs/kit';
 import { getDB, getAccountBySessionToken } from '$lib/server/db';
 import { ACCOUNT_SESSION_COOKIE } from '$lib/server/db/account-sessions';
 import { getLanguageSettings } from '$lib/server/db/site-settings';
@@ -172,6 +172,21 @@ export const handle: Handle = async ({ event, resolve }) => {
     // Check for legacy admin session cookie
     const adminSession = event.cookies?.get('admin_session');
     event.locals.isAdmin = adminSession === 'authenticated';
+  }
+
+  // Owner-only API surfaces. `/admin/*` pages already redirect anonymous
+  // visitors, but the JSON APIs behind them answered anyone — `/api/admin/*`
+  // returned 200, and `/api/media/upload` accepted 50MB from the public
+  // internet. Guard them in one place rather than per route.
+  //
+  // Deliberately NOT guarded: `/api/media/[...path]` (storefront images must
+  // stay public) and `/api/products/*/design-upload` (shoppers are anonymous
+  // by nature, and that route does its own validation and rate limiting).
+  const requestPath = event.url.pathname;
+  const isOwnerOnlyApi =
+    requestPath.startsWith('/api/admin') || requestPath === '/api/media/upload';
+  if (isOwnerOnlyApi && !event.locals.isAdmin) {
+    return json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   return resolve(event, {
