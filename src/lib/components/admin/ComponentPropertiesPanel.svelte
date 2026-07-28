@@ -1821,6 +1821,16 @@
               <label class="checkbox-label">
                 <input
                   type="checkbox"
+                  bind:checked={config.showLanguageSwitcher}
+                  on:change={handleImmediateUpdate}
+                />
+                <span>Show Language Switcher</span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input
+                  type="checkbox"
                   bind:checked={config.showAccountMenu}
                   on:change={handleImmediateUpdate}
                 />

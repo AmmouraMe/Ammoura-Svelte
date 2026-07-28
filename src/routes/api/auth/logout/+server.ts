@@ -1,6 +1,7 @@
 import { json, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDB } from '$lib/server/db';
+import { getDB, deleteAccountSession } from '$lib/server/db';
+import { ACCOUNT_SESSION_COOKIE } from '$lib/server/db/account-sessions';
 import { logActivity } from '$lib/server/activity-logger';
 
 async function performLogout(
@@ -49,10 +50,23 @@ async function performLogout(
     }
   }
 
+  // Also revoke the platform account session: the navbar shows the account
+  // login too, so "Logout" must clear both kinds of session.
+  const accountToken = cookies.get(ACCOUNT_SESSION_COOKIE);
+  if (accountToken) {
+    try {
+      await deleteAccountSession(getDB(platform), accountToken);
+    } catch (error) {
+      // Cookie removal below is what logs the browser out; the DB row expires
+      console.error('Failed to revoke account session on logout:', error);
+    }
+  }
+
   // Delete all session cookies
   cookies.delete('user_session', { path: '/' });
   cookies.delete('admin_session', { path: '/' });
   cookies.delete('engineer_session', { path: '/' });
+  cookies.delete(ACCOUNT_SESSION_COOKIE, { path: '/' });
 }
 
 // GET handler - allows using a simple link/button to logout

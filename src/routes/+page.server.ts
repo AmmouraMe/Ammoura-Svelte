@@ -3,6 +3,7 @@ import { getDB, getAllProducts, getProductFulfillmentOptions } from '$lib/server
 import * as pagesDb from '$lib/server/db/pages';
 import { getPublishedRevision, getMostRecentDraftRevision } from '$lib/server/db/revisions';
 import { resolveComponentRefs } from '$lib/server/db/components';
+import { translateComponents, translateProducts } from '$lib/server/i18n/content-translations';
 import * as colorThemes from '$lib/server/db/color-themes';
 import type { PageComponent, PageProperties } from '$lib/types/pages';
 
@@ -49,10 +50,26 @@ export const load: PageServerLoad = async ({ platform, locals, url }) => {
 
       // Resolve component_ref types to actual component types for frontend rendering
       components = await resolveComponentRefs(db, siteId, rawComponents);
+
+      // Overlay per-locale content translations (no-op for the default locale)
+      components = await translateComponents(
+        db,
+        siteId,
+        locals.locale,
+        locals.i18n?.defaultLocale ?? 'en',
+        page.id,
+        components
+      );
     }
 
     // Fetch products from D1 database
-    const dbProducts = await getAllProducts(db, siteId);
+    const dbProducts = await translateProducts(
+      db,
+      siteId,
+      locals.locale,
+      locals.i18n?.defaultLocale ?? 'en',
+      await getAllProducts(db, siteId)
+    );
 
     // Transform database products to match the Product type
     const products = await Promise.all(

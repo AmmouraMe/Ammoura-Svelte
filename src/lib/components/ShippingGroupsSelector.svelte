@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { ShippingGroup } from '$lib/utils/shippingGroups';
   import type { AvailableShippingOption } from '$lib/types/shipping';
+  import { money } from '$lib/i18n';
 
   export let shippingGroups: ShippingGroup[] = [];
   export let selectedOptions: Record<string, string> = {};
@@ -124,7 +125,7 @@
                         {#if option.isFreeShipping || option.price === 0}
                           <span class="free-badge">FREE</span>
                         {:else}
-                          <span class="price">${option.price.toFixed(2)}</span>
+                          <span class="price">{$money(option.price)}</span>
                         {/if}
                       </div>
                     </div>

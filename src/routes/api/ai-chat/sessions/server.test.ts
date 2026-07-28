@@ -81,7 +81,9 @@ describe('AI Chat Sessions API', () => {
           role: 'admin'
         } as unknown as DBUser,
         siteId: 'site-1',
-        isAdmin: true
+        isAdmin: true,
+        locale: 'en',
+        i18n: { defaultLocale: 'en', enabledLocales: ['en'] }
       },
       url: new URL('http://localhost/api/ai-chat/sessions'),
       request: new Request('http://localhost/api/ai-chat/sessions')
@@ -111,7 +113,13 @@ describe('AI Chat Sessions API', () => {
     });
 
     it('returns 401 when user not authenticated', async () => {
-      mockEvent.locals = { currentUser: undefined, siteId: 'site-1', isAdmin: false };
+      mockEvent.locals = {
+        currentUser: undefined,
+        siteId: 'site-1',
+        isAdmin: false,
+        locale: 'en',
+        i18n: { defaultLocale: 'en', enabledLocales: ['en'] }
+      };
 
       await expect(GET(mockEvent as MockRequestEvent)).rejects.toThrow();
     });
@@ -120,7 +128,9 @@ describe('AI Chat Sessions API', () => {
       mockEvent.locals = {
         currentUser: { id: 'user-1', role: 'customer' } as unknown as DBUser,
         siteId: 'site-1',
-        isAdmin: false
+        isAdmin: false,
+        locale: 'en',
+        i18n: { defaultLocale: 'en', enabledLocales: ['en'] }
       };
 
       await expect(GET(mockEvent as MockRequestEvent)).rejects.toThrow();

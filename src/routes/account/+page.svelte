@@ -1,5 +1,7 @@
 <script lang="ts">
   import { invalidateAll, goto } from '$app/navigation';
+  import { dev } from '$app/environment';
+  import { t } from '$lib/i18n';
   import type { PageData } from './$types';
 
   export let data: PageData;
@@ -66,7 +68,7 @@
   async function createSite() {
     error = '';
     if (!siteName || !slug) {
-      error = 'Please provide a site name';
+      error = $t('sites.nameRequired');
       return;
     }
 
@@ -90,10 +92,10 @@
         slugStatus = 'idle';
         await invalidateAll();
       } else {
-        error = result.error || 'Could not create the site';
+        error = result.error || $t('sites.createFailed');
       }
     } catch {
-      error = 'An error occurred. Please try again.';
+      error = $t('common.error');
     } finally {
       isCreating = false;
     }
@@ -106,22 +108,24 @@
 
   function siteUrl(site: { slug: string | null }): string {
     if (!site.slug) return '';
-    const host = `${site.slug}.${data.platformSitesDomain}`;
-    return data.platformSitesDomain === 'localhost' ? `http://${host}:4236` : `https://${host}`;
+    // In dev there's no wildcard DNS (localhost or the Cloudflare dev tunnel),
+    // so link through the /subdomain/NAME simulation handled in hooks.server.ts.
+    if (dev) return `/subdomain/${site.slug}`;
+    return `https://${site.slug}.${data.platformSitesDomain}`;
   }
 </script>
 
 <svelte:head>
-  <title>Your sites</title>
+  <title>{$t('sites.title')}</title>
 </svelte:head>
 
 <div class="account-container">
   <div class="account-header">
     <div>
-      <h1>Your sites</h1>
-      <p>Signed in as {data.account.email}</p>
+      <h1>{$t('sites.title')}</h1>
+      <p>{$t('sites.signedInAs')} {data.account.email}</p>
     </div>
-    <button class="link-button" on:click={logout}>Sign out</button>
+    <button class="link-button" on:click={logout}>{$t('auth.signOut')}</button>
   </div>
 
   {#if hasSites}
@@ -135,10 +139,11 @@
           <div class="site-actions">
             {#if site.slug}
               <a class="site-link" href={siteUrl(site)} target="_blank" rel="noopener">
-                {site.slug}.{data.platformSitesDomain}
+                {dev ? `/subdomain/${site.slug}` : `${site.slug}.${data.platformSitesDomain}`}
               </a>
             {/if}
-            <a class="site-link" href={`/account/sites/${site.id}/domains`}>Domains</a>
+            <a class="site-link" href={`/account/sites/${site.id}/domains`}>{$t('sites.domains')}</a
+            >
           </div>
         </li>
       {/each}
@@ -146,10 +151,9 @@
   {/if}
 
   <div class="create-card">
-    <h2>{hasSites ? 'Create another site' : 'Name your first site'}</h2>
+    <h2>{hasSites ? $t('sites.createAnother') : $t('sites.nameFirst')}</h2>
     <p class="create-intro">
-      Your site goes live immediately on a free subdomain. You can connect your own domain any time
-      after.
+      {$t('sites.createIntro')}
     </p>
 
     <form on:submit|preventDefault={createSite}>
@@ -158,19 +162,19 @@
       {/if}
 
       <div class="form-group">
-        <label for="site-name">Site name</label>
+        <label for="site-name">{$t('sites.siteName')}</label>
         <input
           id="site-name"
           type="text"
           bind:value={siteName}
           on:input={onNameInput}
-          placeholder="My Store"
+          placeholder={$t('sites.siteNamePlaceholder')}
           disabled={isCreating}
         />
       </div>
 
       <div class="form-group">
-        <label for="site-slug">Web address</label>
+        <label for="site-slug">{$t('sites.webAddress')}</label>
         <div class="slug-row">
           <input
             id="site-slug"
@@ -183,11 +187,11 @@
           <span class="slug-suffix">.{data.platformSitesDomain}</span>
         </div>
         {#if slugStatus === 'checking'}
-          <span class="slug-hint">Checking availability…</span>
+          <span class="slug-hint">{$t('sites.checkingAvailability')}</span>
         {:else if slugStatus === 'available'}
-          <span class="slug-hint available">Available</span>
+          <span class="slug-hint available">{$t('sites.available')}</span>
         {:else if slugStatus === 'unavailable'}
-          <span class="slug-hint unavailable">{slugReason || 'Not available'}</span>
+          <span class="slug-hint unavailable">{slugReason || $t('sites.notAvailable')}</span>
         {/if}
       </div>
 
@@ -196,7 +200,7 @@
         class="submit-button"
         disabled={isCreating || slugStatus === 'unavailable'}
       >
-        {isCreating ? 'Creating…' : 'Create site'}
+        {isCreating ? $t('sites.creating') : $t('sites.createSite')}
       </button>
     </form>
   </div>

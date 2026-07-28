@@ -4,6 +4,7 @@
    * Renders entry fields in a clean, readable layout using the content type's field schema.
    */
   import type { ContentEntry, ContentType, ContentFieldDefinition } from '$lib/types/contentTypes';
+  import { dateFmt } from '$lib/i18n';
 
   export let entry: ContentEntry;
   export let contentType: ContentType;
@@ -32,11 +33,7 @@
 
   function formatDate(timestamp: number | null): string {
     if (!timestamp) return '';
-    return new Date(timestamp * 1000).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    return $dateFmt(timestamp * 1000, 'long');
   }
 </script>
 

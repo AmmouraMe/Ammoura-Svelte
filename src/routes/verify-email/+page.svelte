@@ -1,27 +1,28 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import type { PageData } from './$types';
 
   export let data: PageData;
 </script>
 
 <svelte:head>
-  <title>Email verification</title>
+  <title>{$t('verify.title')}</title>
 </svelte:head>
 
 <div class="verify-container">
   <div class="verify-card">
     {#if data.verified}
-      <h1>Email verified ✓</h1>
-      <p>{data.email} is confirmed. You're all set.</p>
-      <a class="button" href="/account">Go to your sites</a>
+      <h1>{$t('verify.verified')} ✓</h1>
+      <p>{$t('verify.confirmed', { email: data.email ?? '' })}</p>
+      <a class="button" href="/account">{$t('verify.goToSites')}</a>
     {:else if data.reason === 'missing'}
-      <h1>Missing link</h1>
-      <p>This page needs the verification link from your email.</p>
-      <a class="button" href="/account">Back to your account</a>
+      <h1>{$t('verify.missing')}</h1>
+      <p>{$t('verify.missingHelp')}</p>
+      <a class="button" href="/account">{$t('verify.backToAccount')}</a>
     {:else}
-      <h1>Link expired or invalid</h1>
-      <p>Verification links only work once and expire after 24 hours.</p>
-      <a class="button" href="/account?resend-verification=1">Request a new link</a>
+      <h1>{$t('verify.expired')}</h1>
+      <p>{$t('verify.expiredHelp')}</p>
+      <a class="button" href="/account?resend-verification=1">{$t('verify.requestNew')}</a>
     {/if}
   </div>
 </div>

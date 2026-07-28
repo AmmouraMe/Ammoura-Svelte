@@ -46,6 +46,8 @@ describe('POST /api/ai-chat/create-product', () => {
       type: 'physical' as const,
       stock: 10,
       tags: '["tag1","tag2"]',
+      template_id: null,
+      fulfillment_mode: 'manual',
       image: '',
       created_at: Date.now(),
       updated_at: Date.now()
@@ -155,6 +157,8 @@ describe('POST /api/ai-chat/create-product', () => {
       type: 'physical' as const,
       stock: 10,
       tags: '["tag1","tag2"]',
+      template_id: null,
+      fulfillment_mode: 'manual',
       image: '',
       created_at: Date.now(),
       updated_at: Date.now()
@@ -212,6 +216,8 @@ describe('POST /api/ai-chat/create-product', () => {
       type: 'physical' as const,
       stock: 10,
       tags: '["tag1"]',
+      template_id: null,
+      fulfillment_mode: 'manual',
       image: '',
       created_at: Date.now(),
       updated_at: Date.now()
@@ -306,6 +312,8 @@ describe('POST /api/ai-chat/create-product', () => {
       type: 'physical' as const,
       stock: 10,
       tags: '["tag1"]',
+      template_id: null,
+      fulfillment_mode: 'manual',
       image: '',
       created_at: Date.now(),
       updated_at: Date.now()
@@ -398,6 +406,8 @@ describe('POST /api/ai-chat/create-product', () => {
       type: 'physical' as const,
       stock: 10,
       tags: '["tag1","tag2"]',
+      template_id: null,
+      fulfillment_mode: 'manual',
       image: '',
       created_at: Date.now(),
       updated_at: Date.now()
@@ -495,6 +505,8 @@ describe('POST /api/ai-chat/create-product', () => {
       type: 'physical' as const,
       stock: 10,
       tags: '["tag1"]',
+      template_id: null,
+      fulfillment_mode: 'manual',
       image: '',
       created_at: Date.now(),
       updated_at: Date.now()
@@ -569,6 +581,8 @@ describe('POST /api/ai-chat/create-product', () => {
       type: 'physical' as const,
       stock: 10,
       tags: '["tag1"]',
+      template_id: null,
+      fulfillment_mode: 'manual',
       image: '',
       created_at: Date.now(),
       updated_at: Date.now()
@@ -616,6 +630,8 @@ describe('POST /api/ai-chat/create-product', () => {
       type: 'physical' as const,
       stock: 10,
       tags: '["tag1"]',
+      template_id: null,
+      fulfillment_mode: 'manual',
       image: '',
       created_at: Date.now(),
       updated_at: Date.now()
@@ -719,6 +735,8 @@ describe('POST /api/ai-chat/create-product', () => {
       type: 'physical' as const,
       stock: 10,
       tags: '["tag1"]',
+      template_id: null,
+      fulfillment_mode: 'manual',
       image: '',
       created_at: Date.now(),
       updated_at: Date.now()
@@ -827,6 +845,8 @@ describe('POST /api/ai-chat/create-product', () => {
       type: 'physical' as const,
       stock: 10,
       tags: '["tag1"]',
+      template_id: null,
+      fulfillment_mode: 'manual',
       image: '',
       created_at: Date.now(),
       updated_at: Date.now()

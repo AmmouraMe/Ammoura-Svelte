@@ -5,6 +5,7 @@
   import { themeRefToCssVar } from '$lib/utils/editor/colorThemes';
   import { themeStore } from '$lib/stores/theme';
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
   import { browser } from '$app/environment';
   import type { PageData } from './$types';
   import type { PageProperties } from '$lib/types/pages';
@@ -55,70 +56,41 @@
     }, 100);
   });
 
-  const features = [
-    {
-      icon: '🎯',
-      title: 'Easy Setup',
-      description: 'Get your online store up and running in minutes, no technical skills needed'
-    },
-    {
-      icon: '✨',
-      title: 'Beautiful Design',
-      description: 'Gorgeous, modern storefront that looks professional on any device'
-    },
+  $: features = [
+    { icon: '🎯', title: $t('home.feature.setup'), description: $t('home.feature.setupDesc') },
+    { icon: '✨', title: $t('home.feature.design'), description: $t('home.feature.designDesc') },
     {
       icon: '📦',
-      title: 'Manage Products',
-      description: 'Simple dashboard to add, edit, and organize your products effortlessly'
+      title: $t('home.feature.products'),
+      description: $t('home.feature.productsDesc')
     },
     {
       icon: '💳',
-      title: 'Accept Payments',
-      description: 'Secure checkout ready to connect with your preferred payment processor'
+      title: $t('home.feature.payments'),
+      description: $t('home.feature.paymentsDesc')
     },
     {
       icon: '🎨',
-      title: 'Customize Everything',
-      description: 'Make your store uniquely yours with flexible customization options'
+      title: $t('home.feature.customize'),
+      description: $t('home.feature.customizeDesc')
     },
-    {
-      icon: '📱',
-      title: 'Mobile Ready',
-      description: 'Your customers can shop from anywhere, on any device'
-    }
+    { icon: '📱', title: $t('home.feature.mobile'), description: $t('home.feature.mobileDesc') }
   ];
 
-  const pricingFeatures = [
-    'Unlimited products',
-    'Free custom domain (optional)',
-    'AI-powered builder (voice + text)',
-    'Real-time analytics',
-    'Secure checkout (credit card/crypto)',
-    'AI product video generator'
+  $: pricingFeatures = [
+    $t('home.pricing.unlimitedProducts'),
+    $t('home.pricing.freeDomain'),
+    $t('home.pricing.aiBuilder'),
+    $t('home.pricing.analytics'),
+    $t('home.pricing.secureCheckout'),
+    $t('home.pricing.videoGenerator')
   ];
 
-  const revenueShareTiers = [
-    {
-      range: '$0 – $1,000',
-      fee: '8%',
-      description: 'Perfect for getting started'
-    },
-    {
-      range: '$1,001 – $5,000',
-      fee: '6%',
-      description: 'Growing your business'
-    },
-    {
-      range: '$5,001 – $20,000',
-      fee: '4%',
-      description: 'Established sales'
-    },
-    {
-      range: '$20,001+',
-      fee: '3%',
-      description: 'High volume discounts',
-      highlight: true
-    }
+  $: revenueShareTiers = [
+    { range: '$0 – $1,000', fee: '8%', description: $t('home.tier.starting') },
+    { range: '$1,001 – $5,000', fee: '6%', description: $t('home.tier.growing') },
+    { range: '$5,001 – $20,000', fee: '4%', description: $t('home.tier.established') },
+    { range: '$20,001+', fee: '3%', description: $t('home.tier.highVolume'), highlight: true }
   ];
 </script>
 
@@ -126,12 +98,9 @@
   <title
     >{page
       ? page.title
-      : `${data.storeName || 'Hermes eCommerce'} - Start Your Online Store`}</title
+      : `${data.storeName || 'Hermes eCommerce'} - ${$t('home.titleSuffix')}`}</title
   >
-  <meta
-    name="description"
-    content="Create your own beautiful online store. Sell products, manage orders, and grow your business."
-  />
+  <meta name="description" content={$t('home.metaDescription')} />
 </svelte:head>
 
 {#if page && components.length > 0}
@@ -154,7 +123,13 @@
   >
     {#each components as component}
       <div class="component-container" data-component-type={component.type}>
-        <FrontendComponentRenderer type={component.type} config={component.config} {colorTheme} />
+        <FrontendComponentRenderer
+          type={component.type}
+          config={component.config}
+          {colorTheme}
+          siteContext={data.siteContext}
+          user={data.currentUser}
+        />
       </div>
     {/each}
   </div>
@@ -169,23 +144,23 @@
   <section class="hero" class:visible={heroVisible}>
     <div class="hero-badge">
       <span class="badge-icon">✨</span>
-      <span>Start Selling Online Today</span>
+      <span>{$t('home.badge')}</span>
     </div>
 
     <h1 class="hero-title">
-      Create Your Own
-      <span class="gradient-text">Online Store</span>
+      {$t('home.heroTitle')}
+      <span class="gradient-text">{$t('home.heroTitleAccent')}</span>
     </h1>
 
     <p class="hero-subtitle">
-      Everything you need to start selling products online.
+      {$t('home.heroSubtitle')}
       <br />
-      <strong>Simple, beautiful, and ready for your business.</strong>
+      <strong>{$t('home.heroSubtitle2')}</strong>
     </p>
 
     <div class="hero-actions">
       <a href="#products" class="btn btn-primary">
-        <span>See Example Store</span>
+        <span>{$t('home.seeExample')}</span>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <path
             d="M5 12h14M12 5l7 7-7 7"
@@ -196,32 +171,32 @@
         </svg>
       </a>
       <a href="/auth/login" class="btn btn-secondary">
-        <span>Start Your Store</span>
+        <span>{$t('home.startYourStore')}</span>
       </a>
     </div>
 
     <div class="hero-stats">
       <div class="stat">
-        <div class="stat-value">Simple</div>
-        <div class="stat-label">Setup</div>
+        <div class="stat-value">{$t('home.stat.simple')}</div>
+        <div class="stat-label">{$t('home.stat.setup')}</div>
       </div>
       <div class="stat-divider"></div>
       <div class="stat">
-        <div class="stat-value">Beautiful</div>
-        <div class="stat-label">Design</div>
+        <div class="stat-value">{$t('home.stat.beautiful')}</div>
+        <div class="stat-label">{$t('home.stat.design')}</div>
       </div>
       <div class="stat-divider"></div>
       <div class="stat">
-        <div class="stat-value">Your</div>
-        <div class="stat-label">Brand</div>
+        <div class="stat-value">{$t('home.stat.your')}</div>
+        <div class="stat-label">{$t('home.stat.brand')}</div>
       </div>
     </div>
   </section>
 
   <section class="features" id="features">
     <div class="section-header">
-      <h2>Everything You Need to Succeed</h2>
-      <p>All the tools to run your online business, right out of the box</p>
+      <h2>{$t('home.featuresTitle')}</h2>
+      <p>{$t('home.featuresSubtitle')}</p>
     </div>
 
     <div class="features-grid">
@@ -237,19 +212,17 @@
 
   <section class="pricing" id="pricing">
     <div class="section-header">
-      <h2>🚀 {data.storeName || 'Hermes eCommerce'} Pricing</h2>
-      <p class="pricing-tagline">Zero monthly fees. We win when you win.</p>
-      <p class="pricing-subtitle">
-        Every store gets full access — we only earn a small % per sale.
-      </p>
+      <h2>🚀 {$t('home.pricingTitle', { storeName: data.storeName || 'Hermes eCommerce' })}</h2>
+      <p class="pricing-tagline">{$t('home.pricingTagline')}</p>
+      <p class="pricing-subtitle">{$t('home.pricingSubtitle')}</p>
     </div>
 
     <div class="pricing-container">
       <div class="pricing-model">
         <div class="model-header">
           <span class="model-icon">💰</span>
-          <h3>Pay-as-You-Grow</h3>
-          <p>All features included, always.</p>
+          <h3>{$t('home.payAsYouGrow')}</h3>
+          <p>{$t('home.allFeaturesIncluded')}</p>
         </div>
 
         <ul class="features-list">
@@ -272,13 +245,13 @@
       <div class="revenue-share">
         <div class="revenue-header">
           <span class="revenue-icon">💎</span>
-          <h3>Revenue Share (includes payment processor fees)</h3>
+          <h3>{$t('home.revenueShare')}</h3>
         </div>
 
         <div class="revenue-table">
           <div class="table-header">
-            <span>Monthly Sales</span>
-            <span>Total Transaction Fee</span>
+            <span>{$t('home.monthlySales')}</span>
+            <span>{$t('home.transactionFee')}</span>
           </div>
           {#each revenueShareTiers as tier}
             <div class="table-row" class:highlight={tier.highlight}>
@@ -305,7 +278,7 @@
 
     <div class="pricing-footer">
       <a href="/auth/login" class="btn btn-primary btn-large">
-        <span>Start Your Store</span>
+        <span>{$t('home.startYourStore')}</span>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <path
             d="M5 12h14M12 5l7 7-7 7"
@@ -315,24 +288,22 @@
           />
         </svg>
       </a>
-      <p class="pricing-note">
-        No credit card required • Cancel anytime • Enterprise pricing available
-      </p>
+      <p class="pricing-note">{$t('home.pricingNote')}</p>
     </div>
   </section>
 
   <section class="products" id="products">
     <div class="section-header">
-      <h2>Example Store</h2>
-      <p>Here's what your store could look like - this is a real, working example</p>
+      <h2>{$t('home.exampleStore')}</h2>
+      <p>{$t('home.exampleStoreSubtitle')}</p>
     </div>
 
     {#if products.length === 0}
       <div class="empty-state">
         <div class="empty-icon">📦</div>
-        <h3>No Products Yet</h3>
-        <p>Your products will appear here once you add them to your store.</p>
-        <a href="/admin/products" class="btn btn-primary">Add Your First Product</a>
+        <h3>{$t('home.noProductsYet')}</h3>
+        <p>{$t('home.noProductsHelp')}</p>
+        <a href="/admin/products" class="btn btn-primary">{$t('home.addFirstProduct')}</a>
       </div>
     {:else}
       <div class="product-grid">
@@ -345,14 +316,11 @@
 
   <section class="cta-section">
     <div class="cta-content">
-      <h2>Ready to Start Your Business?</h2>
-      <p>
-        Join entrepreneurs around the world who are building their dreams with their own online
-        stores.
-      </p>
+      <h2>{$t('home.ctaTitle')}</h2>
+      <p>{$t('home.ctaSubtitle')}</p>
       <div class="cta-actions">
         <a href="/auth/login" class="btn btn-primary btn-lg">
-          <span>Create Your Store</span>
+          <span>{$t('home.createYourStore')}</span>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path
               d="M5 12h14M12 5l7 7-7 7"
@@ -367,7 +335,7 @@
           target="_blank"
           class="btn btn-secondary btn-lg"
         >
-          Learn More
+          {$t('home.learnMore')}
         </a>
       </div>
     </div>

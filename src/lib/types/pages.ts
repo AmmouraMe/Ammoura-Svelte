@@ -594,6 +594,7 @@ export interface ComponentConfig {
   showCart?: boolean;
   showAuth?: boolean;
   showThemeToggle?: boolean; // Show theme toggle in navbar
+  showLanguageSwitcher?: boolean; // Show language switcher in navbar (multilingual sites)
   showAccountMenu?: boolean; // Show account dropdown menu when authenticated
   accountMenuItems?: Array<{
     // Custom menu items in account dropdown

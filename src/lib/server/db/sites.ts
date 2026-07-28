@@ -61,6 +61,35 @@ export async function getAllSites(db: D1Database): Promise<Site[]> {
   return result.results || [];
 }
 
+export interface SiteOverview extends Site {
+  hostnames: string | null;
+  owner_email: string | null;
+  member_count: number;
+}
+
+/**
+ * All sites with their attached hostnames, owning account, and member count —
+ * for the platform-engineer sites overview (/admin/sites).
+ */
+export async function getAllSitesWithDetails(db: D1Database): Promise<SiteOverview[]> {
+  const result = await execute<SiteOverview>(
+    db,
+    `SELECT
+       s.*,
+       (SELECT GROUP_CONCAT(d.hostname, ', ')
+          FROM site_domains d
+         WHERE d.site_id = s.id AND d.status != 'removed') AS hostnames,
+       (SELECT a.email
+          FROM site_members m JOIN accounts a ON a.id = m.account_id
+         WHERE m.site_id = s.id AND m.role = 'owner'
+         ORDER BY m.created_at LIMIT 1) AS owner_email,
+       (SELECT COUNT(*) FROM site_members m WHERE m.site_id = s.id) AS member_count
+     FROM sites s
+     ORDER BY s.created_at DESC`
+  );
+  return result.results || [];
+}
+
 /**
  * Create a new site
  */

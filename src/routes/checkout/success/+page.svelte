@@ -4,12 +4,13 @@
   import { cartStore } from '../../../lib/stores/cart';
   import Button from '../../../lib/components/Button.svelte';
   import type { PageData } from './$types';
+  import { money, t } from '$lib/i18n';
 
   export let data: PageData;
 
   $: order = data.order;
   $: orderId = order?.id || '';
-  $: orderTotal = order ? order.total.toFixed(2) : '';
+  $: orderTotal = order ? $money(order.total) : '';
   $: customerEmail = order?.email || '';
   $: paymentPending = order?.paymentStatus === 'unpaid';
 
@@ -32,7 +33,7 @@
 </script>
 
 <svelte:head>
-  <title>Order Confirmation - {$page.data.storeName || 'Hermes eCommerce'}</title>
+  <title>{$t('orderSuccess.title')} - {$page.data.storeName || 'Hermes eCommerce'}</title>
 </svelte:head>
 
 {#if order}
@@ -51,53 +52,48 @@
       </svg>
     </div>
 
-    <h1>Order Confirmed!</h1>
+    <h1>{$t('orderSuccess.confirmed')}</h1>
     <p class="success-message">
-      Thank you for your purchase. A confirmation email has been sent to <strong
-        >{customerEmail}</strong
-      >.
+      {$t('orderSuccess.thankYou')} <strong>{customerEmail}</strong>
     </p>
 
     {#if paymentPending}
-      <p class="payment-pending-note">Finalizing your payment confirmation — just a moment.</p>
+      <p class="payment-pending-note">{$t('orderSuccess.paymentPending')}</p>
     {/if}
 
     <div class="order-details">
-      <h2>Order Details</h2>
+      <h2>{$t('orderSuccess.details')}</h2>
       <div class="detail-row">
-        <span>Order Number:</span>
+        <span>{$t('orderSuccess.orderNumber')}:</span>
         <span class="order-id">{orderId}</span>
       </div>
       <div class="detail-row">
-        <span>Total Amount:</span>
-        <span class="order-total">${orderTotal}</span>
+        <span>{$t('orderSuccess.totalAmount')}:</span>
+        <span class="order-total">{orderTotal}</span>
       </div>
     </div>
 
     <div class="next-steps">
-      <h3>What happens next?</h3>
+      <h3>{$t('orderSuccess.nextSteps')}</h3>
       <ul>
-        <li>You'll receive a confirmation email shortly</li>
-        <li>We'll process your order within 1-2 business days</li>
-        <li>You'll receive tracking information once your order ships</li>
-        <li>Your items should arrive within 5-7 business days</li>
+        <li>{$t('orderSuccess.next.email')}</li>
+        <li>{$t('orderSuccess.next.processing')}</li>
+        <li>{$t('orderSuccess.next.tracking')}</li>
+        <li>{$t('orderSuccess.next.arrival')}</li>
       </ul>
     </div>
 
     <div class="action-buttons">
-      <Button variant="primary" on:click={continueShopping}>Continue Shopping</Button>
-      <Button variant="secondary" on:click={viewOrders}>View Your Orders</Button>
+      <Button variant="primary" on:click={continueShopping}>{$t('cart.continueShopping')}</Button>
+      <Button variant="secondary" on:click={viewOrders}>{$t('orderSuccess.viewOrders')}</Button>
     </div>
   </div>
 {:else}
   <div class="checkout-success">
-    <h1>We couldn't find that order</h1>
-    <p class="success-message">
-      If you just completed a payment, check your email for a confirmation — otherwise, return to
-      the store and try again.
-    </p>
+    <h1>{$t('orderSuccess.notFound')}</h1>
+    <p class="success-message">{$t('orderSuccess.notFoundHelp')}</p>
     <div class="action-buttons">
-      <Button variant="primary" on:click={continueShopping}>Continue Shopping</Button>
+      <Button variant="primary" on:click={continueShopping}>{$t('cart.continueShopping')}</Button>
     </div>
   </div>
 {/if}

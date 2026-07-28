@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { t } from '$lib/i18n';
   import DevLoginPanel from '$lib/components/dev/DevLoginPanel.svelte';
 
   let email = '';
@@ -10,7 +11,7 @@
   async function handleLogin() {
     error = '';
     if (!email || !password) {
-      error = 'Please enter both email and password';
+      error = $t('auth.enterEmailAndPassword');
       return;
     }
 
@@ -26,10 +27,10 @@
       if (result.success) {
         await goto('/account');
       } else {
-        error = result.error || 'Login failed';
+        error = result.error || $t('auth.loginFailed');
       }
     } catch {
-      error = 'An error occurred. Please try again.';
+      error = $t('common.error');
     } finally {
       isLoading = false;
     }
@@ -37,14 +38,14 @@
 </script>
 
 <svelte:head>
-  <title>Sign in to your account</title>
+  <title>{$t('auth.signInTitle')}</title>
 </svelte:head>
 
 <div class="login-container">
   <div class="login-card">
     <div class="login-header">
-      <h1>Sign in</h1>
-      <p>Manage your sites and domains</p>
+      <h1>{$t('auth.signIn')}</h1>
+      <p>{$t('auth.accountLoginSubtitle')}</p>
     </div>
 
     <form on:submit|preventDefault={handleLogin}>
@@ -53,7 +54,7 @@
       {/if}
 
       <div class="form-group">
-        <label for="email">Email</label>
+        <label for="email">{$t('auth.email')}</label>
         <input
           id="email"
           type="email"
@@ -64,7 +65,7 @@
       </div>
 
       <div class="form-group">
-        <label for="password">Password</label>
+        <label for="password">{$t('auth.password')}</label>
         <input
           id="password"
           type="password"
@@ -75,12 +76,12 @@
       </div>
 
       <button type="submit" class="submit-button" disabled={isLoading}>
-        {isLoading ? 'Signing in…' : 'Sign in'}
+        {isLoading ? $t('auth.signingIn') : $t('auth.signIn')}
       </button>
     </form>
 
     <p class="alt-action">
-      New here? <a href="/signup">Create an account</a>
+      {$t('auth.newHere')} <a href="/signup">{$t('auth.createAccountLink')}</a>
     </p>
 
     <DevLoginPanel />

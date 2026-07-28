@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
   import ProductCard from '$lib/components/ProductCard.svelte';
   import type { WidgetConfig } from '$lib/types/pages';
   import type { Product } from '$lib/types';
@@ -37,13 +38,13 @@
 
 <div class="single-product-widget" id={config.anchorName || undefined}>
   {#if loading}
-    <div class="loading">Loading product...</div>
+    <div class="loading">{$t('product.loading')}</div>
   {:else if error}
-    <div class="error">Failed to load product</div>
+    <div class="error">{$t('product.loadFailed')}</div>
   {:else if product}
     <ProductCard {product} />
   {:else}
-    <div class="empty">No product configured</div>
+    <div class="empty">{$t('product.notConfigured')}</div>
   {/if}
 </div>
 

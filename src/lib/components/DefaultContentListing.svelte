@@ -4,6 +4,7 @@
    * Renders entries as a card grid with title, date, and excerpt.
    */
   import type { ContentEntry, ContentType, ContentFieldDefinition } from '$lib/types/contentTypes';
+  import { dateFmt } from '$lib/i18n';
 
   export let entries: ContentEntry[];
   export let contentType: ContentType;
@@ -41,11 +42,7 @@
 
   function formatDate(timestamp: number | null): string {
     if (!timestamp) return '';
-    return new Date(timestamp * 1000).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    return $dateFmt(timestamp * 1000, 'long');
   }
 </script>
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n';
   import { authStore } from '$lib/stores/auth';
   import { goto, invalidateAll } from '$app/navigation';
   import { toastStore } from '$lib/stores/toast';
@@ -84,21 +85,21 @@
 </script>
 
 <svelte:head>
-  <title>Login - {data.storeName || 'Hermes eCommerce'}</title>
+  <title>{$t('auth.login')} - {data.storeName || 'Hermes eCommerce'}</title>
   <meta name="description" content="Login to {data.storeName || 'Hermes eCommerce'} Platform" />
 </svelte:head>
 
 <div class="login-container">
   <div class="login-card">
     <div class="login-header">
-      <h1>Login</h1>
-      <p>Sign in to access your account</p>
+      <h1>{$t('auth.login')}</h1>
+      <p>{$t('auth.loginSubtitle')}</p>
     </div>
 
     <!-- SSO Provider Buttons -->
     {#if oauthProviders.length > 0}
       <div class="sso-section">
-        <p class="sso-title">Sign in with</p>
+        <p class="sso-title">{$t('auth.signInWith')}</p>
         <div class="sso-providers">
           {#each oauthProviders as provider}
             {#if provider.enabled}
@@ -107,7 +108,7 @@
                 class="sso-button"
                 on:click={() => handleOAuthLogin(provider.id)}
                 disabled={isLoading}
-                title={`Sign in with ${provider.name}`}
+                title={`${$t('auth.signInWith')} ${provider.name}`}
               >
                 <span class="sso-icon">
                   <IconDisplay iconName={provider.icon} size={20} fallbackEmoji={provider.icon} />
@@ -120,32 +121,32 @@
       </div>
 
       <div class="divider">
-        <span>or continue with email</span>
+        <span>{$t('auth.orContinueWithEmail')}</span>
       </div>
     {/if}
 
     <form on:submit|preventDefault={handleLogin}>
       <div class="form-group">
-        <label for="email">Email</label>
+        <label for="email">{$t('auth.email')}</label>
         <input
           id="email"
           type="email"
           bind:value={email}
           on:keypress={handleKeyPress}
-          placeholder="Enter your email"
+          placeholder={$t('auth.emailPlaceholder')}
           disabled={isLoading}
           required
         />
       </div>
 
       <div class="form-group">
-        <label for="password">Password</label>
+        <label for="password">{$t('auth.password')}</label>
         <input
           id="password"
           type="password"
           bind:value={password}
           on:keypress={handleKeyPress}
-          placeholder="Enter your password"
+          placeholder={$t('auth.passwordPlaceholder')}
           disabled={isLoading}
           required
         />
@@ -159,7 +160,7 @@
 
       <div class="form-actions">
         <Button type="submit" disabled={isLoading}>
-          {isLoading ? 'Signing in...' : 'Sign In'}
+          {isLoading ? $t('auth.signingIn') : $t('auth.signIn')}
         </Button>
       </div>
     </form>

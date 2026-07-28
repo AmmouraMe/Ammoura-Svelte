@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { t } from '$lib/i18n';
 
   let name = '';
   let email = '';
@@ -10,11 +11,11 @@
   async function handleSignup() {
     error = '';
     if (!name || !email || !password) {
-      error = 'Please fill in all fields';
+      error = $t('auth.fillAllFields');
       return;
     }
     if (password.length < 8) {
-      error = 'Password must be at least 8 characters';
+      error = $t('auth.passwordTooShort');
       return;
     }
 
@@ -30,10 +31,10 @@
       if (result.success) {
         await goto('/account');
       } else {
-        error = result.error || 'Signup failed';
+        error = result.error || $t('auth.signupFailed');
       }
     } catch {
-      error = 'An error occurred. Please try again.';
+      error = $t('common.error');
     } finally {
       isLoading = false;
     }
@@ -41,14 +42,14 @@
 </script>
 
 <svelte:head>
-  <title>Create your account</title>
+  <title>{$t('auth.createAccount')}</title>
 </svelte:head>
 
 <div class="signup-container">
   <div class="signup-card">
     <div class="signup-header">
-      <h1>Create your account</h1>
-      <p>Build one or more websites with their own domains</p>
+      <h1>{$t('auth.createAccount')}</h1>
+      <p>{$t('auth.signupSubtitle')}</p>
     </div>
 
     <form on:submit|preventDefault={handleSignup}>
@@ -57,12 +58,12 @@
       {/if}
 
       <div class="form-group">
-        <label for="name">Your name</label>
+        <label for="name">{$t('auth.yourName')}</label>
         <input id="name" type="text" bind:value={name} autocomplete="name" disabled={isLoading} />
       </div>
 
       <div class="form-group">
-        <label for="email">Email</label>
+        <label for="email">{$t('auth.email')}</label>
         <input
           id="email"
           type="email"
@@ -73,7 +74,7 @@
       </div>
 
       <div class="form-group">
-        <label for="password">Password</label>
+        <label for="password">{$t('auth.password')}</label>
         <input
           id="password"
           type="password"
@@ -82,16 +83,16 @@
           minlength="8"
           disabled={isLoading}
         />
-        <span class="hint">At least 8 characters</span>
+        <span class="hint">{$t('auth.passwordHint')}</span>
       </div>
 
       <button type="submit" class="submit-button" disabled={isLoading}>
-        {isLoading ? 'Creating account…' : 'Create account'}
+        {isLoading ? $t('auth.creatingAccount') : $t('auth.createAccountButton')}
       </button>
     </form>
 
     <p class="alt-action">
-      Already have an account? <a href="/account/login">Sign in</a>
+      {$t('auth.alreadyHaveAccount')} <a href="/account/login">{$t('auth.signIn')}</a>
     </p>
   </div>
 </div>

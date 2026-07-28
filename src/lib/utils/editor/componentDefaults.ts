@@ -1849,6 +1849,7 @@ export function getDefaultConfig(type: ComponentType): ComponentConfig {
         showAuth: true,
         showAccountMenu: true,
         showThemeToggle: true,
+        showLanguageSwitcher: false,
         sticky: false,
         visibilityRule: 'always'
       };

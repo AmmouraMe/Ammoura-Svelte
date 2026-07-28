@@ -43,14 +43,32 @@
 @media (max-width: 1024px) {
   .responsive {
     display: var(--responsive-display-tablet, var(--responsive-display-desktop, block));
-    flex-direction: var(--responsive-flex-direction-tablet, var(--responsive-flex-direction-desktop, row));
+    flex-direction: var(
+      --responsive-flex-direction-tablet,
+      var(--responsive-flex-direction-desktop, row)
+    );
     flex-wrap: var(--responsive-flex-wrap-tablet, var(--responsive-flex-wrap-desktop, nowrap));
-    justify-content: var(--responsive-justify-content-tablet, var(--responsive-justify-content-desktop, normal));
-    align-items: var(--responsive-align-items-tablet, var(--responsive-align-items-desktop, normal));
-    align-content: var(--responsive-align-content-tablet, var(--responsive-align-content-desktop, normal));
+    justify-content: var(
+      --responsive-justify-content-tablet,
+      var(--responsive-justify-content-desktop, normal)
+    );
+    align-items: var(
+      --responsive-align-items-tablet,
+      var(--responsive-align-items-desktop, normal)
+    );
+    align-content: var(
+      --responsive-align-content-tablet,
+      var(--responsive-align-content-desktop, normal)
+    );
     gap: var(--responsive-gap-tablet, var(--responsive-gap-desktop, 0));
-    grid-template-columns: var(--responsive-grid-columns-tablet, var(--responsive-grid-columns-desktop, none));
-    grid-auto-flow: var(--responsive-grid-auto-flow-tablet, var(--responsive-grid-auto-flow-desktop, row));
+    grid-template-columns: var(
+      --responsive-grid-columns-tablet,
+      var(--responsive-grid-columns-desktop, none)
+    );
+    grid-auto-flow: var(
+      --responsive-grid-auto-flow-tablet,
+      var(--responsive-grid-auto-flow-desktop, row)
+    );
     padding: var(--responsive-padding-tablet, var(--responsive-padding-desktop, 0));
     margin: var(--responsive-margin-tablet, var(--responsive-margin-desktop, 0));
     min-height: var(--responsive-min-height-tablet, var(--responsive-min-height-desktop, 0));
@@ -62,7 +80,10 @@
 /* Mobile: <= BREAKPOINTS.md. Falls back tablet -> desktop. */
 @media (max-width: 768px) {
   .responsive {
-    display: var(--responsive-display-mobile, var(--responsive-display-tablet, var(--responsive-display-desktop, block)));
+    display: var(
+      --responsive-display-mobile,
+      var(--responsive-display-tablet, var(--responsive-display-desktop, block))
+    );
     flex-direction: var(
       --responsive-flex-direction-mobile,
       var(--responsive-flex-direction-tablet, var(--responsive-flex-direction-desktop, row))
@@ -83,7 +104,10 @@
       --responsive-align-content-mobile,
       var(--responsive-align-content-tablet, var(--responsive-align-content-desktop, normal))
     );
-    gap: var(--responsive-gap-mobile, var(--responsive-gap-tablet, var(--responsive-gap-desktop, 0)));
+    gap: var(
+      --responsive-gap-mobile,
+      var(--responsive-gap-tablet, var(--responsive-gap-desktop, 0))
+    );
     grid-template-columns: var(
       --responsive-grid-columns-mobile,
       var(--responsive-grid-columns-tablet, var(--responsive-grid-columns-desktop, none))
@@ -92,8 +116,14 @@
       --responsive-grid-auto-flow-mobile,
       var(--responsive-grid-auto-flow-tablet, var(--responsive-grid-auto-flow-desktop, row))
     );
-    padding: var(--responsive-padding-mobile, var(--responsive-padding-tablet, var(--responsive-padding-desktop, 0)));
-    margin: var(--responsive-margin-mobile, var(--responsive-margin-tablet, var(--responsive-margin-desktop, 0)));
+    padding: var(
+      --responsive-padding-mobile,
+      var(--responsive-padding-tablet, var(--responsive-padding-desktop, 0))
+    );
+    margin: var(
+      --responsive-margin-mobile,
+      var(--responsive-margin-tablet, var(--responsive-margin-desktop, 0))
+    );
     min-height: var(
       --responsive-min-height-mobile,
       var(--responsive-min-height-tablet, var(--responsive-min-height-desktop, 0))

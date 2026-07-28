@@ -5,6 +5,8 @@
   import Button from '$lib/components/Button.svelte';
   import Avatar from '$lib/components/Avatar.svelte';
   import UserThemePreferences from '$lib/components/UserThemePreferences.svelte';
+  import { t } from '$lib/i18n';
+  import { formatRole } from '$lib/utils/roleLabel';
   import type { PageData, ActionData } from './$types';
   import { invalidateAll } from '$app/navigation';
 
@@ -17,6 +19,7 @@
   // Form values (initialized from user data)
   let name = data.user.name;
   let email = data.user.email;
+  let locale = data.user.locale ?? '';
 
   // Password fields
   let currentPassword = '';
@@ -72,15 +75,6 @@
         return 'badge-default';
     }
   }
-
-  function formatRole(role: string): string {
-    switch (role) {
-      case 'platform_engineer':
-        return 'Platform Engineer';
-      default:
-        return role.charAt(0).toUpperCase() + role.slice(1);
-    }
-  }
 </script>
 
 <svelte:head>
@@ -94,7 +88,7 @@
       <h1>{data.user.name}</h1>
       <p class="email">{data.user.email}</p>
       <span class="role-badge {getRoleBadgeClass(data.user.role)}">
-        {formatRole(data.user.role)}
+        {formatRole(data.user.role, $t)}
       </span>
     </div>
   </div>
@@ -147,6 +141,16 @@
           {#if getError(form?.errors, 'email')}
             <span class="field-error">{getError(form?.errors, 'email')}</span>
           {/if}
+        </div>
+
+        <div class="form-group">
+          <label for="locale">Admin language</label>
+          <select id="locale" name="locale" bind:value={locale}>
+            <option value="">Site default</option>
+            {#each data.availableLocales as l (l.code)}
+              <option value={l.code}>{l.name} ({l.nativeName})</option>
+            {/each}
+          </select>
         </div>
 
         <div class="form-actions">

@@ -4,6 +4,7 @@
   import { page } from '$app/stores';
   import { cartStore } from '../../lib/stores/cart';
   import { checkoutStore } from '../../lib/stores/checkout';
+  import { money, t } from '$lib/i18n';
   import ShippingAddressForm from '../../lib/components/ShippingAddressForm.svelte';
   import BillingAddressForm from '../../lib/components/BillingAddressForm.svelte';
   import ShippingOptionsSelector from '../../lib/components/ShippingOptionsSelector.svelte';
@@ -165,20 +166,20 @@
 </script>
 
 <svelte:head>
-  <title>Checkout - {$page.data.storeName || 'Hermes eCommerce'}</title>
+  <title>{$t('checkout.title')} - {$page.data.storeName || 'Hermes eCommerce'}</title>
 </svelte:head>
 
 <div class="checkout-container">
   <div class="checkout-header">
-    <h1>Checkout</h1>
-    <a href="/cart" class="back-to-cart">← Back to Cart</a>
+    <h1>{$t('checkout.title')}</h1>
+    <a href="/cart" class="back-to-cart">← {$t('checkout.backToCart')}</a>
   </div>
 
   {#if cartItems.length === 0}
     <div class="empty-cart-message">
-      <h2>Your cart is empty</h2>
-      <p>Add some items to your cart before checking out.</p>
-      <Button variant="primary" on:click={() => goto('/')}>Continue Shopping</Button>
+      <h2>{$t('cart.empty')}</h2>
+      <p>{$t('checkout.emptyPrompt')}</p>
+      <Button variant="primary" on:click={() => goto('/')}>{$t('cart.continueShopping')}</Button>
     </div>
   {:else}
     <div class="checkout-content">
@@ -187,22 +188,22 @@
         <div class="checkout-steps">
           <div class="step" class:active={currentStep === 1} class:completed={currentStep > 1}>
             <div class="step-number">1</div>
-            <div class="step-label">Shipping Address</div>
+            <div class="step-label">{$t('checkout.step.shippingAddress')}</div>
           </div>
           <div class="step-connector" class:completed={currentStep > 1}></div>
           <div class="step" class:active={currentStep === 2} class:completed={currentStep > 2}>
             <div class="step-number">2</div>
-            <div class="step-label">Shipping Method</div>
+            <div class="step-label">{$t('checkout.step.shippingMethod')}</div>
           </div>
           <div class="step-connector" class:completed={currentStep > 2}></div>
           <div class="step" class:active={currentStep === 3} class:completed={currentStep > 3}>
             <div class="step-number">3</div>
-            <div class="step-label">Billing</div>
+            <div class="step-label">{$t('checkout.step.billing')}</div>
           </div>
           <div class="step-connector" class:completed={currentStep > 3}></div>
           <div class="step" class:active={currentStep === 4}>
             <div class="step-number">4</div>
-            <div class="step-label">Payment</div>
+            <div class="step-label">{$t('checkout.step.payment')}</div>
           </div>
         </div>
 
@@ -239,11 +240,8 @@
             <BillingAddressForm errors={validationErrors.billingAddress || {}} />
           {:else if currentStep === 4}
             <div class="stripe-redirect-notice">
-              <h3>Payment</h3>
-              <p>
-                You'll be securely redirected to Stripe to enter your card details. We never see or
-                store your card number.
-              </p>
+              <h3>{$t('checkout.step.payment')}</h3>
+              <p>{$t('checkout.stripeNotice')}</p>
             </div>
           {/if}
         </div>
@@ -251,14 +249,14 @@
         <!-- Navigation Buttons -->
         <div class="step-navigation">
           {#if currentStep > 1}
-            <Button variant="secondary" on:click={previousStep}>Previous</Button>
+            <Button variant="secondary" on:click={previousStep}>{$t('checkout.previous')}</Button>
           {/if}
 
           {#if currentStep < 4}
-            <Button variant="primary" on:click={nextStep}>Continue</Button>
+            <Button variant="primary" on:click={nextStep}>{$t('common.continue')}</Button>
           {:else}
             <Button variant="primary" on:click={submitOrder} disabled={isSubmitting}>
-              {isSubmitting ? 'Processing...' : 'Place Order'}
+              {isSubmitting ? $t('checkout.processing') : $t('checkout.placeOrder')}
             </Button>
           {/if}
         </div>
@@ -266,14 +264,14 @@
 
       <!-- Order Summary -->
       <div class="order-summary">
-        <h3>Order Summary</h3>
+        <h3>{$t('cart.orderSummary')}</h3>
         <div class="summary-items">
           {#each cartItems as item}
             <div class="summary-item">
               <img src={item.image} alt={item.name} />
               <div class="item-info">
                 <h4>{item.name}</h4>
-                <p>Quantity: {item.quantity}</p>
+                <p>{$t('checkout.quantity')}: {item.quantity}</p>
                 {#if item.equipmentValues && item.equipmentValues.length > 0}
                   <div class="item-equipment-values">
                     {#each item.equipmentValues as ev}
@@ -283,7 +281,7 @@
                 {/if}
               </div>
               <div class="item-price">
-                ${(item.price * item.quantity).toFixed(2)}
+                {$money(item.price * item.quantity)}
               </div>
             </div>
           {/each}
@@ -291,8 +289,8 @@
 
         <div class="summary-totals">
           <div class="total-row">
-            <span>Subtotal:</span>
-            <span>${subtotal.toFixed(2)}</span>
+            <span>{$t('cart.subtotal')}:</span>
+            <span>{$money(subtotal)}</span>
           </div>
           {#if shippingGroupsLoaded && shippingGroups.length > 0}
             <!-- Show shipping cost breakdown by group -->
@@ -304,18 +302,20 @@
               <div class="total-row shipping-group-row">
                 <span>
                   {#if group.isFree}
-                    Shipping (Free)
+                    {$t('checkout.shippingFreeLabel')}
                   {:else if group.products.length === 1}
-                    Shipping - {group.products[0].name}
+                    {$t('checkout.shipping')} - {group.products[0].name}
                   {:else}
-                    Shipping - {group.products.length} items
+                    {$t('checkout.shipping')} - {$t('cart.itemCount', {
+                      count: group.products.length
+                    })}
                   {/if}
                 </span>
                 <span>
                   {#if group.isFree || selectedOption?.isFreeShipping || selectedOption?.price === 0}
-                    FREE
+                    {$t('checkout.free')}
                   {:else if selectedOption}
-                    ${selectedOption.price.toFixed(2)}
+                    {$money(selectedOption.price)}
                   {:else}
                     --
                   {/if}
@@ -323,39 +323,39 @@
               </div>
             {/each}
             <div class="total-row">
-              <span>Total Shipping:</span>
+              <span>{$t('checkout.totalShipping')}:</span>
               <span>
                 {#if !shippingCostKnown}
                   --
                 {:else if shippingCost === 0}
-                  FREE
+                  {$t('checkout.free')}
                 {:else}
-                  ${shippingCost.toFixed(2)}
+                  {$money(shippingCost)}
                 {/if}
               </span>
             </div>
           {:else}
             <!-- Single shipping cost display -->
             <div class="total-row">
-              <span>Shipping:</span>
+              <span>{$t('checkout.shipping')}:</span>
               <span>
                 {#if !shippingCostKnown}
                   --
                 {:else if shippingCost === 0}
-                  FREE
+                  {$t('checkout.free')}
                 {:else}
-                  ${shippingCost.toFixed(2)}
+                  {$money(shippingCost)}
                 {/if}
               </span>
             </div>
           {/if}
           <div class="total-row">
-            <span>Tax:</span>
-            <span>${tax.toFixed(2)}</span>
+            <span>{$t('checkout.tax')}:</span>
+            <span>{$money(tax)}</span>
           </div>
           <div class="total-row final-total">
-            <span>Total:</span>
-            <span>${total.toFixed(2)}</span>
+            <span>{$t('checkout.total')}:</span>
+            <span>{$money(total)}</span>
           </div>
         </div>
       </div>

@@ -361,6 +361,16 @@ export async function deletePage(db: D1Database, siteId: string, pageId: string)
     .prepare('DELETE FROM pages WHERE id = ? AND site_id = ?')
     .bind(pageId, siteId)
     .run();
+
+  // GC content translations for the page and its widgets (best-effort)
+  try {
+    const { deleteTranslationsForEntity } = await import('../i18n/content-translations.js');
+    await deleteTranslationsForEntity(db, siteId, 'page_widget', pageId);
+    await deleteTranslationsForEntity(db, siteId, 'page', pageId);
+  } catch (error) {
+    console.error('Failed to GC page translations:', error);
+  }
+
   return (result.meta?.changes || 0) > 0;
 }
 

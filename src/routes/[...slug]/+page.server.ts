@@ -7,6 +7,7 @@ import { resolveComponentRefs, getComponent } from '$lib/server/db/components';
 import { resolveContentRoute } from '$lib/server/db/contentTypes';
 import { getContentEntryBySlug, getPublishedEntries } from '$lib/server/db/contentEntries';
 import { resolveWidgetBindings } from '$lib/utils/dataBinding';
+import { translateComponents } from '$lib/server/i18n/content-translations';
 import type { PageServerLoad } from './$types';
 import { logPageAction } from '$lib/server/activity-logger';
 import type { LayoutWidget, WidgetConfig, PositionConfig, ResponsiveValue } from '$lib/types/pages';
@@ -145,6 +146,17 @@ export const load: PageServerLoad = async ({
 
     // Resolve component_ref types to actual component types for frontend rendering
     let components = await resolveComponentRefs(db, siteId, rawComponents);
+
+    // Overlay per-locale content translations (no-op for the default locale).
+    // Runs before data bindings so bound values land in translated configs.
+    components = await translateComponents(
+      db,
+      siteId,
+      locals.locale,
+      locals.i18n?.defaultLocale ?? 'en',
+      resolvedPage.id,
+      components
+    );
 
     // For CMS entry pages, resolve data bindings in widget configs
     if (isCmsRoute && contentEntry) {
