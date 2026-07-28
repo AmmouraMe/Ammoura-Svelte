@@ -91,3 +91,25 @@ describe('calculateTotalStock', () => {
     expect(calculateTotalStock(options)).toBe(0);
   });
 });
+
+describe('calculateTotalStock — product-level fallback', () => {
+  it('falls back to the product stock when there are no fulfillment options', () => {
+    expect(calculateTotalStock([], 100)).toBe(100);
+    expect(calculateTotalStock(undefined, 42)).toBe(42);
+  });
+
+  it('still reports 0 when neither source has stock', () => {
+    expect(calculateTotalStock([], 0)).toBe(0);
+    expect(calculateTotalStock(undefined, null)).toBe(0);
+    expect(calculateTotalStock(undefined, undefined)).toBe(0);
+  });
+
+  it('prefers fulfillment options over the product count when present', () => {
+    const options = [{ stockQuantity: 3 }, { stockQuantity: 4 }] as never;
+    expect(calculateTotalStock(options, 100)).toBe(7);
+  });
+
+  it('treats a negative product stock as out of stock', () => {
+    expect(calculateTotalStock([], -5)).toBe(0);
+  });
+});

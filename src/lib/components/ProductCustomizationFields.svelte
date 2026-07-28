@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
+  import { money } from '$lib/i18n';
   import type {
     ProductCustomizationField,
     CartItemFieldValue,
@@ -39,6 +40,19 @@
       return val.trim().length > 0;
     });
 
+  /**
+   * Publish whenever the resolved values change — including the very first
+   * time, when they come from each field's `defaultValue`.
+   *
+   * Previously values were only emitted from `handleChange`, so a required
+   * field showing its default (e.g. Size "M") looked filled in but was never
+   * reported to the parent. "Add to cart" then stayed disabled with nothing on
+   * screen explaining why, and the only way through was to touch every field.
+   */
+  onMount(() => {
+    emitValues();
+  });
+
   function handleChange(fieldId: string, value: string): void {
     values[fieldId] = value;
     values = { ...values };
@@ -63,7 +77,7 @@
   }
 
   function formatPrice(val: number): string {
-    return val > 0 ? `+$${val.toFixed(2)}` : '';
+    return val > 0 ? `+${$money(val)}` : '';
   }
 
   function getAcceptAttribute(field: ProductCustomizationField): string {
@@ -353,7 +367,7 @@
 
   {#if totalPriceModifier > 0}
     <div class="price-summary">
-      Customization adds <strong>${totalPriceModifier.toFixed(2)}</strong> to the price
+      Customization adds <strong>{$money(totalPriceModifier)}</strong> to the price
     </div>
   {/if}
 
@@ -365,7 +379,7 @@
 <style>
   .customization-fields {
     padding: 1rem;
-    background: var(--color-bg-accent, #f8f9fa);
+    background: var(--color-bg-secondary, #f8f9fa);
     border-radius: 8px;
     border: 1px solid var(--color-border-secondary, #eee);
   }
@@ -396,7 +410,7 @@
   .price-modifier {
     font-size: 0.8rem;
     font-weight: 500;
-    color: var(--color-success-text, #28a745);
+    color: var(--color-success, #28a745);
     margin-left: 0.25rem;
   }
 
@@ -431,7 +445,7 @@
     display: block;
     text-align: right;
     font-size: 0.75rem;
-    color: var(--color-text-tertiary, #999);
+    color: var(--color-text-muted, #999);
     margin-top: 0.2rem;
   }
 
@@ -458,17 +472,17 @@
 
   .price-summary {
     padding: 0.75rem;
-    background: var(--color-success-bg, #d4edda);
+    background: var(--color-bg-success-light, rgba(16, 185, 129, 0.12));
     border-radius: 6px;
     font-size: 0.9rem;
-    color: var(--color-success-text, #155724);
+    color: var(--color-success, #155724);
     text-align: center;
     margin-top: 0.5rem;
   }
 
   .required-notice {
     font-size: 0.85rem;
-    color: var(--color-warning-text, #856404);
+    color: var(--color-warning, #856404);
     margin: 0.5rem 0 0;
     text-align: center;
   }

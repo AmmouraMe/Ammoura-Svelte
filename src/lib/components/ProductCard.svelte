@@ -4,11 +4,12 @@
   import type { Product } from '../types/index.js';
   import { onMount } from 'svelte';
   import { calculateTotalStock } from '../utils/stock.js';
+  import { money, t } from '$lib/i18n';
 
   export let product: Product;
 
   $: quantity = cartStore.getItemQuantity($cartItems, product.id);
-  $: totalStock = calculateTotalStock(product.fulfillmentOptions);
+  $: totalStock = calculateTotalStock(product.fulfillmentOptions, product.stock);
   $: hasImage = product.image && product.image.trim() !== '';
 
   let isImageLoaded = false;
@@ -54,7 +55,7 @@
     {#if !hasImage}
       <div class="image-placeholder">
         <span>📦</span>
-        <p>No image</p>
+        <p>{$t('product.noImage')}</p>
       </div>
     {:else}
       {#if !isImageLoaded}
@@ -63,7 +64,7 @@
       {#if imageError}
         <div class="image-placeholder">
           <span>📦</span>
-          <p>Image unavailable</p>
+          <p>{$t('product.imageUnavailable')}</p>
         </div>
       {:else}
         <img
@@ -96,7 +97,7 @@
 
     <div class="product-footer">
       <div class="price-container">
-        <span class="price">${product.price.toFixed(2)}</span>
+        <span class="price">{$money(product.price)}</span>
         <span class="stock-info">
           {#if totalStock === 0}
             <span class="out-of-stock">Out of Stock</span>
@@ -109,14 +110,14 @@
       <div class="actions">
         {#if quantity === 0}
           <Button variant="primary" on:click={addToCart} disabled={totalStock === 0}>
-            {totalStock === 0 ? 'Out of Stock' : 'Add to Cart'}
+            {totalStock === 0 ? $t('product.outOfStock') : $t('product.addToCart')}
           </Button>
         {:else}
           <div class="quantity-controls">
             <button
               class="quantity-btn"
               on:click={decrementQuantity}
-              aria-label="Decrease quantity"
+              aria-label={$t('product.decreaseQuantity')}
             >
               −
             </button>
@@ -125,7 +126,7 @@
               class="quantity-btn"
               on:click={incrementQuantity}
               disabled={quantity >= totalStock}
-              aria-label="Increase quantity"
+              aria-label={$t('product.increaseQuantity')}
             >
               +
             </button>
