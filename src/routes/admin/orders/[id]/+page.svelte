@@ -1,12 +1,30 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
 
+  interface OrderItemArtwork {
+    zoneName: string;
+    imageUrl: string;
+    originalFilename: string | null;
+    offsetXPercent: number;
+    offsetYPercent: number;
+    scale: number;
+  }
+
+  interface OrderItemFieldValue {
+    fieldName: string;
+    fieldType: string;
+    value: string;
+    priceModifier: number;
+  }
+
   interface OrderItem {
     id: string;
     name: string;
     price: number;
     quantity: number;
     image: string;
+    customizations?: OrderItemArtwork[];
+    fieldValues?: OrderItemFieldValue[];
   }
 
   interface ShippingGroup {
@@ -235,6 +253,41 @@
               ${(item.price * item.quantity).toFixed(2)}
             </div>
           </div>
+          {#if item.customizations?.length || item.fieldValues?.length}
+            <div class="item-design">
+              {#if item.customizations?.length}
+                <div class="design-artwork">
+                  <span class="design-label">Customer artwork</span>
+                  <div class="artwork-list">
+                    {#each item.customizations as art}
+                      <div class="artwork">
+                        <img src={art.imageUrl} alt={art.zoneName} class="artwork-thumb" />
+                        <div class="artwork-meta">
+                          <strong>{art.zoneName}</strong>
+                          {#if art.originalFilename}<span>{art.originalFilename}</span>{/if}
+                          <a
+                            href={art.imageUrl}
+                            download={art.originalFilename || `${art.zoneName}.png`}
+                            class="artwork-download">Download</a
+                          >
+                        </div>
+                      </div>
+                    {/each}
+                  </div>
+                </div>
+              {/if}
+              {#if item.fieldValues?.length}
+                <div class="design-fields">
+                  <span class="design-label">Personalization</span>
+                  <ul>
+                    {#each item.fieldValues as field}
+                      <li><strong>{field.fieldName}:</strong> {field.value}</li>
+                    {/each}
+                  </ul>
+                </div>
+              {/if}
+            </div>
+          {/if}
         {/each}
       </div>
       <div class="order-totals">
@@ -585,6 +638,73 @@
     color: var(--color-text-primary);
     display: flex;
     align-items: center;
+  }
+
+  .item-design {
+    margin: -0.5rem 0 0.5rem 0;
+    padding: 0.75rem 1rem;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-secondary);
+    border-radius: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+  }
+
+  .design-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--color-text-muted);
+    margin-bottom: 0.5rem;
+  }
+
+  .artwork-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .artwork {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+  }
+
+  .artwork-thumb {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border-primary);
+    border-radius: 6px;
+  }
+
+  .artwork-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+  }
+
+  .artwork-download {
+    color: var(--color-primary);
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  .artwork-download:hover {
+    text-decoration: underline;
+  }
+
+  .design-fields ul {
+    margin: 0;
+    padding-left: 1rem;
+    font-size: 0.9rem;
+    color: var(--color-text-primary);
   }
 
   .order-totals {

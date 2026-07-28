@@ -6,6 +6,10 @@ import type { ServerLoadEvent } from '@sveltejs/kit';
 import { error } from '@sveltejs/kit';
 import { getDB } from '$lib/server/db';
 import { getOrderById, getOrderItems } from '$lib/server/db/orders';
+import {
+  getOrderItemCustomizations,
+  getOrderItemFieldValues
+} from '$lib/server/db/order-customizations';
 
 export async function load({ platform, locals, params }: ServerLoadEvent) {
   const db = getDB(platform);
@@ -25,6 +29,38 @@ export async function load({ platform, locals, params }: ServerLoadEvent) {
 
     const items = await getOrderItems(db, dbOrder.id);
 
+    // Load each item's placed artwork + personalization values so the owner can
+    // see and download what to print.
+    const itemsWithDesign = await Promise.all(
+      items.map(async (item) => {
+        const [customizations, fieldValues] = await Promise.all([
+          getOrderItemCustomizations(db, item.id),
+          getOrderItemFieldValues(db, item.id)
+        ]);
+        return {
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          image: item.image,
+          customizations: customizations.map((c) => ({
+            zoneName: c.zone_name,
+            imageUrl: c.image_url,
+            originalFilename: c.original_filename,
+            offsetXPercent: c.offset_x_percent,
+            offsetYPercent: c.offset_y_percent,
+            scale: c.scale
+          })),
+          fieldValues: fieldValues.map((f) => ({
+            fieldName: f.field_name,
+            fieldType: f.field_type,
+            value: f.value,
+            priceModifier: f.price_modifier
+          }))
+        };
+      })
+    );
+
     const order = {
       id: dbOrder.id,
       status: dbOrder.status,
@@ -39,13 +75,7 @@ export async function load({ platform, locals, params }: ServerLoadEvent) {
       billing_address: JSON.parse(dbOrder.billing_address),
       payment_method: JSON.parse(dbOrder.payment_method),
       shipping_details: dbOrder.shipping_details ? JSON.parse(dbOrder.shipping_details) : null,
-      items: items.map((item) => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        image: item.image
-      }))
+      items: itemsWithDesign
     };
 
     return {

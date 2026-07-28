@@ -14,6 +14,10 @@ import {
   saveEquipmentValuesForOrderItems,
   type OrderItemEquipmentValueSubmission
 } from '$lib/server/db/equipment';
+import type {
+  OrderItemCustomizationInput,
+  OrderItemFieldValueInput
+} from '$lib/server/db/order-customizations';
 import { getPaymentSettings } from '$lib/server/db/site-settings';
 import { getStripeClient } from '$lib/server/integrations/stripe/client';
 import type Stripe from 'stripe';
@@ -27,6 +31,8 @@ interface CheckoutSessionRequest {
     quantity: number;
     image: string;
     equipment_values?: OrderItemEquipmentValueSubmission[];
+    customizations?: OrderItemCustomizationInput[];
+    field_values?: OrderItemFieldValueInput[];
   }>;
   subtotal: number;
   shipping_cost: number;

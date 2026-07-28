@@ -10,6 +10,11 @@ import {
   generateId,
   getCurrentTimestamp
 } from './connection.js';
+import {
+  buildOrderItemCustomizationStatements,
+  type OrderItemCustomizationInput,
+  type OrderItemFieldValueInput
+} from './order-customizations.js';
 
 export interface DBOrder {
   id: string;
@@ -52,6 +57,10 @@ export interface CreateOrderData {
     price: number;
     quantity: number;
     image: string;
+    /** Placed artwork per customization zone (persisted per order item). */
+    customizations?: OrderItemCustomizationInput[];
+    /** Personalization field values (persisted per order item). */
+    field_values?: OrderItemFieldValueInput[];
   }[];
   subtotal: number;
   shipping_cost: number;
@@ -169,7 +178,8 @@ export async function createOrder(
     ]
   });
 
-  // Insert order items
+  // Insert order items — each with its customizations/field values bound to the
+  // item's generated id, so the design travels with the exact line it belongs to.
   for (const item of data.items) {
     const itemId = generateId();
     statements.push({
@@ -187,6 +197,9 @@ export async function createOrder(
         timestamp
       ]
     });
+    statements.push(
+      ...buildOrderItemCustomizationStatements(itemId, item.customizations, item.field_values)
+    );
   }
 
   await executeBatch(db, statements);
