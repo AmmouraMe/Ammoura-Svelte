@@ -10,9 +10,12 @@
    * - Inner structure uses flexbox layout (brand, links, actions)
    */
   import { onMount } from 'svelte';
+  import { t } from '$lib/i18n';
+  import { formatRole } from '$lib/utils/roleLabel';
   import type { WidgetConfig, SpacingConfig, ResponsiveValue } from '$lib/types/pages';
   import Avatar from '$lib/components/Avatar.svelte';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+  import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
   import Container from './Container.svelte';
   import { themeStore } from '$lib/stores/theme';
   import { authState } from '$lib/stores/auth';
@@ -116,6 +119,7 @@
   $: showCart = config.showCart ?? true;
   $: showAuth = config.showAuth ?? true;
   $: showThemeToggle = config.showThemeToggle ?? false;
+  $: showLanguageSwitcher = config.showLanguageSwitcher ?? false;
   $: showAccountMenu = config.showAccountMenu ?? true;
   $: actionsPosition = config.actionsPosition || 'right';
   $: accountMenuItems = config.accountMenuItems || [];
@@ -329,6 +333,12 @@
 
       <!-- Actions -->
       <div class="navbar-actions">
+        {#if showLanguageSwitcher}
+          <div class="desktop-only">
+            <LanguageSwitcher />
+          </div>
+        {/if}
+
         {#if showThemeToggle && !$authState.isAuthenticated}
           <div class="desktop-only">
             <ThemeToggle />
@@ -349,7 +359,7 @@
             <button
               class="account-button"
               on:click={toggleAccountMenu}
-              aria-label="Account menu"
+              aria-label={$t('nav.accountMenu')}
               style="color: {textColor};"
             >
               <Avatar name={$authState.user?.name} size="small" variant="primary" />
@@ -379,19 +389,19 @@
                 <div class="account-info">
                   <div class="account-info-name">{$authState.user?.name}</div>
                   <div class="account-info-email">{$authState.user?.email}</div>
-                  <div class="account-info-role">{$authState.user?.role}</div>
+                  <div class="account-info-role">{formatRole($authState.user?.role, $t)}</div>
                 </div>
 
                 <div class="dropdown-divider"></div>
 
                 <div class="theme-selector">
-                  <div class="theme-selector-label">Theme</div>
+                  <div class="theme-selector-label">{$t('nav.theme')}</div>
                   <div class="theme-options">
                     <button
                       class="theme-option"
                       class:active={$themeStore === 'light'}
                       on:click={() => handleThemeChange('light')}
-                      aria-label="Light theme"
+                      aria-label={$t('nav.theme.light')}
                     >
                       <svg
                         width="16"
@@ -411,13 +421,13 @@
                         <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
                         <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
                       </svg>
-                      <span>Light</span>
+                      <span>{$t('nav.theme.light')}</span>
                     </button>
                     <button
                       class="theme-option"
                       class:active={$themeStore === 'dark'}
                       on:click={() => handleThemeChange('dark')}
-                      aria-label="Dark theme"
+                      aria-label={$t('nav.theme.dark')}
                     >
                       <svg
                         width="16"
@@ -429,13 +439,13 @@
                       >
                         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
                       </svg>
-                      <span>Dark</span>
+                      <span>{$t('nav.theme.dark')}</span>
                     </button>
                     <button
                       class="theme-option"
                       class:active={$themeStore === 'system'}
                       on:click={() => handleThemeChange('system')}
-                      aria-label="System theme"
+                      aria-label={$t('nav.theme.system')}
                     >
                       <svg
                         width="16"
@@ -449,7 +459,7 @@
                         <line x1="8" y1="21" x2="16" y2="21"></line>
                         <line x1="12" y1="17" x2="12" y2="21"></line>
                       </svg>
-                      <span>System</span>
+                      <span>{$t('nav.theme.system')}</span>
                     </button>
                   </div>
                 </div>
@@ -488,7 +498,7 @@
                       stroke-linejoin="round"
                     ></path>
                   </svg>
-                  Logout
+                  {$t('nav.logout')}
                 </button>
               </div>
             {/if}
@@ -508,7 +518,7 @@
                 stroke-linejoin="round"
               ></path>
             </svg>
-            <span class="login-text">Login</span>
+            <span class="login-text">{$t('nav.login')}</span>
           </a>
         {/if}
 
@@ -519,7 +529,7 @@
               <circle cx="20" cy="21" r="1"></circle>
               <path d="m1 1 4 4 14 1-1 7H6"></path>
             </svg>
-            <span class="cart-text">Cart</span>
+            <span class="cart-text">{$t('nav.cart')}</span>
             {#if totalCartItems > 0}
               <span class="cart-badge">{totalCartItems}</span>
             {/if}
@@ -530,7 +540,7 @@
         <button
           class="mobile-menu-toggle mobile-only"
           on:click={toggleMobileMenu}
-          aria-label="Toggle menu"
+          aria-label={$t('nav.toggleMenu')}
           style="color: {textColor};"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -695,6 +705,21 @@
     justify-content: center;
   }
 
+  /* True centering: `justify-content: center` only centres the links inside
+     the leftover space between brand and actions, so an asymmetric brand
+     (a compact logo mark vs. a wide actions cluster) leaves them visibly
+     off-centre. Giving brand and actions an equal flex basis makes the
+     middle section land on the navbar's real centre. */
+  .navbar-content.links-center .navbar-brand,
+  .navbar-content.links-center .navbar-actions {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .navbar-content.links-center .navbar-actions {
+    justify-content: flex-end;
+  }
+
   .navbar-content.links-right .navbar-links {
     justify-content: flex-end;
   }
@@ -750,6 +775,10 @@
   .dropdown-item {
     display: flex;
     align-items: center;
+    /* Explicit start alignment: this class is used on both <a> and <button>,
+       and app.css styles every button with `justify-content: center`.
+       `text-align` can't correct that — it doesn't position flex items. */
+    justify-content: flex-start;
     gap: 0.75rem;
     padding: 0.75rem 1rem;
     text-decoration: none;
@@ -793,7 +822,6 @@
   .account-info-role {
     font-size: 0.75rem;
     opacity: 0.6;
-    text-transform: capitalize;
   }
 
   .theme-selector {
@@ -821,6 +849,11 @@
     gap: 0.25rem;
     padding: 0.5rem;
     background: transparent;
+    /* app.css styles every button as a filled primary, including
+       `color: var(--color-text-inverse)` — a colour meant to sit on the primary
+       fill, unreadable on the dropdown's own background. Inherit instead, as
+       .dropdown-item already does. See lint/buttonColor.test.ts. */
+    color: inherit;
     border: 1px solid var(--theme-border);
     border-radius: 6px;
     cursor: pointer;

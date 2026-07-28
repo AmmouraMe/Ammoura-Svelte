@@ -7,6 +7,8 @@
   import NotificationCenter from '$lib/components/notifications/NotificationCenter.svelte';
   import ThemeToggle from '$lib/components/ThemeToggle.svelte';
   import { authStore, authState } from '$lib/stores/auth';
+  import { t } from '$lib/i18n';
+  import { formatRole } from '$lib/utils/roleLabel';
   import { themeStore } from '$lib/stores/theme';
   import type { Notification } from '$lib/types/notifications';
 
@@ -1033,6 +1035,20 @@
                 Admin Users
               </a>
               <a
+                href="/admin/settings/languages"
+                class:active={currentPath.startsWith('/admin/settings/languages')}
+                on:click={closeSidebar}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
+                  <path
+                    d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"
+                    stroke-width="2"
+                  ></path>
+                </svg>
+                Languages
+              </a>
+              <a
                 href="/admin/settings/tax"
                 class:active={currentPath.startsWith('/admin/settings/tax')}
                 on:click={closeSidebar}
@@ -1125,6 +1141,22 @@
         </div>
 
         <a
+          href="/admin/translations"
+          class:active={currentPath.startsWith('/admin/translations')}
+          on:click={closeSidebar}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path
+              d="M5 8l6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ></path>
+          </svg>
+          Translations
+        </a>
+
+        <a
           href="/admin/activity-logs"
           class:active={currentPath.startsWith('/admin/activity-logs')}
           on:click={closeSidebar}
@@ -1157,6 +1189,22 @@
             Database Navigator
             <span class="engineer-badge">PE</span>
           </a>
+          <a
+            href="/admin/sites"
+            class:active={currentPath.startsWith('/admin/sites')}
+            on:click={closeSidebar}
+            class="platform-engineer-link"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
+              <path
+                d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"
+                stroke-width="2"
+              ></path>
+            </svg>
+            All Sites
+            <span class="engineer-badge">PE</span>
+          </a>
         {/if}
       </nav>
 
@@ -1165,7 +1213,7 @@
           <Avatar name={$authStore.user?.name} size="large" variant="primary" />
           <div class="user-details">
             <div class="user-name">{$authStore.user?.name || 'Admin'}</div>
-            <div class="user-role">{$authStore.user?.role || 'admin'}</div>
+            <div class="user-role">{formatRole($authStore.user?.role || 'admin', $t)}</div>
           </div>
         </a>
         <button class="logout-btn" on:click={handleLogout}>
@@ -1460,6 +1508,8 @@
   .submenu-section-toggle {
     width: 100%;
     background: none;
+    /* Inherit, or the global filled-button colour makes this unreadable. */
+    color: inherit;
     border: none;
     cursor: pointer;
     transition: background-color var(--transition-normal);
@@ -1609,7 +1659,6 @@
   .user-role {
     font-size: 0.8rem;
     color: var(--color-text-tertiary);
-    text-transform: capitalize;
     transition: color var(--transition-normal);
   }
 
