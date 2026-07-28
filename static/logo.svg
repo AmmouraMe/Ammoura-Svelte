@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Ammoura">
+  <title>Ammoura</title>
+  <defs>
+    <!-- The "A" delta, with the leg opening cut out (even-odd). -->
+    <clipPath id="ammoura-a" clipPathUnits="userSpaceOnUse">
+      <path clip-rule="evenodd"
+            d="M256 104 L432 412 L80 412 Z
+               M210 330 L302 330 L322 412 L190 412 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- Dusk base: deep plum-black -->
+  <rect width="512" height="512" rx="112" ry="112" fill="#1B0E20"/>
+
+  <!-- Three tracklist bands slice the A: apex lit (afterglow), body ember. -->
+  <g clip-path="url(#ammoura-a)">
+    <rect x="0" y="104" width="512" height="102" fill="#FFB25C"/>
+    <rect x="0" y="238" width="512" height="62"  fill="#FF6A3D"/>
+    <rect x="0" y="332" width="512" height="80"  fill="#FF6A3D"/>
+  </g>
+</svg>
