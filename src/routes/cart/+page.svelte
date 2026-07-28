@@ -4,6 +4,7 @@
   import { cartStore } from '../../lib/stores/cart.ts';
   import Button from '../../lib/components/Button.svelte';
   import { calculateTotalStock } from '$lib/utils/stock';
+  import { money, t } from '$lib/i18n';
 
   $: totalItems = cartStore.getTotalItems($cartStore);
   $: totalPrice = cartStore.getTotalPrice($cartStore);
@@ -26,25 +27,27 @@
 </script>
 
 <svelte:head>
-  <title>Shopping Cart - {$page.data.storeName || 'Hermes eCommerce'}</title>
+  <title>{$t('cart.title')} - {$page.data.storeName || 'Hermes eCommerce'}</title>
 </svelte:head>
 
 <div class="cart-header">
-  <h1>Shopping Cart</h1>
-  <a href="/" class="continue-shopping">← Continue Shopping</a>
+  <h1>{$t('cart.title')}</h1>
+  <a href="/" class="continue-shopping">← {$t('cart.continueShopping')}</a>
 </div>
 
 {#if $cartStore.length === 0}
   <div class="empty-cart">
-    <h2>Your cart is empty</h2>
-    <p>Add some products to get started!</p>
-    <Button variant="primary" on:click={() => (window.location.href = '/')}>Browse Products</Button>
+    <h2>{$t('cart.empty')}</h2>
+    <p>{$t('cart.emptyPrompt')}</p>
+    <Button variant="primary" on:click={() => (window.location.href = '/')}
+      >{$t('cart.browseProducts')}</Button
+    >
   </div>
 {:else}
   <div class="cart-content">
     <div class="cart-items">
       {#each $cartStore as item}
-        {@const totalStock = calculateTotalStock(item.fulfillmentOptions)}
+        {@const totalStock = calculateTotalStock(item.fulfillmentOptions, item.stock)}
         <div class="cart-item">
           <img src={item.image} alt={item.name} />
           <div class="item-details">
@@ -52,8 +55,47 @@
             {#if item.variantLabel}
               <p class="item-variant">{item.variantLabel}</p>
             {/if}
-            <p class="item-price">${item.price}</p>
+            <p class="item-price">{$money(item.price)}</p>
             <p class="item-category">{item.category}</p>
+
+            <!-- Confirm what was actually designed. Without this the shopper
+                 reaches payment with no evidence their artwork or their
+                 personalization choices survived. -->
+            {#if item.customizations?.length}
+              <div class="item-designs">
+                {#each item.customizations as design (design.zoneId)}
+                  <figure class="design-chip">
+                    <img
+                      src={design.imageDataUrl}
+                      alt="Your design for {design.zoneName}"
+                      style="transform: rotate({design.rotation ?? 0}deg);"
+                    />
+                    <figcaption>
+                      {design.zoneName}
+                      {#if design.naturalWidth}
+                        <span class="design-meta">
+                          {design.naturalWidth}×{design.naturalHeight}px
+                        </span>
+                      {/if}
+                    </figcaption>
+                  </figure>
+                {/each}
+              </div>
+            {/if}
+
+            {#if item.fieldValues?.length}
+              <ul class="item-personalization">
+                {#each item.fieldValues as field (field.fieldId)}
+                  <li>
+                    <span class="field-name">{field.fieldName}:</span>
+                    {#if field.fieldType === 'color'}
+                      <span class="field-swatch" style="background:{field.value}"></span>
+                    {/if}
+                    <span class="field-value">{field.value}</span>
+                  </li>
+                {/each}
+              </ul>
+            {/if}
           </div>
           <div class="item-controls">
             <div class="quantity-controls">
@@ -71,9 +113,9 @@
                 +
               </button>
             </div>
-            <p class="item-total">${(item.price * item.quantity).toFixed(2)}</p>
+            <p class="item-total">{$money(item.price * item.quantity)}</p>
             <Button variant="danger" on:click={() => removeItem(item.id, item.variantId)}
-              >Remove</Button
+              >{$t('common.remove')}</Button
             >
           </div>
         </div>
@@ -82,18 +124,18 @@
 
     <div class="cart-summary">
       <div class="summary-content">
-        <h3>Order Summary</h3>
+        <h3>{$t('cart.orderSummary')}</h3>
         <div class="summary-row">
-          <span>Total Items:</span>
+          <span>{$t('cart.totalItems')}:</span>
           <span>{totalItems}</span>
         </div>
         <div class="summary-row total">
-          <span>Total Price:</span>
-          <span>${totalPrice.toFixed(2)}</span>
+          <span>{$t('cart.totalPrice')}:</span>
+          <span>{$money(totalPrice)}</span>
         </div>
         <div class="cart-actions">
-          <Button variant="secondary" on:click={clearCart}>Clear Cart</Button>
-          <Button variant="primary" on:click={checkout}>Proceed to Checkout</Button>
+          <Button variant="secondary" on:click={clearCart}>{$t('cart.clear')}</Button>
+          <Button variant="primary" on:click={checkout}>{$t('cart.proceedToCheckout')}</Button>
         </div>
       </div>
     </div>
@@ -209,6 +251,65 @@
     margin: 0;
     text-transform: uppercase;
     transition: color var(--transition-normal);
+  }
+
+  .item-designs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0.5rem 0 0;
+  }
+
+  .design-chip {
+    margin: 0;
+    width: 64px;
+  }
+
+  .design-chip img {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    border-radius: var(--radius-sm, 4px);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-secondary);
+  }
+
+  .design-chip figcaption {
+    font-size: 0.6875rem;
+    color: var(--color-text-tertiary);
+    text-align: center;
+    margin-top: 0.125rem;
+    line-height: 1.2;
+  }
+
+  .design-meta {
+    display: block;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .item-personalization {
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding: 0;
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .item-personalization .field-name {
+    font-weight: 600;
+  }
+
+  .field-swatch {
+    display: inline-block;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 2px;
+    border: 1px solid var(--color-border);
+    vertical-align: -1px;
+    margin-right: 0.25rem;
   }
 
   .item-controls {

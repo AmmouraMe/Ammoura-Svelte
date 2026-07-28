@@ -14,6 +14,8 @@ export interface ProductCustomizationZone {
   maxFileSize: number;
   allowedTypes: string[];
   sortOrder: number;
+  /** Template print area this zone was materialized from, if any. */
+  printAreaId: string | null;
 }
 
 /**
@@ -30,6 +32,7 @@ export interface CreateCustomizationZoneData {
   maxFileSize?: number;
   allowedTypes?: string[];
   sortOrder?: number;
+  printAreaId?: string | null;
 }
 
 /**
@@ -53,11 +56,24 @@ export interface UpdateCustomizationZoneData {
 export interface CartItemCustomization {
   zoneId: string;
   zoneName: string;
+  /**
+   * Directly-renderable source for the customer's artwork. Now the R2-backed
+   * `/api/media/...` URL of the full-resolution original (a `data:` URL only
+   * when running without an R2 binding), NOT a downsampled preview — the
+   * printed output is generated from this.
+   */
   imageDataUrl: string;
+  /** `media_library` id of the full-resolution original in R2. */
+  mediaId: string | null;
+  /** Pixel dimensions of the original, used for print-quality assessment. */
+  naturalWidth: number;
+  naturalHeight: number;
   originalFilename: string;
   offsetXPercent: number;
   offsetYPercent: number;
   scale: number;
+  /** Clockwise rotation in degrees, applied about the design's centre. */
+  rotation: number;
 }
 
 // --- Product Customization Fields ---

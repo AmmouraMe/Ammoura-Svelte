@@ -11,7 +11,7 @@ import {
 import type { CartItem } from '../types';
 
 type SubmitOrderItem = Pick<CartItem, 'id' | 'name' | 'price' | 'quantity' | 'image'> &
-  Partial<Pick<CartItem, 'equipmentValues' | 'variantId'>>;
+  Partial<Pick<CartItem, 'equipmentValues' | 'variantId' | 'customizations' | 'fieldValues'>>;
 
 // Initial form data
 const initialFormData: CheckoutFormData = {
@@ -181,7 +181,25 @@ async function submitOrder(
         price: item.price,
         quantity: item.quantity,
         image: item.image,
-        equipment_values: item.equipmentValues || []
+        equipment_values: item.equipmentValues || [],
+        customizations: (item.customizations || []).map((c) => ({
+          zoneId: c.zoneId,
+          zoneName: c.zoneName,
+          imageUrl: c.imageDataUrl,
+          mediaId: c.mediaId ?? null,
+          originalFilename: c.originalFilename,
+          offsetXPercent: c.offsetXPercent,
+          offsetYPercent: c.offsetYPercent,
+          scale: c.scale,
+          rotation: c.rotation ?? 0
+        })),
+        field_values: (item.fieldValues || []).map((f) => ({
+          fieldId: f.fieldId,
+          fieldName: f.fieldName,
+          fieldType: f.fieldType,
+          value: f.value,
+          priceModifier: f.priceModifier
+        }))
       })),
       subtotal,
       shipping_cost: shippingCost,

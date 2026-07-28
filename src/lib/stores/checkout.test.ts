@@ -854,7 +854,10 @@ describe('Checkout Store', () => {
 
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ success: true, url: 'https://checkout.stripe.com/pay/cs_order-billing-test' })
+        json: async () => ({
+          success: true,
+          url: 'https://checkout.stripe.com/pay/cs_order-billing-test'
+        })
       });
 
       const mockCartItems = [

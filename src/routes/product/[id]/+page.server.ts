@@ -6,9 +6,11 @@ import {
   getCustomizationZones,
   getCustomizationFields,
   getProductEquipmentWithFields,
-  getProductVariants
+  getProductVariants,
+  getPrintAreasByIds
 } from '$lib/server/db';
 import { getProductShippingOptions } from '$lib/server/db/shipping-options';
+import { translateProducts } from '$lib/server/i18n/content-translations';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { logProductAction } from '$lib/server/activity-logger';
@@ -29,8 +31,15 @@ export const load: PageServerLoad = async ({
     const db = getDB(platform);
     const siteId = locals.siteId || 'default-site';
 
-    // Fetch product from D1 database
-    const dbProduct = await getProductById(db, siteId, params.id);
+    // Fetch product from D1 database (translated for the request locale)
+    const dbProductRaw = await getProductById(db, siteId, params.id);
+    const dbProduct = dbProductRaw
+      ? (
+          await translateProducts(db, siteId, locals.locale, locals.i18n?.defaultLocale ?? 'en', [
+            dbProductRaw
+          ])
+        )[0]
+      : null;
 
     if (!dbProduct) {
       throw error(404, 'Product not found');
@@ -48,6 +57,14 @@ export const load: PageServerLoad = async ({
 
     // Fetch customization zones
     const customizationZones = await getCustomizationZones(db, siteId, params.id);
+
+    // Physical geometry (inches + required DPI) for whichever zones are linked
+    // to a template print area. Drives the customizer's print-quality meter;
+    // zones with no linked area simply get no geometry and no meter.
+    const printAreas = await getPrintAreasByIds(
+      db,
+      customizationZones.map((z) => z.printAreaId).filter((id): id is string => Boolean(id))
+    );
 
     // Fetch customization fields (customer input fields)
     const customizationFields = await getCustomizationFields(db, siteId, params.id);
@@ -129,6 +146,7 @@ export const load: PageServerLoad = async ({
       product,
       media,
       customizationZones,
+      printAreas,
       customizationFields,
       productEquipment
     };

@@ -27,7 +27,8 @@ describe('ProductCustomizer', () => {
       heightPercent: 30,
       maxFileSize: 10485760,
       allowedTypes: ['image/png', 'image/jpeg'],
-      sortOrder: 0
+      sortOrder: 0,
+      printAreaId: null
     },
     {
       id: 'zone-back',
@@ -40,7 +41,8 @@ describe('ProductCustomizer', () => {
       heightPercent: 50,
       maxFileSize: 5242880,
       allowedTypes: ['image/png', 'image/jpeg', 'image/webp'],
-      sortOrder: 1
+      sortOrder: 1,
+      printAreaId: null
     }
   ];
 
@@ -76,13 +78,31 @@ describe('ProductCustomizer', () => {
       props: {
         productImage: '/fallback.jpg',
         productName: 'Test Shirt',
+        productId: 'test-product',
         media: mockMedia,
         zones: mockZones
       }
     });
 
     expect(screen.getByText('Customize Your Product')).toBeInTheDocument();
-    expect(screen.getByText('Click a zone to upload your design')).toBeInTheDocument();
+    // The hint now also documents the keyboard shortcuts, so match on the
+    // stable leading instruction rather than the whole string.
+    expect(screen.getByText(/Click a print area to upload your design/)).toBeInTheDocument();
+  });
+
+  it('offers undo and redo, disabled until something changes', () => {
+    render(ProductCustomizer, {
+      props: {
+        productImage: '/fallback.jpg',
+        productName: 'Test Shirt',
+        productId: 'test-product',
+        media: [],
+        zones: []
+      }
+    });
+
+    expect(screen.getByTitle('Undo (last placement change)')).toBeDisabled();
+    expect(screen.getByTitle('Redo')).toBeDisabled();
   });
 
   it('renders the product image', () => {
@@ -90,6 +110,7 @@ describe('ProductCustomizer', () => {
       props: {
         productImage: '/fallback.jpg',
         productName: 'Test Shirt',
+        productId: 'test-product',
         media: mockMedia,
         zones: mockZones
       }
@@ -105,6 +126,7 @@ describe('ProductCustomizer', () => {
       props: {
         productImage: '/fallback.jpg',
         productName: 'Test Shirt',
+        productId: 'test-product',
         media: mockMedia,
         zones: mockZones
       }
@@ -120,6 +142,7 @@ describe('ProductCustomizer', () => {
       props: {
         productImage: '/fallback.jpg',
         productName: 'Test Shirt',
+        productId: 'test-product',
         media: mockMedia,
         zones: mockZones
       }
@@ -135,6 +158,7 @@ describe('ProductCustomizer', () => {
       props: {
         productImage: '/fallback.jpg',
         productName: 'Test Shirt',
+        productId: 'test-product',
         media: mockMedia,
         zones: mockZones
       }
@@ -149,6 +173,7 @@ describe('ProductCustomizer', () => {
       props: {
         productImage: '/fallback.jpg',
         productName: 'Test Shirt',
+        productId: 'test-product',
         media: mockMedia,
         zones: mockZones
       }
@@ -163,6 +188,7 @@ describe('ProductCustomizer', () => {
       props: {
         productImage: '/fallback.jpg',
         productName: 'Test Shirt',
+        productId: 'test-product',
         media: [mockMedia[0]],
         zones: mockZones
       }
@@ -176,6 +202,7 @@ describe('ProductCustomizer', () => {
       props: {
         productImage: '/fallback.jpg',
         productName: 'Test Shirt',
+        productId: 'test-product',
         media: [],
         zones: []
       }
@@ -190,6 +217,7 @@ describe('ProductCustomizer', () => {
       props: {
         productImage: '/fallback.jpg',
         productName: 'Test Shirt',
+        productId: 'test-product',
         media: mockMedia,
         zones: mockZones
       }
@@ -207,6 +235,7 @@ describe('ProductCustomizer', () => {
       props: {
         productImage: '/fallback.jpg',
         productName: 'Test Shirt',
+        productId: 'test-product',
         media: mockMedia,
         zones: []
       }
@@ -220,6 +249,7 @@ describe('ProductCustomizer', () => {
       props: {
         productImage: '/fallback.jpg',
         productName: 'Test Shirt',
+        productId: 'test-product',
         media: mockMedia,
         zones: mockZones
       }

@@ -5,6 +5,7 @@
   import ProductCustomizationFields from '../../../lib/components/ProductCustomizationFields.svelte';
   import ProductEquipmentFields from '../../../lib/components/ProductEquipmentFields.svelte';
   import { cartStore, cartItems } from '../../../lib/stores/cart.ts';
+  import { money, t } from '$lib/i18n';
   import { calculateTotalStock } from '$lib/utils/stock';
   import type { CartItemCustomization, CartItemFieldValue } from '$lib/types/customization';
   import type { CartItemEquipmentValue } from '$lib/types/equipment';
@@ -25,6 +26,7 @@
 
   const { product, media } = data;
   const customizationZones = data.customizationZones || [];
+  const printAreas = data.printAreas || {};
   const customizationFields = data.customizationFields || [];
   const productEquipment = data.productEquipment || [];
 
@@ -52,7 +54,7 @@
   $: variantStock = selectedVariant?.stockQuantity ?? null;
   $: totalStock = hasVariants
     ? (variantStock ?? Number.MAX_SAFE_INTEGER)
-    : calculateTotalStock(product.fulfillmentOptions);
+    : calculateTotalStock(product.fulfillmentOptions, product.stock);
   $: hasShippingOptions =
     product.type === 'physical' && product.shippingOptions && product.shippingOptions.length > 0;
 
@@ -136,7 +138,9 @@
 
   function formatEstimatedDelivery(option: ShippingOptionDisplay): string {
     if (option.estimatedDaysMin && option.estimatedDaysMax) {
-      return `${option.estimatedDaysMin}-${option.estimatedDaysMax} business days`;
+      return $t('product.businessDays', {
+        range: `${option.estimatedDaysMin}-${option.estimatedDaysMax}`
+      });
     }
     return '';
   }
@@ -157,8 +161,10 @@
       <ProductCustomizer
         productImage={product.image}
         productName={product.name}
+        productId={product.id}
         {media}
         zones={customizationZones}
+        {printAreas}
         on:customizationsChange={handleCustomizationsChange}
       />
     {:else}
@@ -173,23 +179,23 @@
 
     <div class="price-section">
       <div class="price-display">
-        <span class="price">${displayPrice.toFixed(2)}</span>
+        <span class="price">{$money(displayPrice)}</span>
         {#if fieldPriceModifier > 0}
-          <span class="base-price">(Base: ${basePrice.toFixed(2)})</span>
+          <span class="base-price">(Base: {$money(basePrice)})</span>
         {/if}
       </div>
       <span class="stock">
         {#if hasVariants && variantStock === null}
-          In stock
+          {$t('product.inStock')}
         {:else}
-          {totalStock} in stock
+          {$t('product.inStockCount', { count: totalStock })}
         {/if}
       </span>
     </div>
 
     {#if hasVariants}
       <div class="variant-picker">
-        <span class="variant-picker-label">Options</span>
+        <span class="variant-picker-label">{$t('product.options')}</span>
         <div class="variant-options">
           {#each product.variants ?? [] as variant (variant.id)}
             <button
@@ -221,7 +227,7 @@
 
     {#if hasShippingOptions}
       <div class="shipping-info">
-        <h3>Available Shipping Options</h3>
+        <h3>{$t('product.shippingOptions')}</h3>
         <div class="shipping-options-list">
           {#each product.shippingOptions as option}
             <div class="shipping-option-item">
@@ -236,9 +242,9 @@
                   <span class="delivery-time">{formatEstimatedDelivery(option)}</span>
                 {/if}
                 {#if getShippingPrice(option) > 0}
-                  <span class="shipping-price">+${getShippingPrice(option).toFixed(2)}</span>
+                  <span class="shipping-price">+{$money(getShippingPrice(option))}</span>
                 {:else}
-                  <span class="shipping-free">FREE</span>
+                  <span class="shipping-free">{$t('checkout.free')}</span>
                 {/if}
               </div>
             </div>
@@ -249,7 +255,7 @@
             <circle cx="12" cy="12" r="10" stroke-width="2" />
             <path d="M12 16v-4M12 8h.01" stroke-width="2" stroke-linecap="round" />
           </svg>
-          You'll choose your preferred shipping method at checkout
+          {$t('product.shippingNote')}
         </p>
       </div>
     {/if}
@@ -258,17 +264,17 @@
       {#if cartQuantity === 0 || isCustomizable}
         <Button variant="primary" disabled={!canAddToCart} on:click={addToCart}>
           {totalStock === 0
-            ? 'Out of Stock'
+            ? $t('product.outOfStock')
             : isCustomizable
-              ? 'Add Customized Item to Cart'
-              : 'Add to Cart'}
+              ? $t('product.addCustomizedToCart')
+              : $t('product.addToCart')}
         </Button>
       {:else}
         <div class="quantity-controls">
           <button
             class="quantity-btn"
             on:click={decrementCartQuantity}
-            aria-label="Decrease quantity"
+            aria-label={$t('product.decreaseQuantity')}
           >
             −
           </button>
@@ -277,7 +283,7 @@
             class="quantity-btn"
             on:click={incrementCartQuantity}
             disabled={cartQuantity >= totalStock}
-            aria-label="Increase quantity"
+            aria-label={$t('product.increaseQuantity')}
           >
             +
           </button>
