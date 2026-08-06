@@ -11,9 +11,18 @@ node_modules
 .output
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+vitest.config.js.timestamp-*
+vitest.config.ts.timestamp-*
 
 # Coverage reports
 coverage/
+coverage-*.txt
+
+# Scratch output from debugging sessions — these kept getting committed
+debug-page.html
+page-check.html
+*-test-result.png
+*-screenshot.png
 
 # Wrangler
 .wrangler/

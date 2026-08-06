@@ -3,7 +3,7 @@
 _(codenamed Hermes during development)_
 
 Hermes is a modern multi-tenant eCommerce platform built with SvelteKit and
-TypeScript, deployed on Cloudflare Pages with D1 database and R2 storage. It
+TypeScript, deployed on Cloudflare Workers with D1 database and R2 storage. It
 features a WYSIWYG page builder, responsive design, and comprehensive theme
 system. It supports role-based authentication and is designed for scalability
 and maintainability. It includes a robust testing suite and follows strict code
@@ -21,7 +21,7 @@ and customer support. It will comply with relevant data protection regulations.
 ## 🚀 Stack & Features
 
 - **SvelteKit** - Modern web framework with TypeScript support
-- **Cloudflare Pages** - Edge deployment for global performance
+- **Cloudflare Workers** - Edge deployment for global performance
 - **Cloudflare D1** - Serverless SQL database with multi-tenant support
 - **TypeScript** - Type-safe development
 - **Multi-Tenant Architecture** - Support for multiple stores/sites
@@ -66,8 +66,11 @@ open http://localhost:4236/
 
 ### Development
 
-- `npm run dev` - Start development server (auto-migrates and seeds database)
-- `npm run preview` - Preview production build locally (auto-migrates and seeds)
+- `npm run dev` - Start development server (run `npm run db:setup:local:seed`
+  first if the local database is empty — `dev` does not migrate or seed)
+- `npm run preview:local` - Build, migrate + seed the local database, and serve
+  it through Wrangler
+- `npm run preview` - Serve the build against the **remote** preview D1 and R2
 - `npm test` - Run tests with Vitest
 - `npm run test:coverage` - Run tests with coverage report
 
@@ -110,14 +113,19 @@ database management guide.
 
 ## 🌐 Deployment
 
-The project is configured for automatic deployment on Cloudflare Pages:
+The project deploys to **Cloudflare Workers** with static assets (it was moved
+off Cloudflare Pages — see the tenancy plan §8 and the note in `wrangler.toml`):
 
-**Automatic Deployment**: Connect your repository to Cloudflare Pages
+```bash
+npm run build     # writes .svelte-kit/cloudflare
+npm run deploy    # runs migrations, then `wrangler deploy`
+```
 
 ### Build Configuration
 
 - **Build Command**: `npm run build`
-- **Output Directory**: `.svelte-kit/cloudflare`
+- **Worker Entry**: `.svelte-kit/cloudflare/_worker.js`
+- **Assets Directory**: `.svelte-kit/cloudflare`
 - **Node.js Version**: 18+
 - **D1 Database**: Configured in `wrangler.toml`
 
@@ -141,7 +149,7 @@ See `wrangler.toml` for Cloudflare Workers configuration.
 This foundation includes:
 
 - ✅ SvelteKit project with TypeScript
-- ✅ Cloudflare Pages adapter configuration
+- ✅ Cloudflare Workers adapter configuration
 - ✅ Modern tooling setup (ESLint, Prettier, Vitest)
 - ✅ Basic styling and responsive layout
 
@@ -200,6 +208,9 @@ Copilot configuration details.
 
 **Name Origin:** Inspired by King Hammurabi of Babylon (c. 1792-1750 BCE), creator of one of history's first commercial legal codes. Just as Hammurabi brought order and fairness to ancient markets, Ammoura provides the foundation for modern digital commerce.
 
-**Copyright © 2025 David William Monaghan. All rights reserved.**
+**Copyright © 2025 StarSpace Group.**
 
-This software is open source under the MIT License. The Ammoura™ name and brand are protected trademarks.
+This software is free software licensed under the **GNU Affero General Public
+License v3.0** — see [LICENSE.md](LICENSE.md) and [NOTICE.md](NOTICE.md) (which
+also covers the bundled Editor.js components, Apache-2.0). The Ammoura™ name and
+brand are protected trademarks and are not covered by that licence.
