@@ -32,8 +32,7 @@ declare global {
         CLOUDFLARE_ZONE_ID?: string; // zone id custom hostnames are provisioned on
         RESEND_API_KEY?: string; // secret: outbound email; absent in dev → console log
         EMAIL_FROM?: string; // From header for outbound email
-        PLATFORM_ENGINEER_PASSWORD?: string;
-        PLATFORM_ENGINEER_EMAIL?: string; // Email address that identifies the platform engineer
+        PLATFORM_ENGINEER_EMAIL?: string; // secret: this user is elevated to platform_engineer on sign-in
         ENCRYPTION_KEY?: string; // Base64-encoded AES-256 key for encrypting secrets
         // OAuth provider credentials (dynamically indexed)
         [key: string]: string | D1Database | R2Bucket | undefined;

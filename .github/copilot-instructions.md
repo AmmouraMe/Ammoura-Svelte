@@ -709,7 +709,10 @@ CREATE INDEX IF NOT EXISTS idx_user_preferences_site ON user_preferences(site_id
 
 ### Environment Variables
 
-- **PLATFORM_ENGINEER_PASSWORD** - Required for platform engineer access
+- **PLATFORM_ENGINEER_EMAIL** - the user with this email is elevated to
+  `platform_engineer` on their next sign-in; this is how the first superuser is
+  created (nothing is seeded)
+- **ENCRYPTION_KEY** - encrypts stored provider credentials
 - Set in `.dev.vars` for local development
 - Use `wrangler secret put` for production
 

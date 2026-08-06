@@ -2,8 +2,9 @@
 # Copy this file to .dev.vars and set your own values
 # .dev.vars is gitignored and should never be committed
 
-# Platform Engineer Password (required for engineer@hermes.local login)
-PLATFORM_ENGINEER_PASSWORD=your_secure_password_here
+# Email that gets elevated to platform_engineer on its next sign-in.
+# Optional locally — the DEV panel's "superadmin" button is the usual route.
+# PLATFORM_ENGINEER_EMAIL=you@example.com
 
 # Encryption Key for sensitive data (API keys, secrets)
 # Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"

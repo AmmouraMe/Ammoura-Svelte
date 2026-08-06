@@ -16,11 +16,12 @@ directory = ".svelte-kit/cloudflare"
 # (see .dev.vars.example).
 PLATFORM_SITES_DOMAIN = "ammoura.me"
 
-# Environment Variables
-# Set PLATFORM_ENGINEER_PASSWORD as a secret:
-# wrangler secret put PLATFORM_ENGINEER_PASSWORD
-# For local development, create a .dev.vars file with:
-# PLATFORM_ENGINEER_PASSWORD=your_secure_password_here
+# Secrets (set with `wrangler secret put <NAME>`, never in [vars]):
+#   PLATFORM_ENGINEER_EMAIL — the user with this email is elevated to
+#     platform_engineer on their next sign-in. This is how the first superuser
+#     is created; nothing is seeded. See docs/AUTHENTICATION_SETUP.md.
+#   ENCRYPTION_KEY — encrypts stored provider credentials.
+# For local development put them in .dev.vars (see .dev.vars.example).
 
 # Tenancy (see Ammoura planning repo, plans/tenancy.md)
 # PLATFORM_SITES_DOMAIN: wildcard domain for free platform subdomains
