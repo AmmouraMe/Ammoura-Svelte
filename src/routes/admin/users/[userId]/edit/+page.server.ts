@@ -3,23 +3,17 @@ import { getDB, getUserById } from '$lib/server/db';
 import { error, fail, redirect } from '@sveltejs/kit';
 import { canPerformAction, isSystemUser } from '$lib/server/permissions';
 
-export const load: PageServerLoad = async ({ platform, cookies, locals, params }) => {
+export const load: PageServerLoad = async ({ platform, locals, params }) => {
   // Check authentication
-  const userSession = cookies.get('user_session');
-  if (!userSession) {
+  // hooks.server.ts resolves the session cookie against the users table, so
+  // locals.currentUser is already the full DB row
+  const currentUser = locals.currentUser;
+  if (!currentUser) {
     throw error(401, 'Not authenticated');
   }
 
-  const sessionUser = JSON.parse(decodeURIComponent(userSession));
-
   const db = getDB(platform);
   const siteId = locals.siteId;
-
-  // Get full current user details from database
-  const currentUser = await getUserById(db, siteId, sessionUser.id);
-  if (!currentUser) {
-    throw error(401, 'User not found');
-  }
 
   // Check permission to edit users
   if (!canPerformAction(currentUser, 'users:write')) {
@@ -65,22 +59,16 @@ export const load: PageServerLoad = async ({ platform, cookies, locals, params }
 };
 
 export const actions: Actions = {
-  default: async ({ request, platform, cookies, locals, params }) => {
-    const userSession = cookies.get('user_session');
-    if (!userSession) {
+  default: async ({ request, platform, locals, params }) => {
+    // hooks.server.ts resolves the session cookie against the users table, so
+    // locals.currentUser is already the full DB row
+    const currentUser = locals.currentUser;
+    if (!currentUser) {
       throw error(401, 'Not authenticated');
     }
 
-    const sessionUser = JSON.parse(decodeURIComponent(userSession));
-
     const db = getDB(platform);
     const siteId = locals.siteId;
-
-    // Get full current user details from database
-    const currentUser = await getUserById(db, siteId, sessionUser.id);
-    if (!currentUser) {
-      throw error(401, 'User not found');
-    }
 
     if (!canPerformAction(currentUser, 'users:write')) {
       throw error(403, 'Insufficient permissions to edit users');

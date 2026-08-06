@@ -1,6 +1,57 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handle } from './hooks.server';
+import { handle, isOwnerOnlyRequest } from './hooks.server';
 import type { RequestEvent } from '@sveltejs/kit';
+
+describe('isOwnerOnlyRequest', () => {
+  it.each([
+    ['/api/admin/users', 'GET'],
+    ['/api/admin/database/data', 'GET'],
+    ['/api/ai-chat', 'POST'],
+    ['/api/ai-chat/sessions', 'GET'],
+    ['/api/media/upload', 'POST'],
+    ['/api/products', 'POST'],
+    ['/api/products', 'PUT'],
+    ['/api/products', 'DELETE'],
+    ['/api/products/abc/media', 'POST'],
+    ['/api/products/abc/revisions/1/publish', 'POST'],
+    ['/api/pages', 'POST'],
+    ['/api/pages/abc', 'DELETE'],
+    ['/api/page-components/abc', 'DELETE'],
+    ['/api/components', 'POST'],
+    ['/api/components/abc/children', 'POST'],
+    ['/api/layouts', 'POST'],
+    ['/api/layouts/abc', 'PUT'],
+    ['/api/orders/abc/status', 'PATCH']
+  ])('requires an owner for %s %s', (path, method) => {
+    expect(isOwnerOnlyRequest(path, method)).toBe(true);
+  });
+
+  it.each([
+    // The storefront renders from these
+    ['/api/products', 'GET'],
+    ['/api/products/abc', 'GET'],
+    ['/api/pages', 'GET'],
+    ['/api/components/abc', 'GET'],
+    ['/api/layouts/abc', 'GET'],
+    ['/api/media/some/image.png', 'GET'],
+    // Shoppers are anonymous
+    ['/api/orders', 'POST'],
+    ['/api/products/abc/design-upload', 'POST'],
+    ['/api/cart', 'POST'],
+    ['/api/checkout/session', 'POST'],
+    ['/api/checkout/shipping', 'POST'],
+    ['/api/locale', 'POST'],
+    ['/api/auth/login', 'POST'],
+    ['/api/account/signup', 'POST']
+  ])('leaves %s %s public', (path, method) => {
+    expect(isOwnerOnlyRequest(path, method)).toBe(false);
+  });
+
+  it('does not let a lookalike prefix inherit the guard', () => {
+    expect(isOwnerOnlyRequest('/api/products-public', 'POST')).toBe(false);
+    expect(isOwnerOnlyRequest('/api/administrators', 'GET')).toBe(false);
+  });
+});
 
 describe('Server Hooks', () => {
   beforeEach(() => {

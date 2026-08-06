@@ -74,6 +74,15 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
         return json({ received: true });
       }
 
+      // Delayed-notification methods (ACH, SEPA) complete the session while
+      // still unpaid and settle later, so completion alone is not payment.
+      if (session.payment_status !== 'paid') {
+        console.warn(
+          `Stripe session ${session.id} completed with payment_status=${session.payment_status}; not marking order ${order.id} paid`
+        );
+        return json({ received: true });
+      }
+
       const paymentIntentId =
         typeof session.payment_intent === 'string'
           ? session.payment_intent
@@ -82,17 +91,27 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
       const justPaid = await markOrderPaid(db, siteId, order.id, paymentIntentId);
 
       if (justPaid) {
-        await logActivity(db, {
-          siteId,
-          userId: 'system',
-          action: 'Order paid via Stripe',
-          description: `Order ${order.id} marked paid (session ${session.id})`,
-          entityType: 'order',
-          entityId: order.id,
-          entityName: `Order ${order.id}`
-        });
-
+        // Fulfilment first. markOrderPaid is a one-shot guard (it only fires
+        // while payment_status is still 'unpaid'), so anything that throws
+        // between it and the relay strands the order permanently: Stripe
+        // retries, justPaid comes back false, and the relay never runs again.
+        // The customer is charged and Printful never hears about it.
         await relayPaidOrderToPrintful(db, siteId, order.id, encryptionKey);
+
+        // Telemetry — must never be able to abort the paid-order path.
+        try {
+          await logActivity(db, {
+            siteId,
+            userId: 'system',
+            action: 'Order paid via Stripe',
+            description: `Order ${order.id} marked paid (session ${session.id})`,
+            entityType: 'order',
+            entityId: order.id,
+            entityName: `Order ${order.id}`
+          });
+        } catch (err) {
+          console.error(`Failed to log payment activity for order ${order.id}:`, err);
+        }
       }
     }
 

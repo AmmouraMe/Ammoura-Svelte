@@ -1,10 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { Cookies } from '@sveltejs/kit';
 
 // Mock the database module
 vi.mock('$lib/server/db', () => ({
   getDB: vi.fn(() => ({})),
-  getUserById: vi.fn(),
   getUserByEmail: vi.fn(),
   updateUser: vi.fn()
 }));
@@ -12,6 +10,12 @@ vi.mock('$lib/server/db', () => ({
 // Mock activity logs
 vi.mock('$lib/server/db/activity-logs', () => ({
   createActivityLog: vi.fn()
+}));
+
+// Mock the password helpers (real PBKDF2 — tests control verify/hash results directly)
+vi.mock('$lib/server/password', () => ({
+  hashPassword: vi.fn(),
+  verifyPassword: vi.fn()
 }));
 
 // Mock @sveltejs/kit
@@ -29,19 +33,9 @@ vi.mock('@sveltejs/kit', async () => {
   };
 });
 
-// Helper to create a SHA-256 hash for testing
-async function createTestHash(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
 describe('+page.server.ts - Profile', () => {
   let mockPlatform: { env: { DB: unknown } };
-  let mockCookies: Cookies;
-  let mockLocals: { siteId: string };
+  let mockLocals: { siteId: string; currentUser?: Record<string, unknown> };
 
   beforeEach(() => {
     vi.resetModules();
@@ -49,14 +43,6 @@ describe('+page.server.ts - Profile', () => {
     mockPlatform = {
       env: { DB: {} }
     };
-
-    mockCookies = {
-      get: vi.fn(),
-      set: vi.fn(),
-      delete: vi.fn(),
-      getAll: vi.fn(),
-      serialize: vi.fn()
-    } as unknown as Cookies;
 
     mockLocals = { siteId: 'test-site' };
   });
@@ -67,43 +53,19 @@ describe('+page.server.ts - Profile', () => {
 
   describe('load', () => {
     it('should redirect to login if not authenticated', async () => {
-      (mockCookies.get as ReturnType<typeof vi.fn>).mockReturnValue(null);
+      mockLocals.currentUser = undefined;
 
       const { load } = await import('./+page.server');
 
       await expect(
         load({
           platform: mockPlatform,
-          cookies: mockCookies,
           locals: mockLocals
         } as unknown as Parameters<typeof load>[0])
       ).rejects.toThrow('Redirect 302: /auth/login?redirect=/user/profile');
     });
 
-    it('should throw 404 if user not found', async () => {
-      const { getUserById } = await import('$lib/server/db');
-      const getUserByIdMock = getUserById as ReturnType<typeof vi.fn>;
-
-      (mockCookies.get as ReturnType<typeof vi.fn>).mockReturnValue(
-        encodeURIComponent(JSON.stringify({ id: 'user-1' }))
-      );
-      getUserByIdMock.mockResolvedValue(null);
-
-      const { load } = await import('./+page.server');
-
-      await expect(
-        load({
-          platform: mockPlatform,
-          cookies: mockCookies,
-          locals: mockLocals
-        } as unknown as Parameters<typeof load>[0])
-      ).rejects.toThrow('404: User not found');
-    });
-
     it('should return user without password hash', async () => {
-      const { getUserById } = await import('$lib/server/db');
-      const getUserByIdMock = getUserById as ReturnType<typeof vi.fn>;
-
       const mockUser = {
         id: 'user-1',
         name: 'Test User',
@@ -115,16 +77,12 @@ describe('+page.server.ts - Profile', () => {
         updated_at: 1700000000
       };
 
-      (mockCookies.get as ReturnType<typeof vi.fn>).mockReturnValue(
-        encodeURIComponent(JSON.stringify({ id: 'user-1' }))
-      );
-      getUserByIdMock.mockResolvedValue(mockUser);
+      mockLocals.currentUser = mockUser;
 
       const { load } = await import('./+page.server');
 
       const result = await load({
         platform: mockPlatform,
-        cookies: mockCookies,
         locals: mockLocals
       } as unknown as Parameters<typeof load>[0]);
 
@@ -144,7 +102,7 @@ describe('+page.server.ts - Profile', () => {
 
   describe('actions.updateProfile', () => {
     it('should throw 401 if not authenticated', async () => {
-      (mockCookies.get as ReturnType<typeof vi.fn>).mockReturnValue(null);
+      mockLocals.currentUser = undefined;
 
       const { actions } = await import('./+page.server');
 
@@ -155,24 +113,17 @@ describe('+page.server.ts - Profile', () => {
             body: new FormData()
           }),
           platform: mockPlatform,
-          cookies: mockCookies,
           locals: mockLocals
         } as unknown as Parameters<typeof actions.updateProfile>[0])
       ).rejects.toThrow('401: Not authenticated');
     });
 
     it('should fail validation if name is missing', async () => {
-      const { getUserById } = await import('$lib/server/db');
-      const getUserByIdMock = getUserById as ReturnType<typeof vi.fn>;
-
-      (mockCookies.get as ReturnType<typeof vi.fn>).mockReturnValue(
-        encodeURIComponent(JSON.stringify({ id: 'user-1' }))
-      );
-      getUserByIdMock.mockResolvedValue({
+      mockLocals.currentUser = {
         id: 'user-1',
         email: 'test@example.com',
         name: 'Test User'
-      });
+      };
 
       const formData = new FormData();
       formData.append('name', '');
@@ -186,7 +137,6 @@ describe('+page.server.ts - Profile', () => {
           body: formData
         }),
         platform: mockPlatform,
-        cookies: mockCookies,
         locals: mockLocals
       } as unknown as Parameters<typeof actions.updateProfile>[0]);
 
@@ -195,17 +145,11 @@ describe('+page.server.ts - Profile', () => {
     });
 
     it('should fail validation for invalid email format', async () => {
-      const { getUserById } = await import('$lib/server/db');
-      const getUserByIdMock = getUserById as ReturnType<typeof vi.fn>;
-
-      (mockCookies.get as ReturnType<typeof vi.fn>).mockReturnValue(
-        encodeURIComponent(JSON.stringify({ id: 'user-1' }))
-      );
-      getUserByIdMock.mockResolvedValue({
+      mockLocals.currentUser = {
         id: 'user-1',
         email: 'test@example.com',
         name: 'Test User'
-      });
+      };
 
       const formData = new FormData();
       formData.append('name', 'Test User');
@@ -219,7 +163,6 @@ describe('+page.server.ts - Profile', () => {
           body: formData
         }),
         platform: mockPlatform,
-        cookies: mockCookies,
         locals: mockLocals
       } as unknown as Parameters<typeof actions.updateProfile>[0]);
 
@@ -228,19 +171,15 @@ describe('+page.server.ts - Profile', () => {
     });
 
     it('should update profile successfully', async () => {
-      const { getUserById, getUserByEmail, updateUser } = await import('$lib/server/db');
-      const getUserByIdMock = getUserById as ReturnType<typeof vi.fn>;
+      const { getUserByEmail, updateUser } = await import('$lib/server/db');
       const getUserByEmailMock = getUserByEmail as ReturnType<typeof vi.fn>;
       const updateUserMock = updateUser as ReturnType<typeof vi.fn>;
 
-      (mockCookies.get as ReturnType<typeof vi.fn>).mockReturnValue(
-        encodeURIComponent(JSON.stringify({ id: 'user-1' }))
-      );
-      getUserByIdMock.mockResolvedValue({
+      mockLocals.currentUser = {
         id: 'user-1',
         email: 'test@example.com',
         name: 'Test User'
-      });
+      };
       getUserByEmailMock.mockResolvedValue(null);
       updateUserMock.mockResolvedValue(undefined);
 
@@ -256,7 +195,6 @@ describe('+page.server.ts - Profile', () => {
           body: formData
         }),
         platform: mockPlatform,
-        cookies: mockCookies,
         locals: mockLocals
       } as unknown as Parameters<typeof actions.updateProfile>[0]);
 
@@ -266,18 +204,14 @@ describe('+page.server.ts - Profile', () => {
     });
 
     it('should fail if email is already taken', async () => {
-      const { getUserById, getUserByEmail } = await import('$lib/server/db');
-      const getUserByIdMock = getUserById as ReturnType<typeof vi.fn>;
+      const { getUserByEmail } = await import('$lib/server/db');
       const getUserByEmailMock = getUserByEmail as ReturnType<typeof vi.fn>;
 
-      (mockCookies.get as ReturnType<typeof vi.fn>).mockReturnValue(
-        encodeURIComponent(JSON.stringify({ id: 'user-1' }))
-      );
-      getUserByIdMock.mockResolvedValue({
+      mockLocals.currentUser = {
         id: 'user-1',
         email: 'test@example.com',
         name: 'Test User'
-      });
+      };
       getUserByEmailMock.mockResolvedValue({
         id: 'user-2',
         email: 'taken@example.com'
@@ -295,7 +229,6 @@ describe('+page.server.ts - Profile', () => {
           body: formData
         }),
         platform: mockPlatform,
-        cookies: mockCookies,
         locals: mockLocals
       } as unknown as Parameters<typeof actions.updateProfile>[0]);
 
@@ -306,7 +239,7 @@ describe('+page.server.ts - Profile', () => {
 
   describe('actions.changePassword', () => {
     it('should throw 401 if not authenticated', async () => {
-      (mockCookies.get as ReturnType<typeof vi.fn>).mockReturnValue(null);
+      mockLocals.currentUser = undefined;
 
       const { actions } = await import('./+page.server');
 
@@ -317,24 +250,17 @@ describe('+page.server.ts - Profile', () => {
             body: new FormData()
           }),
           platform: mockPlatform,
-          cookies: mockCookies,
           locals: mockLocals
         } as unknown as Parameters<typeof actions.changePassword>[0])
       ).rejects.toThrow('401: Not authenticated');
     });
 
     it('should fail validation if password is too short', async () => {
-      const { getUserById } = await import('$lib/server/db');
-      const getUserByIdMock = getUserById as ReturnType<typeof vi.fn>;
-
-      (mockCookies.get as ReturnType<typeof vi.fn>).mockReturnValue(
-        encodeURIComponent(JSON.stringify({ id: 'user-1' }))
-      );
-      getUserByIdMock.mockResolvedValue({
+      mockLocals.currentUser = {
         id: 'user-1',
         email: 'test@example.com',
         password_hash: 'existing-hash'
-      });
+      };
 
       const formData = new FormData();
       formData.append('currentPassword', 'current123');
@@ -349,7 +275,6 @@ describe('+page.server.ts - Profile', () => {
           body: formData
         }),
         platform: mockPlatform,
-        cookies: mockCookies,
         locals: mockLocals
       } as unknown as Parameters<typeof actions.changePassword>[0]);
 
@@ -358,17 +283,11 @@ describe('+page.server.ts - Profile', () => {
     });
 
     it('should fail if passwords do not match', async () => {
-      const { getUserById } = await import('$lib/server/db');
-      const getUserByIdMock = getUserById as ReturnType<typeof vi.fn>;
-
-      (mockCookies.get as ReturnType<typeof vi.fn>).mockReturnValue(
-        encodeURIComponent(JSON.stringify({ id: 'user-1' }))
-      );
-      getUserByIdMock.mockResolvedValue({
+      mockLocals.currentUser = {
         id: 'user-1',
         email: 'test@example.com',
         password_hash: 'existing-hash'
-      });
+      };
 
       const formData = new FormData();
       formData.append('currentPassword', 'current123');
@@ -383,7 +302,6 @@ describe('+page.server.ts - Profile', () => {
           body: formData
         }),
         platform: mockPlatform,
-        cookies: mockCookies,
         locals: mockLocals
       } as unknown as Parameters<typeof actions.changePassword>[0]);
 
@@ -392,20 +310,15 @@ describe('+page.server.ts - Profile', () => {
     });
 
     it('should fail if current password is incorrect', async () => {
-      const { getUserById } = await import('$lib/server/db');
-      const getUserByIdMock = getUserById as ReturnType<typeof vi.fn>;
+      const { verifyPassword } = await import('$lib/server/password');
+      const verifyPasswordMock = verifyPassword as ReturnType<typeof vi.fn>;
 
-      (mockCookies.get as ReturnType<typeof vi.fn>).mockReturnValue(
-        encodeURIComponent(JSON.stringify({ id: 'user-1' }))
-      );
-
-      // Hash of 'correctpassword' - the wrong password won't match
-      const correctPasswordHash = await createTestHash('correctpassword');
-      getUserByIdMock.mockResolvedValue({
+      mockLocals.currentUser = {
         id: 'user-1',
         email: 'test@example.com',
-        password_hash: correctPasswordHash
-      });
+        password_hash: 'existing-hash'
+      };
+      verifyPasswordMock.mockResolvedValue(false);
 
       const formData = new FormData();
       formData.append('currentPassword', 'wrongpassword');
@@ -420,7 +333,6 @@ describe('+page.server.ts - Profile', () => {
           body: formData
         }),
         platform: mockPlatform,
-        cookies: mockCookies,
         locals: mockLocals
       } as unknown as Parameters<typeof actions.changePassword>[0]);
 
@@ -429,21 +341,19 @@ describe('+page.server.ts - Profile', () => {
     });
 
     it('should change password successfully', async () => {
-      const { getUserById, updateUser } = await import('$lib/server/db');
-      const getUserByIdMock = getUserById as ReturnType<typeof vi.fn>;
+      const { updateUser } = await import('$lib/server/db');
+      const { verifyPassword, hashPassword } = await import('$lib/server/password');
       const updateUserMock = updateUser as ReturnType<typeof vi.fn>;
+      const verifyPasswordMock = verifyPassword as ReturnType<typeof vi.fn>;
+      const hashPasswordMock = hashPassword as ReturnType<typeof vi.fn>;
 
-      (mockCookies.get as ReturnType<typeof vi.fn>).mockReturnValue(
-        encodeURIComponent(JSON.stringify({ id: 'user-1' }))
-      );
-
-      // Hash of 'correctpassword' - the correct password will match
-      const correctPasswordHash = await createTestHash('correctpassword');
-      getUserByIdMock.mockResolvedValue({
+      mockLocals.currentUser = {
         id: 'user-1',
         email: 'test@example.com',
-        password_hash: correctPasswordHash
-      });
+        password_hash: 'existing-hash'
+      };
+      verifyPasswordMock.mockResolvedValue(true);
+      hashPasswordMock.mockResolvedValue('new-hashed-password');
       updateUserMock.mockResolvedValue(undefined);
 
       const formData = new FormData();
@@ -459,7 +369,6 @@ describe('+page.server.ts - Profile', () => {
           body: formData
         }),
         platform: mockPlatform,
-        cookies: mockCookies,
         locals: mockLocals
       } as unknown as Parameters<typeof actions.changePassword>[0]);
 

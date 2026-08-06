@@ -7,7 +7,6 @@
   "common.back": "Atrás",
   "common.continue": "Continuar",
   "common.remove": "Quitar",
-
   "nav.cart": "Carrito",
   "nav.login": "Iniciar sesión",
   "nav.logout": "Cerrar sesión",
@@ -18,12 +17,10 @@
   "nav.theme.light": "Claro",
   "nav.theme.dark": "Oscuro",
   "nav.theme.system": "Sistema",
-
   "role.admin": "Administrador",
   "role.user": "Usuario",
   "role.customer": "Cliente",
   "role.platformEngineer": "Ingeniero de plataforma",
-
   "cart.title": "Carrito de compras",
   "cart.continueShopping": "Seguir comprando",
   "cart.empty": "Tu carrito está vacío",
@@ -38,7 +35,6 @@
   "cart.clear": "Vaciar carrito",
   "cart.proceedToCheckout": "Proceder al pago",
   "cart.checkout": "Finalizar compra",
-
   "checkout.title": "Pago",
   "checkout.backToCart": "Volver al carrito",
   "checkout.emptyPrompt": "Agrega artículos a tu carrito antes de pagar.",
@@ -57,7 +53,6 @@
   "checkout.tax": "Impuestos",
   "checkout.total": "Total",
   "checkout.free": "GRATIS",
-
   "orderSuccess.title": "Confirmación del pedido",
   "orderSuccess.confirmed": "¡Pedido confirmado!",
   "orderSuccess.thankYou": "Gracias por tu compra. Se ha enviado un correo de confirmación a",
@@ -73,7 +68,6 @@
   "orderSuccess.viewOrders": "Ver tus pedidos",
   "orderSuccess.notFound": "No pudimos encontrar ese pedido",
   "orderSuccess.notFoundHelp": "Si acabas de completar un pago, revisa tu correo para la confirmación — de lo contrario, vuelve a la tienda e inténtalo de nuevo.",
-
   "product.addToCart": "Añadir al carrito",
   "product.addCustomizedToCart": "Añadir artículo personalizado al carrito",
   "product.outOfStock": "Agotado",
@@ -91,11 +85,14 @@
   "product.loading": "Cargando producto...",
   "product.loadFailed": "No se pudo cargar el producto",
   "product.notConfigured": "Ningún producto configurado",
-
   "products.loading": "Cargando productos...",
   "products.loadFailed": "No se pudieron cargar los productos",
   "products.none": "No se encontraron productos",
-
+  "error.title": "Algo salió mal",
+  "error.body": "Tuvimos un problema al cargar esta página. Inténtalo de nuevo en un momento.",
+  "error.notFoundTitle": "No encontramos esa página",
+  "error.notFoundBody": "Es posible que la página o el producto que buscas se haya movido o eliminado.",
+  "error.backHome": "Volver a la tienda",
   "auth.login": "Iniciar sesión",
   "auth.loginSubtitle": "Inicia sesión para acceder a tu cuenta",
   "auth.signInWith": "Iniciar sesión con",
@@ -123,7 +120,6 @@
   "auth.signupFailed": "No se pudo crear la cuenta",
   "auth.loginFailed": "No se pudo iniciar sesión",
   "auth.enterEmailAndPassword": "Ingresa tu correo y contraseña",
-
   "sites.title": "Tus sitios",
   "sites.signedInAs": "Sesión iniciada como",
   "sites.domains": "Dominios",
@@ -140,7 +136,6 @@
   "sites.createSite": "Crear sitio",
   "sites.nameRequired": "Por favor ingresa un nombre para el sitio",
   "sites.createFailed": "No se pudo crear el sitio",
-
   "verify.title": "Verificación de correo",
   "verify.verified": "Correo verificado",
   "verify.confirmed": "{email} está confirmado. Todo listo.",
@@ -151,7 +146,6 @@
   "verify.expired": "Enlace caducado o inválido",
   "verify.expiredHelp": "Los enlaces de verificación solo funcionan una vez y caducan a las 24 horas.",
   "verify.requestNew": "Solicitar un nuevo enlace",
-
   "home.titleSuffix": "Crea tu tienda en línea",
   "home.metaDescription": "Crea tu propia tienda en línea. Vende productos, gestiona pedidos y haz crecer tu negocio.",
   "home.badge": "Empieza a vender en línea hoy",

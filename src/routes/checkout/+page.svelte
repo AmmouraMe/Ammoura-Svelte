@@ -16,6 +16,7 @@
     validateShippingSelections,
     calculateTotalShippingCost
   } from '../../lib/utils/shippingGroups';
+  import { calculateOrderTax } from '$lib/checkout-pricing';
 
   let currentStep = 1;
   let isSubmitting = false;
@@ -65,7 +66,8 @@
     return false; // Shipping not yet determined
   })();
 
-  $: tax = subtotal * 0.08;
+  // Same rule the server charges with — see $lib/checkout-pricing
+  $: tax = calculateOrderTax(subtotal);
   $: total = subtotal + shippingCost + tax;
 
   // Reload shipping groups when cart items change

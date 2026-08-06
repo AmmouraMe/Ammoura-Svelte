@@ -8,14 +8,12 @@ import {
 } from '$lib/server/permissions';
 import { error } from '@sveltejs/kit';
 
-export const load: PageServerLoad = async ({ platform, cookies, locals }) => {
-  // Check authentication
-  const userSession = cookies.get('user_session');
-  if (!userSession) {
+export const load: PageServerLoad = async ({ platform, locals }) => {
+  // hooks.server.ts resolves the session cookie against the users table
+  const currentUser = locals.currentUser;
+  if (!currentUser) {
     throw error(401, 'Not authenticated');
   }
-
-  const currentUser = JSON.parse(decodeURIComponent(userSession));
 
   // Check permission
   if (!canPerformAction(currentUser, 'users:read')) {

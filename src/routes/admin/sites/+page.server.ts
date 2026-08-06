@@ -3,18 +3,10 @@ import type { PageServerLoad } from './$types';
 import { getDB } from '$lib/server/db/connection';
 import { getAllSitesWithDetails } from '$lib/server/db/sites';
 
-export const load: PageServerLoad = async ({ cookies, platform }) => {
-  const userSession = cookies.get('user_session');
+export const load: PageServerLoad = async ({ locals, platform }) => {
+  const user = locals.currentUser;
 
-  if (!userSession) {
-    throw redirect(303, '/auth/login');
-  }
-
-  let user;
-  try {
-    user = JSON.parse(decodeURIComponent(userSession));
-  } catch (error) {
-    console.error('Failed to parse user session:', error);
+  if (!user) {
     throw redirect(303, '/auth/login');
   }
 

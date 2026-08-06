@@ -10,6 +10,7 @@ import { getDB } from '$lib/server/db/connection';
 import { getFulfillmentProvidersByType } from '$lib/server/db/fulfillment-providers';
 import { updatePrintfulOrderStatus } from '$lib/server/integrations/printful/db';
 import { logActivity } from '$lib/server/activity-logger';
+import { timingSafeEqual } from '$lib/server/timing-safe';
 import type { PrintfulWebhookEvent } from '$lib/server/integrations/printful/types';
 
 /**
@@ -30,18 +31,23 @@ export const POST: RequestHandler = async ({ request, platform, locals, url }) =
   const providers = await getFulfillmentProvidersByType(db, siteId, 'printful');
   const provider = providers[0];
 
-  if (!provider?.webhook_token || token !== provider.webhook_token) {
+  if (!provider?.webhook_token || !timingSafeEqual(token, provider.webhook_token)) {
     throw error(401, 'Invalid webhook token');
   }
 
+  // A malformed payload will never become valid, so answer 4xx and let
+  // Printful stop. Everything after this point is retryable.
+  let body: PrintfulWebhookEvent;
   try {
-    // Parse webhook payload
-    const body = (await request.json()) as PrintfulWebhookEvent;
+    body = (await request.json()) as PrintfulWebhookEvent;
+  } catch {
+    throw error(400, 'Malformed webhook payload');
+  }
+  if (!body.type || !body.data?.order) {
+    throw error(400, 'Invalid webhook payload');
+  }
 
-    if (!body.type || !body.data?.order) {
-      throw error(400, 'Invalid webhook payload');
-    }
-
+  try {
     const { type, data } = body;
     const printfulOrder = data.order;
 
@@ -73,37 +79,36 @@ export const POST: RequestHandler = async ({ request, platform, locals, url }) =
         eventDescription = `Printful webhook event: ${type}`;
     }
 
-    await logActivity(db, {
-      siteId,
-      userId: 'system',
-      action: `Printful ${type}`,
-      description: eventDescription,
-      entityType: 'order',
-      entityId: printfulOrder.external_id,
-      entityName: `Order ${printfulOrder.external_id}`
-    });
+    // Telemetry — a logging failure must not discard a status update that
+    // already landed, nor provoke a retry of one.
+    try {
+      await logActivity(db, {
+        siteId,
+        userId: 'system',
+        action: `Printful ${type}`,
+        description: eventDescription,
+        entityType: 'order',
+        entityId: printfulOrder.external_id,
+        entityName: `Order ${printfulOrder.external_id}`
+      });
+    } catch (err) {
+      console.error('Failed to log Printful webhook activity:', err);
+    }
 
-    return json(
-      {
-        success: true,
-        message: 'Webhook processed',
-        orderId: printfulOrder.id,
-        status: printfulOrder.status
-      },
-      { status: 200 }
-    );
+    return json({
+      success: true,
+      message: 'Webhook processed',
+      orderId: printfulOrder.id,
+      status: printfulOrder.status
+    });
   } catch (err) {
     if (err && typeof err === 'object' && 'status' in err) {
       throw err;
     }
+    // This used to answer 200 "could not be processed", which told Printful the
+    // update was delivered. A transient D1 failure therefore dropped a status
+    // or tracking number for good. 5xx so Printful redelivers.
     console.error('Printful webhook error:', err);
-    // Return 200 to prevent Printful from retrying
-    return json(
-      {
-        success: false,
-        message: 'Webhook received but could not be processed'
-      },
-      { status: 200 }
-    );
+    throw error(500, 'Failed to process webhook');
   }
 };

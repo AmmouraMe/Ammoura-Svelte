@@ -20,11 +20,9 @@ describe('Activity Logs Page Server', () => {
       };
     };
   };
-  let mockCookies: {
-    get: ReturnType<typeof vi.fn>;
-  };
   let mockLocals: {
     siteId: string;
+    currentUser?: Record<string, unknown>;
   };
 
   beforeEach(() => {
@@ -58,29 +56,21 @@ describe('Activity Logs Page Server', () => {
       }
     };
 
-    mockCookies = {
-      get: vi.fn().mockReturnValue(
-        encodeURIComponent(
-          JSON.stringify({
-            id: 'user-1',
-            role: 'admin',
-            permissions: '["logs:read", "logs:export"]',
-            status: 'active',
-            expiration_date: null
-          })
-        )
-      )
-    };
-
     mockLocals = {
-      siteId: 'site-1'
+      siteId: 'site-1',
+      currentUser: {
+        id: 'user-1',
+        role: 'admin',
+        permissions: '["logs:read", "logs:export"]',
+        status: 'active',
+        expiration_date: null
+      }
     };
   });
 
   it('should load activity logs for users with logs:read permission', async () => {
     const result = (await load({
       platform: mockPlatform,
-      cookies: mockCookies,
       locals: mockLocals,
       url: new URL('http://localhost/admin/activity-logs')
     } as never)) as LoadResult;
@@ -91,12 +81,11 @@ describe('Activity Logs Page Server', () => {
   });
 
   it('should throw 401 error when not authenticated', async () => {
-    mockCookies.get.mockReturnValue(null);
+    mockLocals.currentUser = undefined;
 
     await expect(
       load({
         platform: mockPlatform,
-        cookies: mockCookies,
         locals: mockLocals,
         url: new URL('http://localhost/admin/activity-logs')
       } as never)
@@ -110,7 +99,6 @@ describe('Activity Logs Page Server', () => {
 
     const result = (await load({
       platform: mockPlatform,
-      cookies: mockCookies,
       locals: mockLocals,
       url
     } as never)) as LoadResult;
@@ -123,7 +111,6 @@ describe('Activity Logs Page Server', () => {
   it('should parse metadata from JSON strings', async () => {
     const result = (await load({
       platform: mockPlatform,
-      cookies: mockCookies,
       locals: mockLocals,
       url: new URL('http://localhost/admin/activity-logs')
     } as never)) as LoadResult;

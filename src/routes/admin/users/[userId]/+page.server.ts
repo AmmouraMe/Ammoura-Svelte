@@ -9,14 +9,12 @@ import {
 } from '$lib/server/permissions';
 import { error, redirect } from '@sveltejs/kit';
 
-export const load: PageServerLoad = async ({ platform, cookies, locals, params }) => {
+export const load: PageServerLoad = async ({ platform, locals, params }) => {
   // Check authentication
-  const userSession = cookies.get('user_session');
-  if (!userSession) {
+  const currentUser = locals.currentUser;
+  if (!currentUser) {
     throw error(401, 'Not authenticated');
   }
-
-  const currentUser = JSON.parse(decodeURIComponent(userSession));
 
   // Check permission to view users
   if (!canPerformAction(currentUser, 'users:read')) {
@@ -66,13 +64,11 @@ export const load: PageServerLoad = async ({ platform, cookies, locals, params }
 };
 
 export const actions: Actions = {
-  updateStatus: async ({ request, platform, cookies, locals, params }) => {
-    const userSession = cookies.get('user_session');
-    if (!userSession) {
+  updateStatus: async ({ request, platform, locals, params }) => {
+    const currentUser = locals.currentUser;
+    if (!currentUser) {
       throw error(401, 'Not authenticated');
     }
-
-    const currentUser = JSON.parse(decodeURIComponent(userSession));
 
     if (!canPerformAction(currentUser, 'users:write')) {
       throw error(403, 'Insufficient permissions to update user status');
@@ -125,13 +121,11 @@ export const actions: Actions = {
     return { success: true };
   },
 
-  updateRole: async ({ request, platform, cookies, locals, params }) => {
-    const userSession = cookies.get('user_session');
-    if (!userSession) {
+  updateRole: async ({ request, platform, locals, params }) => {
+    const currentUser = locals.currentUser;
+    if (!currentUser) {
       throw error(401, 'Not authenticated');
     }
-
-    const currentUser = JSON.parse(decodeURIComponent(userSession));
 
     if (!canPerformAction(currentUser, 'users:roles')) {
       throw error(403, 'Insufficient permissions to update user role');
@@ -184,13 +178,11 @@ export const actions: Actions = {
     return { success: true };
   },
 
-  delete: async ({ platform, cookies, locals, params }) => {
-    const userSession = cookies.get('user_session');
-    if (!userSession) {
+  delete: async ({ platform, locals, params }) => {
+    const currentUser = locals.currentUser;
+    if (!currentUser) {
       throw error(401, 'Not authenticated');
     }
-
-    const currentUser = JSON.parse(decodeURIComponent(userSession));
 
     if (!canPerformAction(currentUser, 'users:delete')) {
       throw error(403, 'Insufficient permissions to delete user');

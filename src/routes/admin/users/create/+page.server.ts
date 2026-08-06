@@ -2,14 +2,12 @@ import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import { canPerformAction } from '$lib/server/permissions';
 
-export const load: PageServerLoad = async ({ cookies }) => {
-  // Check authentication
-  const userSession = cookies.get('user_session');
-  if (!userSession) {
+export const load: PageServerLoad = async ({ locals }) => {
+  // hooks.server.ts resolves the session cookie against the users table
+  const currentUser = locals.currentUser;
+  if (!currentUser) {
     throw error(401, 'Not authenticated');
   }
-
-  const currentUser = JSON.parse(decodeURIComponent(userSession));
 
   // Check permission
   if (!canPerformAction(currentUser, 'users:write')) {

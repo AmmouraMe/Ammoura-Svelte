@@ -16,6 +16,7 @@ export * from './email-verification.js';
 export * from './products.js';
 export * from './product-variants.js';
 export * from './users.js';
+export * from './user-sessions.js';
 export * from './orders.js';
 export * from './pages.js';
 export * from './media.js';

@@ -4,8 +4,10 @@
  */
 
 import { redirect } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 import type { RequestHandler } from './$types';
-import { getDB, getUserByEmail } from '$lib/server/db';
+import { getDB, getUserByEmail, createUserSession } from '$lib/server/db';
+import { USER_SESSION_COOKIE, USER_SESSION_TTL_SECONDS } from '$lib/server/db/user-sessions.js';
 import { createUser } from '$lib/server/db/users.js';
 import {
   getOAuthSession,
@@ -228,44 +230,16 @@ export const GET: RequestHandler = async ({ params, url, platform, locals, cooki
       });
     }
 
-    // Create session
-    const sessionUser = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      permissions: user.permissions,
-      status: user.status,
-      expiration_date: user.expiration_date,
-      grace_period_days: user.grace_period_days
-    };
-
-    cookies.set('user_session', JSON.stringify(sessionUser), {
+    // Establish a server-side session; the cookie carries only an opaque
+    // bearer token, and role/permissions are re-read from the DB per request.
+    const { token } = await createUserSession(db, user.id, siteId);
+    cookies.set(USER_SESSION_COOKIE, token, {
       path: '/',
       httpOnly: true,
-      secure: false, // Set to true in production with HTTPS
+      secure: !dev,
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7 // 7 days
+      maxAge: USER_SESSION_TTL_SECONDS
     });
-
-    // Set role-specific cookies
-    if (user.role === 'admin') {
-      cookies.set('admin_session', 'authenticated', {
-        path: '/',
-        httpOnly: true,
-        secure: false,
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7
-      });
-    } else if (user.role === 'platform_engineer') {
-      cookies.set('engineer_session', 'authenticated', {
-        path: '/',
-        httpOnly: true,
-        secure: false,
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7
-      });
-    }
 
     // Update last login
     const { updateUser } = await import('$lib/server/db/users.js');

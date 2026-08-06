@@ -1,7 +1,8 @@
 import { json, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDB, deleteAccountSession } from '$lib/server/db';
+import { getDB, deleteAccountSession, deleteUserSession } from '$lib/server/db';
 import { ACCOUNT_SESSION_COOKIE } from '$lib/server/db/account-sessions';
+import { USER_SESSION_COOKIE } from '$lib/server/db/user-sessions';
 import { logActivity } from '$lib/server/activity-logger';
 
 async function performLogout(
@@ -10,19 +11,21 @@ async function performLogout(
   platform: App.Platform | undefined,
   locals: App.Locals
 ): Promise<void> {
-  // Get user session before deleting cookies
-  const userSessionCookie = cookies.get('user_session');
-  let user: { id: string; name: string } | null = null;
+  // hooks.server.ts has already resolved the token to a user (or to nobody)
+  const user = locals.currentUser
+    ? { id: locals.currentUser.id, name: locals.currentUser.name }
+    : null;
 
-  if (userSessionCookie) {
+  // Revoke the server-side session so the token is dead even if the browser
+  // kept a copy of the cookie.
+  const userToken = cookies.get(USER_SESSION_COOKIE);
+  if (userToken) {
     try {
-      const sessionData = JSON.parse(userSessionCookie);
-      user = { id: sessionData.id, name: sessionData.name };
+      await deleteUserSession(getDB(platform), userToken);
     } catch (error) {
-      console.error('Failed to parse user session:', error);
+      // Cookie removal below is what logs the browser out; the DB row expires
+      console.error('Failed to revoke user session on logout:', error);
     }
-  } else if (locals.currentUser) {
-    user = { id: locals.currentUser.id, name: locals.currentUser.name };
   }
 
   // Log logout if user was logged in (don't fail logout if logging fails)
@@ -62,8 +65,9 @@ async function performLogout(
     }
   }
 
-  // Delete all session cookies
-  cookies.delete('user_session', { path: '/' });
+  // Delete all session cookies. admin_session/engineer_session are no longer
+  // issued or trusted, but old browsers may still hold one.
+  cookies.delete(USER_SESSION_COOKIE, { path: '/' });
   cookies.delete('admin_session', { path: '/' });
   cookies.delete('engineer_session', { path: '/' });
   cookies.delete(ACCOUNT_SESSION_COOKIE, { path: '/' });

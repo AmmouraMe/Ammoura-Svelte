@@ -1,26 +1,17 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ cookies }) => {
-  const userSession = cookies.get('user_session');
+export const load: PageServerLoad = async ({ locals }) => {
+  const user = locals.currentUser;
 
-  if (!userSession) {
+  if (!user) {
     throw redirect(303, '/auth/login');
   }
 
-  try {
-    const user = JSON.parse(decodeURIComponent(userSession));
-
-    // Only platform engineers can access the database navigator
-    if (user.role !== 'platform_engineer') {
-      throw redirect(303, '/admin/dashboard');
-    }
-
-    return {
-      user
-    };
-  } catch (error) {
-    console.error('Failed to parse user session:', error);
-    throw redirect(303, '/auth/login');
+  // Only platform engineers can access the database navigator
+  if (user.role !== 'platform_engineer') {
+    throw redirect(303, '/admin/dashboard');
   }
+
+  return { user };
 };

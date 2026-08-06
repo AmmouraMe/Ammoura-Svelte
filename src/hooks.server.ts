@@ -1,12 +1,12 @@
 import { json, type Handle } from '@sveltejs/kit';
-import { getDB, getAccountBySessionToken } from '$lib/server/db';
+import { getDB, getAccountBySessionToken, getUserBySessionToken } from '$lib/server/db';
 import { ACCOUNT_SESSION_COOKIE } from '$lib/server/db/account-sessions';
+import { USER_SESSION_COOKIE } from '$lib/server/db/user-sessions';
 import { getLanguageSettings } from '$lib/server/db/site-settings';
 import { resolveSiteIdForHostname } from '$lib/server/site-routing';
 import { getPlatformSitesDomain } from '$lib/server/sites-service';
 import { resolveLocale, isSupportedLocale, LOCALE_COOKIE, DEFAULT_LOCALE } from '$lib/i18n';
 import { dev } from '$app/environment';
-import type { DBUser } from '$lib/server/db/users';
 
 /**
  * SvelteKit hooks for multi-tenant site handling and authentication
@@ -14,6 +14,57 @@ import type { DBUser } from '$lib/server/db/users';
 
 /** Dev-only cookie that pins the origin to one tenant site (see below). */
 const DEV_SITE_COOKIE = 'dev_site';
+
+/** Everything under these is the owner's, read or write. */
+const OWNER_ONLY_PREFIXES = ['/api/admin/', '/api/ai-chat/'];
+
+/** Exact paths only the owner may call. */
+const OWNER_ONLY_PATHS = ['/api/media/upload', '/api/ai-chat'];
+
+/**
+ * Catalog and page-builder APIs. Reads stay public because the storefront
+ * renders from them; writes are the owner's alone. Before this, anyone could
+ * `DELETE /api/products` or `POST /api/pages` against any tenant with no
+ * session at all — only `/api/admin/*` was ever guarded, and these live
+ * outside that prefix.
+ */
+const OWNER_ONLY_WRITE_PREFIXES = [
+  '/api/products',
+  '/api/pages',
+  '/api/page-components',
+  '/api/components',
+  '/api/layouts',
+  '/api/orders/'
+];
+
+/**
+ * Shoppers are anonymous by nature, so these stay open on every method.
+ * `design-upload` does its own validation and rate limiting; `POST /api/orders`
+ * is how a customer places an order in the first place.
+ */
+const PUBLIC_WRITE_PATTERNS = [/^\/api\/products\/[^/]+\/design-upload$/, /^\/api\/orders$/];
+
+const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+/** An absent method is treated as a write, so the guard fails closed. */
+export function isOwnerOnlyRequest(pathname: string, method: string | undefined): boolean {
+  if (OWNER_ONLY_PATHS.includes(pathname)) {
+    return true;
+  }
+  if (OWNER_ONLY_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+    return true;
+  }
+  if (method && READ_METHODS.has(method)) {
+    return false;
+  }
+  if (PUBLIC_WRITE_PATTERNS.some((pattern) => pattern.test(pathname))) {
+    return false;
+  }
+  return OWNER_ONLY_WRITE_PREFIXES.some(
+    (prefix) =>
+      pathname === prefix || pathname.startsWith(prefix.endsWith('/') ? prefix : `${prefix}/`)
+  );
+}
 
 export const handle: Handle = async ({ event, resolve }) => {
   // Get the hostname from the request
@@ -144,48 +195,48 @@ export const handle: Handle = async ({ event, resolve }) => {
     }
   }
 
-  // Check for user session cookie and load current user
-  const userSession = event.cookies?.get('user_session');
-  if (userSession) {
+  // Resolve the site-scoped admin/staff user from their server-side session.
+  // The cookie holds an opaque token; identity, role, permissions and status
+  // always come from the `users` row (migration 0101). It previously held the
+  // user record as plain JSON, which meant anyone could send
+  // `user_session={"role":"platform_engineer"}` and be believed — httpOnly
+  // stops a script READING a cookie, not a client SENDING one.
+  const userToken = event.cookies?.get(USER_SESSION_COOKIE);
+  if (userToken && event.platform?.env?.DB) {
     try {
-      const userData = JSON.parse(decodeURIComponent(userSession)) as Partial<DBUser>;
-      event.locals.currentUser = userData as DBUser;
+      const db = getDB(event.platform);
+      const resolved = await getUserBySessionToken(db, userToken);
+      if (resolved) {
+        event.locals.currentUser = resolved.user;
+        event.locals.isAdmin =
+          resolved.user.role === 'admin' || resolved.user.role === 'platform_engineer';
 
-      // Set legacy isAdmin flag for backwards compatibility
-      event.locals.isAdmin = userData.role === 'admin' || userData.role === 'platform_engineer';
-
-      // Admin UI language preference: on admin/user surfaces the signed-in
-      // user's own locale wins over the site's visitor resolution (it may be
-      // any supported locale, not just the site's enabled ones).
-      const path = event.url.pathname;
-      if (
-        userData.locale &&
-        isSupportedLocale(userData.locale) &&
-        (path.startsWith('/admin') || path.startsWith('/user'))
-      ) {
-        event.locals.locale = userData.locale;
+        // Admin UI language preference: on admin/user surfaces the signed-in
+        // user's own locale wins over the site's visitor resolution (it may be
+        // any supported locale, not just the site's enabled ones).
+        const path = event.url.pathname;
+        if (
+          resolved.user.locale &&
+          isSupportedLocale(resolved.user.locale) &&
+          (path.startsWith('/admin') || path.startsWith('/user'))
+        ) {
+          event.locals.locale = resolved.user.locale;
+        }
+      } else {
+        event.cookies.delete(USER_SESSION_COOKIE, { path: '/' });
       }
     } catch (error) {
-      console.error('Error parsing user session:', error);
+      if (!dev) {
+        console.error('Error resolving user session:', error);
+      }
     }
-  } else {
-    // Check for legacy admin session cookie
-    const adminSession = event.cookies?.get('admin_session');
-    event.locals.isAdmin = adminSession === 'authenticated';
   }
 
   // Owner-only API surfaces. `/admin/*` pages already redirect anonymous
   // visitors, but the JSON APIs behind them answered anyone — `/api/admin/*`
   // returned 200, and `/api/media/upload` accepted 50MB from the public
   // internet. Guard them in one place rather than per route.
-  //
-  // Deliberately NOT guarded: `/api/media/[...path]` (storefront images must
-  // stay public) and `/api/products/*/design-upload` (shoppers are anonymous
-  // by nature, and that route does its own validation and rate limiting).
-  const requestPath = event.url.pathname;
-  const isOwnerOnlyApi =
-    requestPath.startsWith('/api/admin') || requestPath === '/api/media/upload';
-  if (isOwnerOnlyApi && !event.locals.isAdmin) {
+  if (!event.locals.isAdmin && isOwnerOnlyRequest(event.url.pathname, event.request?.method)) {
     return json({ message: 'Unauthorized' }, { status: 401 });
   }
 

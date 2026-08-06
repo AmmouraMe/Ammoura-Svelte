@@ -1,45 +1,16 @@
 import type { PageServerLoad, Actions } from './$types';
-import { getDB, getUserById, updateUser } from '$lib/server/db';
+import { getDB, updateUser } from '$lib/server/db';
 import { isSupportedLocale, SUPPORTED_LOCALES } from '$lib/i18n';
 import { createActivityLog } from '$lib/server/db/activity-logs';
+import { hashPassword, verifyPassword } from '$lib/server/password';
 import { error, fail, redirect } from '@sveltejs/kit';
 
-/**
- * Hash a password using SHA-256 (matches the hashing in login)
- * In production, use bcrypt instead
- */
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-/**
- * Verify password against stored hash
- */
-async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
-  const inputHash = await hashPassword(password);
-  return inputHash === storedHash;
-}
-
-export const load: PageServerLoad = async ({ platform, cookies, locals }) => {
-  // Check authentication
-  const userSession = cookies.get('user_session');
-  if (!userSession) {
-    throw redirect(302, '/auth/login?redirect=/user/profile');
-  }
-
-  const sessionUser = JSON.parse(decodeURIComponent(userSession));
-
-  const db = getDB(platform);
-  const siteId = locals.siteId;
-
-  // Get full user details from database
-  const user = await getUserById(db, siteId, sessionUser.id);
+export const load: PageServerLoad = async ({ locals }) => {
+  // hooks.server.ts resolves the session cookie against the users table, so
+  // locals.currentUser is already the full DB row
+  const user = locals.currentUser;
   if (!user) {
-    throw error(404, 'User not found');
+    throw redirect(302, '/auth/login?redirect=/user/profile');
   }
 
   // Remove password hash from user object
@@ -52,22 +23,14 @@ export const load: PageServerLoad = async ({ platform, cookies, locals }) => {
 };
 
 export const actions: Actions = {
-  updateProfile: async ({ request, platform, cookies, locals }) => {
-    const userSession = cookies.get('user_session');
-    if (!userSession) {
+  updateProfile: async ({ request, platform, locals }) => {
+    const currentUser = locals.currentUser;
+    if (!currentUser) {
       throw error(401, 'Not authenticated');
     }
 
-    const sessionUser = JSON.parse(decodeURIComponent(userSession));
-
     const db = getDB(platform);
     const siteId = locals.siteId;
-
-    // Get current user from database
-    const currentUser = await getUserById(db, siteId, sessionUser.id);
-    if (!currentUser) {
-      throw error(404, 'User not found');
-    }
 
     const formData = await request.formData();
     const name = formData.get('name')?.toString().trim();
@@ -112,20 +75,8 @@ export const actions: Actions = {
         updated_by: currentUser.id
       });
 
-      // Update session cookie with new info
-      const updatedSession = {
-        ...sessionUser,
-        name: name!,
-        email: email!,
-        locale
-      };
-      cookies.set('user_session', encodeURIComponent(JSON.stringify(updatedSession)), {
-        path: '/',
-        httpOnly: true,
-        secure: false, // Set to true in production with HTTPS
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7 // 7 days
-      });
+      // No session cookie to refresh — hooks.server.ts re-reads the users row
+      // on every request, so the new name/email/locale apply immediately.
 
       // Log the action
       await createActivityLog(db, siteId, {
@@ -147,22 +98,14 @@ export const actions: Actions = {
     }
   },
 
-  changePassword: async ({ request, platform, cookies, locals }) => {
-    const userSession = cookies.get('user_session');
-    if (!userSession) {
+  changePassword: async ({ request, platform, locals }) => {
+    const currentUser = locals.currentUser;
+    if (!currentUser) {
       throw error(401, 'Not authenticated');
     }
 
-    const sessionUser = JSON.parse(decodeURIComponent(userSession));
-
     const db = getDB(platform);
     const siteId = locals.siteId;
-
-    // Get current user from database
-    const currentUser = await getUserById(db, siteId, sessionUser.id);
-    if (!currentUser) {
-      throw error(404, 'User not found');
-    }
 
     const formData = await request.formData();
     const currentPassword = formData.get('currentPassword')?.toString();

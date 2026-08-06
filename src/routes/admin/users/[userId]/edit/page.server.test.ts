@@ -43,15 +43,11 @@ interface MockPlatform {
 
 interface MockLocals {
   siteId: string;
-}
-
-interface MockCookies {
-  get: ReturnType<typeof vi.fn>;
+  currentUser?: Record<string, unknown>;
 }
 
 interface _MockLoadEvent {
   platform: MockPlatform;
-  cookies: MockCookies;
   locals: MockLocals;
   params: { userId: string };
 }
@@ -61,7 +57,6 @@ interface _MockActionEvent {
     formData: () => Promise<FormData>;
   };
   platform: MockPlatform;
-  cookies: MockCookies;
   locals: MockLocals;
   params: { userId: string };
 }
@@ -70,7 +65,6 @@ describe('Edit User Page Server', () => {
   let mockDB: MockDB;
   let mockPlatform: MockPlatform;
   let mockLocals: MockLocals;
-  let mockCookies: MockCookies;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -92,59 +86,32 @@ describe('Edit User Page Server', () => {
     mockLocals = {
       siteId: 'test-site'
     };
-
-    mockCookies = {
-      get: vi.fn()
-    };
   });
 
   describe('load function', () => {
     it('should throw error if not authenticated', async () => {
-      mockCookies.get.mockReturnValue(null);
+      mockLocals.currentUser = undefined;
 
       const { load } = await import('./+page.server');
 
       await expect(
         load({
           platform: mockPlatform,
-          cookies: mockCookies,
           locals: mockLocals,
           params: { userId: 'user-1' }
         } as unknown as Parameters<typeof load>[0])
       ).rejects.toThrow('401: Not authenticated');
     });
 
-    it('should throw error if current user not found', async () => {
-      const { getUserById } = await import('$lib/server/db');
-      const getUserByIdMock = getUserById as ReturnType<typeof vi.fn>;
-
-      mockCookies.get.mockReturnValue(encodeURIComponent(JSON.stringify({ id: 'current-user' })));
-      getUserByIdMock.mockResolvedValue(null);
-
-      const { load } = await import('./+page.server');
-
-      await expect(
-        load({
-          platform: mockPlatform,
-          cookies: mockCookies,
-          locals: mockLocals,
-          params: { userId: 'user-1' }
-        } as unknown as Parameters<typeof load>[0])
-      ).rejects.toThrow('401: User not found');
-    });
-
     it('should throw error if user lacks permissions', async () => {
-      const { getUserById } = await import('$lib/server/db');
       const { canPerformAction } = await import('$lib/server/permissions');
-      const getUserByIdMock = getUserById as ReturnType<typeof vi.fn>;
       const canPerformActionMock = canPerformAction as ReturnType<typeof vi.fn>;
 
-      mockCookies.get.mockReturnValue(encodeURIComponent(JSON.stringify({ id: 'current-user' })));
-      getUserByIdMock.mockResolvedValue({
+      mockLocals.currentUser = {
         id: 'current-user',
         role: 'customer',
         permissions: '[]'
-      });
+      };
       canPerformActionMock.mockReturnValue(false);
 
       const { load } = await import('./+page.server');
@@ -152,7 +119,6 @@ describe('Edit User Page Server', () => {
       await expect(
         load({
           platform: mockPlatform,
-          cookies: mockCookies,
           locals: mockLocals,
           params: { userId: 'user-1' }
         } as unknown as Parameters<typeof load>[0])
@@ -165,12 +131,11 @@ describe('Edit User Page Server', () => {
       const getUserByIdMock = getUserById as ReturnType<typeof vi.fn>;
       const canPerformActionMock = canPerformAction as ReturnType<typeof vi.fn>;
 
-      mockCookies.get.mockReturnValue(encodeURIComponent(JSON.stringify({ id: 'current-user' })));
-      getUserByIdMock.mockResolvedValueOnce({
+      mockLocals.currentUser = {
         id: 'current-user',
         role: 'admin',
         permissions: '[]'
-      });
+      };
       getUserByIdMock.mockResolvedValueOnce(null);
       canPerformActionMock.mockReturnValue(true);
 
@@ -179,7 +144,6 @@ describe('Edit User Page Server', () => {
       await expect(
         load({
           platform: mockPlatform,
-          cookies: mockCookies,
           locals: mockLocals,
           params: { userId: 'user-1' }
         } as unknown as Parameters<typeof load>[0])
@@ -193,12 +157,11 @@ describe('Edit User Page Server', () => {
       const canPerformActionMock = canPerformAction as ReturnType<typeof vi.fn>;
       const isSystemUserMock = isSystemUser as ReturnType<typeof vi.fn>;
 
-      mockCookies.get.mockReturnValue(encodeURIComponent(JSON.stringify({ id: 'current-user' })));
-      getUserByIdMock.mockResolvedValueOnce({
+      mockLocals.currentUser = {
         id: 'current-user',
         role: 'admin',
         permissions: '[]'
-      });
+      };
       getUserByIdMock.mockResolvedValueOnce({
         id: 'admin-1',
         name: 'System Admin',
@@ -212,7 +175,6 @@ describe('Edit User Page Server', () => {
       await expect(
         load({
           platform: mockPlatform,
-          cookies: mockCookies,
           locals: mockLocals,
           params: { userId: 'admin-1' }
         } as unknown as Parameters<typeof load>[0])
@@ -226,12 +188,11 @@ describe('Edit User Page Server', () => {
       const canPerformActionMock = canPerformAction as ReturnType<typeof vi.fn>;
       const isSystemUserMock = isSystemUser as ReturnType<typeof vi.fn>;
 
-      mockCookies.get.mockReturnValue(encodeURIComponent(JSON.stringify({ id: 'current-user' })));
-      getUserByIdMock.mockResolvedValueOnce({
+      mockLocals.currentUser = {
         id: 'current-user',
         role: 'admin',
         permissions: '[]'
-      });
+      };
       getUserByIdMock.mockResolvedValueOnce({
         id: 'current-user',
         name: 'Current User',
@@ -245,7 +206,6 @@ describe('Edit User Page Server', () => {
       await expect(
         load({
           platform: mockPlatform,
-          cookies: mockCookies,
           locals: mockLocals,
           params: { userId: 'current-user' }
         } as unknown as Parameters<typeof load>[0])
@@ -259,13 +219,12 @@ describe('Edit User Page Server', () => {
       const canPerformActionMock = canPerformAction as ReturnType<typeof vi.fn>;
       const isSystemUserMock = isSystemUser as ReturnType<typeof vi.fn>;
 
-      mockCookies.get.mockReturnValue(encodeURIComponent(JSON.stringify({ id: 'current-user' })));
-      getUserByIdMock.mockResolvedValueOnce({
+      mockLocals.currentUser = {
         id: 'current-user',
         role: 'admin',
         permissions: '[]',
         status: 'active'
-      });
+      };
       getUserByIdMock.mockResolvedValueOnce({
         id: 'user-1',
         name: 'Test User',
@@ -286,7 +245,6 @@ describe('Edit User Page Server', () => {
 
       const result = await load({
         platform: mockPlatform,
-        cookies: mockCookies,
         locals: mockLocals,
         params: { userId: 'user-1' }
       } as unknown as Parameters<typeof load>[0]);
@@ -313,19 +271,16 @@ describe('Edit User Page Server', () => {
 
   describe('actions', () => {
     it('should throw error if trying to edit own account', async () => {
-      const { getUserById } = await import('$lib/server/db');
       const { canPerformAction, isSystemUser } = await import('$lib/server/permissions');
-      const getUserByIdMock = getUserById as ReturnType<typeof vi.fn>;
       const canPerformActionMock = canPerformAction as ReturnType<typeof vi.fn>;
       const isSystemUserMock = isSystemUser as ReturnType<typeof vi.fn>;
 
-      mockCookies.get.mockReturnValue(encodeURIComponent(JSON.stringify({ id: 'current-user' })));
-      getUserByIdMock.mockResolvedValue({
+      mockLocals.currentUser = {
         id: 'current-user',
         role: 'admin',
         permissions: '[]',
         status: 'active'
-      });
+      };
       canPerformActionMock.mockReturnValue(true);
       isSystemUserMock.mockReturnValue(false);
 
@@ -345,7 +300,6 @@ describe('Edit User Page Server', () => {
         (actions as Actions).default({
           request: mockRequest,
           platform: mockPlatform,
-          cookies: mockCookies,
           locals: mockLocals,
           params: { userId: 'current-user' }
         } as unknown as Parameters<(typeof actions)['default']>[0])
@@ -353,19 +307,16 @@ describe('Edit User Page Server', () => {
     });
 
     it('should validate required fields', async () => {
-      const { getUserById } = await import('$lib/server/db');
       const { canPerformAction, isSystemUser } = await import('$lib/server/permissions');
-      const getUserByIdMock = getUserById as ReturnType<typeof vi.fn>;
       const canPerformActionMock = canPerformAction as ReturnType<typeof vi.fn>;
       const isSystemUserMock = isSystemUser as ReturnType<typeof vi.fn>;
 
-      mockCookies.get.mockReturnValue(encodeURIComponent(JSON.stringify({ id: 'current-user' })));
-      getUserByIdMock.mockResolvedValue({
+      mockLocals.currentUser = {
         id: 'current-user',
         role: 'admin',
         permissions: '[]',
         status: 'active'
-      });
+      };
       canPerformActionMock.mockReturnValue(true);
       isSystemUserMock.mockReturnValue(false);
 
@@ -381,7 +332,6 @@ describe('Edit User Page Server', () => {
       const result = await (actions as Actions).default({
         request: mockRequest,
         platform: mockPlatform,
-        cookies: mockCookies,
         locals: mockLocals,
         params: { userId: 'user-1' }
       } as unknown as Parameters<(typeof actions)['default']>[0]);

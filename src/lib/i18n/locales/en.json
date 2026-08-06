@@ -7,7 +7,6 @@
   "common.back": "Back",
   "common.continue": "Continue",
   "common.remove": "Remove",
-
   "nav.cart": "Cart",
   "nav.login": "Login",
   "nav.logout": "Logout",
@@ -18,12 +17,10 @@
   "nav.theme.light": "Light",
   "nav.theme.dark": "Dark",
   "nav.theme.system": "System",
-
   "role.admin": "Admin",
   "role.user": "User",
   "role.customer": "Customer",
   "role.platformEngineer": "Platform Engineer",
-
   "cart.title": "Shopping Cart",
   "cart.continueShopping": "Continue Shopping",
   "cart.empty": "Your cart is empty",
@@ -38,7 +35,6 @@
   "cart.clear": "Clear Cart",
   "cart.proceedToCheckout": "Proceed to Checkout",
   "cart.checkout": "Checkout",
-
   "checkout.title": "Checkout",
   "checkout.backToCart": "Back to Cart",
   "checkout.emptyPrompt": "Add some items to your cart before checking out.",
@@ -57,7 +53,6 @@
   "checkout.tax": "Tax",
   "checkout.total": "Total",
   "checkout.free": "FREE",
-
   "orderSuccess.title": "Order Confirmation",
   "orderSuccess.confirmed": "Order Confirmed!",
   "orderSuccess.thankYou": "Thank you for your purchase. A confirmation email has been sent to",
@@ -73,7 +68,6 @@
   "orderSuccess.viewOrders": "View Your Orders",
   "orderSuccess.notFound": "We couldn't find that order",
   "orderSuccess.notFoundHelp": "If you just completed a payment, check your email for a confirmation — otherwise, return to the store and try again.",
-
   "product.addToCart": "Add to Cart",
   "product.addCustomizedToCart": "Add Customized Item to Cart",
   "product.outOfStock": "Out of Stock",
@@ -91,11 +85,14 @@
   "product.loading": "Loading product...",
   "product.loadFailed": "Failed to load product",
   "product.notConfigured": "No product configured",
-
   "products.loading": "Loading products...",
   "products.loadFailed": "Failed to load products",
   "products.none": "No products found",
-
+  "error.title": "Something went wrong",
+  "error.body": "We hit a problem loading this page. Please try again in a moment.",
+  "error.notFoundTitle": "We couldn't find that page",
+  "error.notFoundBody": "The page or product you're looking for may have been moved or removed.",
+  "error.backHome": "Back to the shop",
   "auth.login": "Login",
   "auth.loginSubtitle": "Sign in to access your account",
   "auth.signInWith": "Sign in with",
@@ -123,7 +120,6 @@
   "auth.signupFailed": "Signup failed",
   "auth.loginFailed": "Login failed",
   "auth.enterEmailAndPassword": "Please enter both email and password",
-
   "sites.title": "Your sites",
   "sites.signedInAs": "Signed in as",
   "sites.domains": "Domains",
@@ -140,7 +136,6 @@
   "sites.createSite": "Create site",
   "sites.nameRequired": "Please provide a site name",
   "sites.createFailed": "Could not create the site",
-
   "verify.title": "Email verification",
   "verify.verified": "Email verified",
   "verify.confirmed": "{email} is confirmed. You're all set.",
@@ -151,7 +146,6 @@
   "verify.expired": "Link expired or invalid",
   "verify.expiredHelp": "Verification links only work once and expire after 24 hours.",
   "verify.requestNew": "Request a new link",
-
   "home.titleSuffix": "Start Your Online Store",
   "home.metaDescription": "Create your own beautiful online store. Sell products, manage orders, and grow your business.",
   "home.badge": "Start Selling Online Today",

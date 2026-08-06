@@ -8,12 +8,14 @@ import {
   createAccountSession,
   getUserByEmail,
   createUser,
+  createUserSession,
   getSitesForAccount
 } from '$lib/server/db';
 import {
   ACCOUNT_SESSION_COOKIE,
   ACCOUNT_SESSION_TTL_SECONDS
 } from '$lib/server/db/account-sessions';
+import { USER_SESSION_COOKIE, USER_SESSION_TTL_SECONDS } from '$lib/server/db/user-sessions';
 import { createSiteForAccount, getPlatformSitesDomain } from '$lib/server/sites-service';
 import type { Account } from '$lib/server/db/accounts';
 
@@ -109,23 +111,10 @@ export const POST: RequestHandler = async ({ request, cookies, platform }) => {
       });
     }
 
-    const sessionUser = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: 'platform_engineer',
-      permissions: user.permissions,
-      status: user.status,
-      expiration_date: user.expiration_date,
-      grace_period_days: user.grace_period_days
-    };
-    cookies.set('user_session', JSON.stringify(sessionUser), {
+    const { token: userToken } = await createUserSession(db, user.id, siteId);
+    cookies.set(USER_SESSION_COOKIE, userToken, {
       ...COOKIE_OPTS,
-      maxAge: 60 * 60 * 24 * 7
-    });
-    cookies.set('engineer_session', 'authenticated', {
-      ...COOKIE_OPTS,
-      maxAge: 60 * 60 * 24 * 7
+      maxAge: USER_SESSION_TTL_SECONDS
     });
 
     // Also a platform account session so /account works too
@@ -162,9 +151,18 @@ export const DELETE: RequestHandler = async ({ cookies, platform }) => {
       // cookie cleanup below is what matters in dev
     }
   }
+  const userToken = cookies.get(USER_SESSION_COOKIE);
+  if (userToken) {
+    try {
+      const { deleteUserSession } = await import('$lib/server/db/user-sessions');
+      await deleteUserSession(getDB(platform), userToken);
+    } catch {
+      // cookie cleanup below is what matters in dev
+    }
+  }
   for (const name of [
     ACCOUNT_SESSION_COOKIE,
-    'user_session',
+    USER_SESSION_COOKIE,
     'admin_session',
     'engineer_session'
   ]) {

@@ -19,6 +19,7 @@ import type {
   OrderItemFieldValueInput
 } from '$lib/server/db/order-customizations';
 import { getPaymentSettings } from '$lib/server/db/site-settings';
+import { repriceCheckout, CheckoutPricingError } from '$lib/server/checkout-pricing';
 import { getStripeClient } from '$lib/server/integrations/stripe/client';
 import type Stripe from 'stripe';
 
@@ -34,10 +35,13 @@ interface CheckoutSessionRequest {
     customizations?: OrderItemCustomizationInput[];
     field_values?: OrderItemFieldValueInput[];
   }>;
-  subtotal: number;
+  /** Ignored — the server reprices from the products table. */
+  subtotal?: number;
   shipping_cost: number;
-  tax: number;
-  total: number;
+  /** Ignored — derived from the repriced subtotal. */
+  tax?: number;
+  /** Ignored — derived from the repriced subtotal. */
+  total?: number;
   shipping_address: {
     firstName: string;
     lastName: string;
@@ -89,22 +93,35 @@ export const POST: RequestHandler = async ({ request, platform, locals, url }) =
     throw error(400, 'Stripe is not configured for this store');
   }
 
+  // Everything the browser said about money is discarded here and re-derived
+  // from the products table; only the shipping selection is carried over.
+  let priced;
+  try {
+    priced = await repriceCheckout(db, siteId, data.items, data.shipping_cost);
+  } catch (err) {
+    if (err instanceof CheckoutPricingError) {
+      throw error(400, err.message);
+    }
+    throw err;
+  }
+  const items = priced.items.map((entry) => entry.item);
+
   const order = await createOrder(db, siteId, {
     user_id: userId,
-    items: data.items,
-    subtotal: data.subtotal,
+    items,
+    subtotal: priced.subtotal,
     shipping_cost: data.shipping_cost,
-    tax: data.tax,
-    total: data.total,
+    tax: priced.tax,
+    total: priced.total,
     shipping_address: data.shipping_address,
     billing_address: data.billing_address,
     payment_method: { type: 'stripe' },
     shipping_details: data.shipping_details
   });
 
-  await saveEquipmentValuesForOrderItems(db, order.id, data.items);
+  await saveEquipmentValuesForOrderItems(db, order.id, items);
 
-  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = data.items.map((item) => ({
+  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map((item) => ({
     price_data: {
       currency: 'usd',
       product_data: { name: item.name },
@@ -123,12 +140,12 @@ export const POST: RequestHandler = async ({ request, platform, locals, url }) =
       quantity: 1
     });
   }
-  if (data.tax > 0) {
+  if (priced.tax > 0) {
     lineItems.push({
       price_data: {
         currency: 'usd',
         product_data: { name: 'Tax' },
-        unit_amount: Math.round(data.tax * 100)
+        unit_amount: Math.round(priced.tax * 100)
       },
       quantity: 1
     });

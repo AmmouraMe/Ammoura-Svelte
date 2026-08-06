@@ -1,27 +1,10 @@
 import { json } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 import type { RequestHandler } from './$types';
-import { getDB, getUserByEmail } from '$lib/server/db';
+import { getDB, getUserByEmail, createUserSession } from '$lib/server/db';
+import { USER_SESSION_COOKIE, USER_SESSION_TTL_SECONDS } from '$lib/server/db/user-sessions';
+import { hashPassword, verifyPassword, isLegacyHash } from '$lib/server/password';
 import { logActivity } from '$lib/server/activity-logger';
-
-/**
- * Hash a password using SHA-256 (matches the hashing in user edit)
- * In production, use bcrypt instead
- */
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-/**
- * Verify password against stored hash
- */
-async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
-  const inputHash = await hashPassword(password);
-  return inputHash === storedHash;
-}
 
 export const POST: RequestHandler = async ({ request, cookies, platform, locals }) => {
   try {
@@ -82,7 +65,9 @@ export const POST: RequestHandler = async ({ request, cookies, platform, locals 
       );
     }
 
-    // Verify password
+    // Verify password. verifyPassword still accepts the legacy unsalted
+    // SHA-256 hashes in this table, so existing users can sign in; a successful
+    // legacy verification upgrades them to PBKDF2 in place (below).
     const passwordValid = await verifyPassword(data.password, dbUser.password_hash);
 
     if (!passwordValid) {
@@ -141,39 +126,26 @@ export const POST: RequestHandler = async ({ request, cookies, platform, locals 
       grace_period_days: dbUser.grace_period_days
     };
 
-    // Set session cookie
-    cookies.set('user_session', JSON.stringify(user), {
+    // Establish a server-side session; the cookie carries only an opaque
+    // bearer token, and role/permissions are re-read from the DB per request.
+    const { token } = await createUserSession(db, dbUser.id, siteId);
+    cookies.set(USER_SESSION_COOKIE, token, {
       path: '/',
       httpOnly: true,
-      secure: false, // Set to true in production with HTTPS
+      secure: !dev,
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7 // 7 days
+      maxAge: USER_SESSION_TTL_SECONDS
     });
 
-    // Set role-specific session cookies
-    if (user.role === 'admin') {
-      cookies.set('admin_session', 'authenticated', {
-        path: '/',
-        httpOnly: true,
-        secure: false,
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7
-      });
-    } else if (user.role === 'platform_engineer') {
-      cookies.set('engineer_session', 'authenticated', {
-        path: '/',
-        httpOnly: true,
-        secure: false,
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7
-      });
-    }
-
-    // Update last login timestamp
+    // Update last login timestamp, and upgrade a legacy unsalted SHA-256 hash
+    // to PBKDF2 now that we have the plaintext in hand.
     const { updateUser } = await import('$lib/server/db/users');
     await updateUser(db, siteId, dbUser.id, {
       last_login_at: Math.floor(Date.now() / 1000),
-      last_login_ip: ipAddress
+      last_login_ip: ipAddress,
+      ...(isLegacyHash(dbUser.password_hash)
+        ? { password_hash: await hashPassword(data.password) }
+        : {})
     });
 
     // Log successful login
