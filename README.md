@@ -3,7 +3,7 @@
 _(codenamed Hermes during development)_
 
 Hermes is a modern multi-tenant eCommerce platform built with SvelteKit and
-TypeScript, deployed on Cloudflare Pages with D1 database and R2 storage. It
+TypeScript, deployed as a Cloudflare Worker with D1 database and R2 storage. It
 features a WYSIWYG page builder, responsive design, and comprehensive theme
 system. It supports role-based authentication and is designed for scalability
 and maintainability. It includes a robust testing suite and follows strict code
@@ -21,7 +21,7 @@ and customer support. It will comply with relevant data protection regulations.
 ## 🚀 Stack & Features
 
 - **SvelteKit** - Modern web framework with TypeScript support
-- **Cloudflare Pages** - Edge deployment for global performance
+- **Cloudflare Workers** - Edge deployment with static assets
 - **Cloudflare D1** - Serverless SQL database with multi-tenant support
 - **TypeScript** - Type-safe development
 - **Multi-Tenant Architecture** - Support for multiple stores/sites
@@ -66,8 +66,9 @@ open http://localhost:4236/
 
 ### Development
 
-- `npm run dev` - Start development server (auto-migrates and seeds database)
-- `npm run preview` - Preview production build locally (auto-migrates and seeds)
+- `npm run dev` - Start the plain Vite development server on port 4236
+- `npm run preview` - Build and preview with the remote preview bindings
+- `npm run preview:local` - Build, migrate and seed local D1, then preview
 - `npm test` - Run tests with Vitest
 - `npm run test:coverage` - Run tests with coverage report
 
@@ -85,10 +86,10 @@ database management guide.
 ## 🗄️ Database
 
 The platform uses Cloudflare D1 for data persistence with full multi-tenant
-support. Database migrations and seeding are automated:
+support. Database migrations and seeding use explicit scripts:
 
 - **Development**: Easily reset database: `npm run db:reset:local`
-- **Preview**: Auto-migrates and seeds when running `npm run preview`
+- **Local preview**: `npm run preview:local` migrates and seeds local D1
 - **Production**: Auto-migrates when deploying (seeding is blocked for safety)
 
 ### Database Scripts
@@ -110,14 +111,13 @@ database management guide.
 
 ## 🌐 Deployment
 
-The project is configured for automatic deployment on Cloudflare Pages:
-
-**Automatic Deployment**: Connect your repository to Cloudflare Pages
+The project is configured for deployment as a Cloudflare Worker with static
+assets via `wrangler deploy`.
 
 ### Build Configuration
 
 - **Build Command**: `npm run build`
-- **Output Directory**: `.svelte-kit/cloudflare`
+- **Worker Entry**: `.svelte-kit/cloudflare/_worker.js`
 - **Node.js Version**: 18+
 - **D1 Database**: Configured in `wrangler.toml`
 
@@ -141,7 +141,7 @@ See `wrangler.toml` for Cloudflare Workers configuration.
 This foundation includes:
 
 - ✅ SvelteKit project with TypeScript
-- ✅ Cloudflare Pages adapter configuration
+- ✅ Cloudflare Workers adapter configuration
 - ✅ Modern tooling setup (ESLint, Prettier, Vitest)
 - ✅ Basic styling and responsive layout
 

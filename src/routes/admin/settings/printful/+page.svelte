@@ -213,7 +213,8 @@
           <div class="key-form">
             <input
               type={showKey ? 'text' : 'password'}
-              bind:value={apiKey}
+              value={apiKey}
+              on:input={(event) => (apiKey = event.currentTarget.value)}
               placeholder="Paste new API key"
               class="key-input"
             />
@@ -241,7 +242,8 @@
         <div class="key-form">
           <input
             type={showKey ? 'text' : 'password'}
-            bind:value={apiKey}
+            value={apiKey}
+            on:input={(event) => (apiKey = event.currentTarget.value)}
             placeholder="Paste your Printful API key"
             class="key-input"
             on:keydown={(e) => e.key === 'Enter' && handleConnect()}

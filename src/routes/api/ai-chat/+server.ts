@@ -276,7 +276,8 @@ Use this context to help the user with their current task.`;
                   'gpt-4o-mini': { input: 0.00015, output: 0.0006 },
                   'claude-sonnet-4-20250514': { input: 0.003, output: 0.015 },
                   'claude-3-5-sonnet-20241022': { input: 0.003, output: 0.015 },
-                  'claude-3-5-haiku-20241022': { input: 0.0008, output: 0.004 }
+                  'claude-3-5-haiku-20241022': { input: 0.0008, output: 0.004 },
+                  'grok-4.5': { input: 0.002, output: 0.006 }
                 };
                 const costs = modelCosts[preferredModel];
                 if (costs) {

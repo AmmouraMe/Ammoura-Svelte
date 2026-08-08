@@ -362,6 +362,6 @@ function getSupportedModels(): { provider: AIProvider; model: AIModel; label: st
       model: 'claude-3-5-haiku-20241022',
       label: 'Claude 3.5 Haiku (Faster, cheaper)'
     },
-    { provider: 'grok', model: 'grok-beta', label: 'Grok Beta' }
+    { provider: 'grok', model: 'grok-4.5', label: 'Grok 4.5' }
   ];
 }

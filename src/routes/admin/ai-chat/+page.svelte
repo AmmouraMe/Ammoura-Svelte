@@ -41,7 +41,7 @@
       'gpt-4o-mini': 'GPT-4o Mini',
       'claude-3-5-sonnet-20241022': 'Claude 3.5 Sonnet',
       'claude-3-5-haiku-20241022': 'Claude 3.5 Haiku',
-      'grok-beta': 'Grok Beta'
+      'grok-4.5': 'Grok 4.5'
     };
     return names[model] || model;
   }
