@@ -1,67 +1,57 @@
-# Coverage Badge Setup Instructions
+# Coverage Badges
 
-The coverage badge is automatically updated by GitHub Actions. To complete the setup:
+The README carries four coverage badges (statements, branches, functions, lines).
+They are generated from the local coverage report by
+[`istanbul-badges-readme`](https://github.com/olavoparno/istanbul-badges-readme)
+and committed as plain Markdown, so they render on the GitHub repo page without
+any external service, secret, or gist.
 
-## 1. Create a GitHub Gist
+## Regenerating the badges
 
-1. Go to https://gist.github.com
-2. Create a new **public** gist with:
-   - Filename: `hermes-coverage.json`
-   - Content: `{"schemaVersion": 1, "label": "coverage", "message": "0%", "color": "red"}`
-3. Save the Gist ID from the URL (e.g., if the URL is `https://gist.github.com/username/abc123def456`, the ID is `abc123def456`)
+```bash
+# Run the test suite with coverage, then rewrite the badges in README.md
+npm run badges
 
-## 2. Create a Personal Access Token
-
-1. Go to GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)
-2. Click "Generate new token (classic)"
-3. Give it a name like "Coverage Badge Token"
-4. Select the **gist** scope (only this is needed)
-5. Click "Generate token"
-6. **Copy the token immediately** (you won't see it again)
-
-## 3. Add Secrets to Repository
-
-1. Go to your repository settings: `https://github.com/starspacegroup/hermes/settings/secrets/actions`
-2. Add two new secrets:
-   - **GIST_SECRET**: Paste the Personal Access Token from step 2
-   - **GIST_ID**: Paste the Gist ID from step 1
-
-## 4. Update README Badge URL
-
-1. Open `README.md`
-2. Find the coverage badge line (line 3)
-3. Replace `GIST_ID_HERE` with your actual Gist ID from step 1
-
-Example:
-
-```markdown
-[![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/starspacegroup/abc123def456/raw/hermes-coverage.json)](./coverage/index.html)
+# Or, if you already have a fresh ./coverage report, just rewrite the badges
+npm run badges:update
 ```
 
-## 5. Test the Action
+`npm run badges` is a thin wrapper over `npm run test:coverage &&
+istanbul-badges-readme`. Commit the resulting `README.md` change along with the
+code that moved the numbers.
 
-1. Commit and push your changes
-2. Go to the Actions tab in your repository
-3. The "Code Coverage" workflow should run automatically
-4. After it completes, check that the badge updates in your README
+## How it works
 
-## How It Works
+- `vitest.config.ts` includes `json-summary` in `coverage.reporter`, which writes
+  `coverage/coverage-summary.json`.
+- `istanbul-badges-readme` reads that file and rewrites the four
+  `img.shields.io/badge/...` URLs in `README.md` in place.
+- Badge colour is chosen by the tool from the percentage:
+  - 🟢 `brightgreen`: ≥ 80%
+  - 🟡 `yellow`: 60–80%
+  - 🔴 `red`: < 60%
 
-- Every push to `main` or PR triggers the coverage workflow
-- Tests run with coverage enabled
-- Coverage percentage is extracted from the HTML report
-- The Gist is updated with the new coverage data
-- The badge in README automatically reflects the latest coverage
-- Badge color changes based on coverage:
-  - 🟢 Green: > 80%
-  - 🟡 Yellow: 60-80%
-  - 🔴 Red: < 60%
+The rewritten table stays Prettier-clean, so `npm run lint` passes immediately
+after regenerating.
+
+## Automating it
+
+There is currently no GitHub Actions workflow in this repository, so the badges
+only refresh when someone runs `npm run badges` locally and commits the result.
+
+To automate it, add a workflow that runs `npm run badges` on pushes to `main` and
+commits the README change back (or fails the build when the badges are stale).
+That is a repository-configuration decision and is intentionally left out here.
 
 ## Troubleshooting
 
-If the badge shows "invalid":
-
-- Verify the Gist is **public**
-- Check that both secrets are set correctly
-- Ensure the Gist ID in README matches the GIST_ID secret
-- Check the Actions logs for any error messages
+- **Badges show `0%` or do not change** — make sure `coverage/coverage-summary.json`
+  exists. It is only written when `coverage.reporter` in `vitest.config.ts`
+  includes `json-summary`.
+- **`istanbul-badges-readme` reports it cannot find the readme hashes** — the four
+  badge lines must remain in `README.md` in the
+  `![Statements](https://img.shields.io/badge/statements-...)` form. Do not remove
+  them; the tool rewrites them in place.
+- **`npm run test:coverage` fails on thresholds** — coverage thresholds are
+  enforced in `vitest.config.ts` (`lines`/`functions`/`statements` 80,
+  `branches` 75). Fix coverage first; the badges reflect whatever the run produced.
