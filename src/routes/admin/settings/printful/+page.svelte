@@ -211,12 +211,21 @@
         <details class="update-key">
           <summary>Update API key</summary>
           <div class="key-form">
-            <input
-              type={showKey ? 'text' : 'password'}
-              bind:value={apiKey}
-              placeholder="Paste new API key"
-              class="key-input"
-            />
+            {#if showKey}
+              <input
+                type="text"
+                bind:value={apiKey}
+                placeholder="Paste new API key"
+                class="key-input"
+              />
+            {:else}
+              <input
+                type="password"
+                bind:value={apiKey}
+                placeholder="Paste new API key"
+                class="key-input"
+              />
+            {/if}
             <button class="toggle-visibility" on:click={() => (showKey = !showKey)} type="button">
               {showKey ? 'Hide' : 'Show'}
             </button>
@@ -239,13 +248,23 @@
           </a>. Create a store-level token with at least <em>sync products</em> read access.
         </p>
         <div class="key-form">
-          <input
-            type={showKey ? 'text' : 'password'}
-            bind:value={apiKey}
-            placeholder="Paste your Printful API key"
-            class="key-input"
-            on:keydown={(e) => e.key === 'Enter' && handleConnect()}
-          />
+          {#if showKey}
+            <input
+              type="text"
+              bind:value={apiKey}
+              placeholder="Paste your Printful API key"
+              class="key-input"
+              on:keydown={(e) => e.key === 'Enter' && handleConnect()}
+            />
+          {:else}
+            <input
+              type="password"
+              bind:value={apiKey}
+              placeholder="Paste your Printful API key"
+              class="key-input"
+              on:keydown={(e) => e.key === 'Enter' && handleConnect()}
+            />
+          {/if}
           <button class="toggle-visibility" on:click={() => (showKey = !showKey)} type="button">
             {showKey ? 'Hide' : 'Show'}
           </button>
