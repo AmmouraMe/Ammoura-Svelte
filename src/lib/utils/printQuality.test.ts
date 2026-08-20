@@ -5,7 +5,10 @@ import {
   assessPrintQuality,
   recommendedPixels,
   formatPhysicalSize,
-  type PrintGeometry
+  type PrintGeometry,
+  effectiveDpiForInches,
+  maxPrintWidthIn,
+  assessPlacedImage
 } from './printQuality';
 
 // The seeded all-over hoodie area: 40 x 30 in at 150 DPI.
@@ -115,5 +118,58 @@ describe('formatPhysicalSize', () => {
   it('formats with the unit', () => {
     expect(formatPhysicalSize(HOODIE)).toBe('40 × 30 in');
     expect(formatPhysicalSize(MUG)).toBe('9.5 × 3.5 in');
+  });
+});
+
+describe('effectiveDpiForInches', () => {
+  it('is pixels over printed inches', () => {
+    expect(effectiveDpiForInches(3000, 10)).toBe(300);
+  });
+
+  it('is zero when either side is missing', () => {
+    expect(effectiveDpiForInches(3000, 0)).toBe(0);
+    expect(effectiveDpiForInches(0, 10)).toBe(0);
+  });
+});
+
+describe('maxPrintWidthIn', () => {
+  it('is the widest a file holds the required resolution', () => {
+    expect(maxPrintWidthIn(3000, 300)).toBe(10);
+    expect(maxPrintWidthIn(3000, 0)).toBe(0);
+  });
+});
+
+describe('assessPlacedImage', () => {
+  const printed = { widthIn: 10, heightIn: 10 };
+
+  it('rates a generous file excellent', () => {
+    const q = assessPlacedImage(4500, 4500, printed, 300);
+    expect(q.dpi).toBe(450);
+    expect(q.rating).toBe('excellent');
+    expect(q.meetsRequirement).toBe(true);
+  });
+
+  it('rates on the weaker axis', () => {
+    // Wide enough across, far too coarse down.
+    const q = assessPlacedImage(3000, 600, printed, 300);
+    expect(q.dpi).toBe(60);
+    expect(q.rating).toBe('unusable');
+  });
+
+  it('tells the customer how big the file can go', () => {
+    const q = assessPlacedImage(600, 600, printed, 300);
+    expect(q.maxWidthIn).toBe(2);
+    expect(q.message).toContain('2″');
+  });
+
+  it('measures against the area DPI, not an absolute', () => {
+    const hoodie = assessPlacedImage(1500, 1500, printed, 150);
+    const mug = assessPlacedImage(1500, 1500, printed, 300);
+    expect(hoodie.meetsRequirement).toBe(true);
+    expect(mug.meetsRequirement).toBe(false);
+  });
+
+  it('falls back to 150 DPI when an area declares none', () => {
+    expect(assessPlacedImage(1500, 1500, printed, 0).meetsRequirement).toBe(true);
   });
 });

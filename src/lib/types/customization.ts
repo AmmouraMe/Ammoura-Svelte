@@ -1,3 +1,5 @@
+import type { DesignElement } from '$lib/utils/designElements';
+
 /**
  * Product customization zone defined by admin.
  * Represents a rectangular area on a product image where customers can place uploads.
@@ -52,15 +54,27 @@ export interface UpdateCustomizationZoneData {
 
 /**
  * Customer's customization for a single zone, stored in the cart.
+ *
+ * `elements` is the design as the studio holds it: a stack of pictures and
+ * lines of text, each measured in inches on the product. Everything below it is
+ * the older single-upload description of the *first image element*, still
+ * written so that the cart, the order tables and the admin view keep working
+ * unchanged for designs that are one picture — which is most of them.
  */
 export interface CartItemCustomization {
   zoneId: string;
   zoneName: string;
+  /** Every element the customer placed, bottom of the stack first. */
+  elements?: DesignElement[];
+  /** Stable across revisions of one design, so a store can group them. */
+  designId?: string;
+  /** How many times this design has been sent. First order is 1. */
+  designRevision?: number;
   /**
    * Directly-renderable source for the customer's artwork. Now the R2-backed
    * `/api/media/...` URL of the full-resolution original (a `data:` URL only
    * when running without an R2 binding), NOT a downsampled preview — the
-   * printed output is generated from this.
+   * printed output is generated from this. Empty for a text-only design.
    */
   imageDataUrl: string;
   /** `media_library` id of the full-resolution original in R2. */

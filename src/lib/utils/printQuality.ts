@@ -137,3 +137,85 @@ export function formatPhysicalSize(geometry: PrintGeometry): string {
   const trim = (n: number): string => String(Math.round(n * 100) / 100);
   return `${trim(geometry.physWidth)} × ${trim(geometry.physHeight)} ${geometry.unit}`;
 }
+
+// --- Measured in inches ---------------------------------------------------
+//
+// The functions above rate an upload by a *scale factor* against a zone, which
+// was the right shape when a design was one image filling one box. A design
+// made of several elements has no such factor: each piece covers however many
+// inches it covers, and that — not its ratio to the area — is what decides how
+// sharp it prints. These take the printed size directly.
+
+/**
+ * The real resolution a file will be printed at, given how big it is on the
+ * product. Enlarging a small file lowers this, which is the whole point of
+ * measuring it.
+ */
+export function effectiveDpiForInches(naturalPx: number, printedIn: number): number {
+  if (!(printedIn > 0) || !(naturalPx > 0)) return 0;
+  return naturalPx / printedIn;
+}
+
+/** The widest this file prints while still holding `requiredDpi`. */
+export function maxPrintWidthIn(naturalPx: number, requiredDpi: number): number {
+  if (!(requiredDpi > 0)) return 0;
+  return naturalPx / requiredDpi;
+}
+
+/** A placed element's printed footprint. Structural so this module stays leaf-level. */
+export interface PrintedSize {
+  widthIn: number;
+  heightIn: number;
+}
+
+export interface PlacedQuality extends PrintQuality {
+  /** The widest this file can print and still meet the required DPI. */
+  maxWidthIn: number;
+}
+
+/**
+ * Rate an image at the size it is actually printed.
+ *
+ * Rated on the weaker of the two axes: a wide, short image can satisfy the
+ * width test while still being too coarse vertically. Worded for a customer
+ * rather than a printer — someone uploading a photo from their phone needs to
+ * know what to do, not what DPI means.
+ */
+export function assessPlacedImage(
+  pixelWidth: number,
+  pixelHeight: number,
+  printed: PrintedSize,
+  requiredDpi: number
+): PlacedQuality {
+  const required = requiredDpi > 0 ? requiredDpi : 150;
+  const widthDpi = effectiveDpiForInches(pixelWidth, printed.widthIn);
+  const heightDpi = effectiveDpiForInches(pixelHeight, printed.heightIn);
+  const dpi = Math.min(widthDpi, heightDpi);
+
+  const ratio = dpi / required;
+  let rating: PrintQualityRating;
+  if (ratio >= 1.5) rating = 'excellent';
+  else if (ratio >= 1) rating = 'good';
+  else if (ratio >= 0.6) rating = 'low';
+  else rating = 'unusable';
+
+  const maxWidthIn = Math.round(maxPrintWidthIn(pixelWidth, required) * 100) / 100;
+  const messages: Record<PrintQualityRating, string> = {
+    excellent: 'Sharp at this size.',
+    good: 'Good at this size.',
+    low: `Getting soft. This file is at its best up to ${maxWidthIn}″ wide.`,
+    unusable: `Too small to print this big — at full sharpness it covers about ${maxWidthIn}″. Use a larger file, or scale this one down.`
+  };
+
+  return {
+    dpi: Math.round(dpi),
+    rating,
+    meetsRequirement: dpi >= required,
+    maxScaleAtRequiredDpi:
+      printed.widthIn > 0 && Number.isFinite(maxWidthIn)
+        ? Math.round((maxWidthIn / printed.widthIn) * 100) / 100
+        : null,
+    maxWidthIn,
+    message: messages[rating]
+  };
+}

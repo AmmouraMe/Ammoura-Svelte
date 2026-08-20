@@ -185,6 +185,12 @@ async function submitOrder(
         customizations: (item.customizations || []).map((c) => ({
           zoneId: c.zoneId,
           zoneName: c.zoneName,
+          // The design itself. The fields under it describe its first image
+          // element in the older single-upload terms, which is what the
+          // legacy order columns still hold.
+          elements: c.elements ?? [],
+          designId: c.designId ?? null,
+          designRevision: c.designRevision ?? 1,
           imageUrl: c.imageDataUrl,
           mediaId: c.mediaId ?? null,
           originalFilename: c.originalFilename,

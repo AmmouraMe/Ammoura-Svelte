@@ -8,7 +8,8 @@ import { getDB } from '$lib/server/db';
 import { getOrderById, getOrderItems } from '$lib/server/db/orders';
 import {
   getOrderItemCustomizations,
-  getOrderItemFieldValues
+  getOrderItemFieldValues,
+  readElements
 } from '$lib/server/db/order-customizations';
 
 export async function load({ platform, locals, params }: ServerLoadEvent) {
@@ -45,6 +46,12 @@ export async function load({ platform, locals, params }: ServerLoadEvent) {
           image: item.image,
           customizations: customizations.map((c) => ({
             zoneName: c.zone_name,
+            // The design as placed, in inches on the product. Orders written
+            // before migration 0102 come back as a single image element with
+            // no measurements, and the legacy fields below still describe them.
+            elements: readElements(c),
+            designId: c.design_id,
+            designRevision: c.design_revision ?? 1,
             imageUrl: c.image_url,
             originalFilename: c.original_filename,
             offsetXPercent: c.offset_x_percent,

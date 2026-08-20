@@ -1,13 +1,33 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import type { DesignElement, Placement } from '$lib/utils/designElements';
+  import { fontNameFor, inkNameFor } from '$lib/utils/designText';
 
   interface OrderItemArtwork {
     zoneName: string;
+    /** The design as placed, in inches on the product. */
+    elements: DesignElement[];
+    designId: string | null;
+    designRevision: number;
     imageUrl: string;
     originalFilename: string | null;
     offsetXPercent: number;
     offsetYPercent: number;
     scale: number;
+  }
+
+  /**
+   * Where a piece sits, in the words a printer works in.
+   *
+   * Orders taken before the studio measured things have no inches on them —
+   * say so rather than printing a confident `0.00 × 0.00`.
+   */
+  function placementText(place: Placement): string {
+    if (!(place.widthIn > 0)) return 'placed against the print area (pre-2026 order)';
+    const at = `at ${place.xIn.toFixed(2)}, ${place.yIn.toFixed(2)}″`;
+    const size = `${place.widthIn.toFixed(2)} × ${place.heightIn.toFixed(2)}″`;
+    const spin = place.rotation ? `, rotated ${Math.round(place.rotation)}°` : '';
+    return `${size} ${at}${spin}`;
   }
 
   interface OrderItemFieldValue {
@@ -261,16 +281,48 @@
                   <div class="artwork-list">
                     {#each item.customizations as art}
                       <div class="artwork">
-                        <img src={art.imageUrl} alt={art.zoneName} class="artwork-thumb" />
-                        <div class="artwork-meta">
+                        <div class="artwork-head">
                           <strong>{art.zoneName}</strong>
-                          {#if art.originalFilename}<span>{art.originalFilename}</span>{/if}
-                          <a
-                            href={art.imageUrl}
-                            download={art.originalFilename || `${art.zoneName}.png`}
-                            class="artwork-download">Download</a
-                          >
+                          {#if art.designRevision > 1}
+                            <span class="design-revision">revision {art.designRevision}</span>
+                          {/if}
                         </div>
+                        <ul class="element-list">
+                          {#each art.elements as el (el.id)}
+                            <li class="element-row">
+                              {#if el.kind === 'image'}
+                                <img src={el.src} alt="" class="artwork-thumb" />
+                                <div class="artwork-meta">
+                                  <strong>{el.name || 'Artwork'}</strong>
+                                  <span>{placementText(el.place)}</span>
+                                  {#if el.naturalWidth}
+                                    <span
+                                      >{el.naturalWidth}×{el.naturalHeight}px{el.flipped
+                                        ? ' · mirrored'
+                                        : ''}</span
+                                    >
+                                  {/if}
+                                  <a
+                                    href={el.src}
+                                    download={el.name || `${art.zoneName}.png`}
+                                    class="artwork-download">Download</a
+                                  >
+                                </div>
+                              {:else}
+                                <span class="text-swatch" style="background:{el.color}"></span>
+                                <div class="artwork-meta">
+                                  <strong>“{el.text}”</strong>
+                                  <span>{placementText(el.place)}</span>
+                                  <span
+                                    >{fontNameFor(el.font)} · {inkNameFor(el.color)}{el.flipped
+                                      ? ' · mirrored'
+                                      : ''}</span
+                                  >
+                                </div>
+                              {/if}
+                            </li>
+                          {/each}
+                        </ul>
                       </div>
                     {/each}
                   </div>
@@ -669,8 +721,45 @@
 
   .artwork {
     display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+
+  .artwork-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  .design-revision {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+  }
+
+  .element-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .element-row {
+    display: flex;
     gap: 0.75rem;
     align-items: flex-start;
+  }
+
+  /* The ink, at the size a swatch needs to be recognisable next to a thumbnail
+     of the same height. */
+  .text-swatch {
+    width: 64px;
+    height: 64px;
+    flex-shrink: 0;
+    border: 1px solid var(--color-border-primary);
+    border-radius: 6px;
   }
 
   .artwork-thumb {

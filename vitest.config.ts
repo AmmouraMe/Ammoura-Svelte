@@ -9,6 +9,10 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version)
   },
+  // Without this, Vite resolves Svelte to its server build under vitest and
+  // `onMount` never fires, so any component whose setup runs on mount renders
+  // as if it had no state at all.
+  resolve: { conditions: ['browser'] },
   test: {
     include: ['src/**/*.{test,spec}.{js,ts}'],
     environment: 'happy-dom',
