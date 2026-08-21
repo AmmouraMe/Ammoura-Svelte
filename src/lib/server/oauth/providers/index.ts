@@ -11,6 +11,7 @@ import { FacebookOAuthProvider } from './facebook.js';
 import { GitHubOAuthProvider } from './github.js';
 import { TwitterOAuthProvider } from './twitter.js';
 import { MicrosoftOAuthProvider } from './microsoft.js';
+import { DiscordOAuthProvider } from './discord.js';
 import type { BaseOAuthProvider } from '../provider.js';
 
 export interface OAuthCredentials {
@@ -43,6 +44,8 @@ export function createOAuthProvider(
       return new TwitterOAuthProvider(clientId, clientSecret);
     case 'microsoft':
       return new MicrosoftOAuthProvider(clientId, clientSecret, tenant);
+    case 'discord':
+      return new DiscordOAuthProvider(clientId, clientSecret);
     default:
       throw new Error(`Unsupported OAuth provider: ${provider}`);
   }
@@ -55,3 +58,4 @@ export * from './facebook.js';
 export * from './github.js';
 export * from './twitter.js';
 export * from './microsoft.js';
+export * from './discord.js';
