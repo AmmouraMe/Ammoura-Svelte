@@ -9,7 +9,8 @@ export type OAuthProvider =
   | 'facebook'
   | 'github'
   | 'twitter'
-  | 'microsoft';
+  | 'microsoft'
+  | 'discord';
 
 export type AuthEventType =
   | 'login_success'

@@ -20,7 +20,8 @@ const VALID_PROVIDERS: OAuthProvider[] = [
   'facebook',
   'github',
   'twitter',
-  'microsoft'
+  'microsoft',
+  'discord'
 ];
 
 const PROVIDER_DEFAULTS = {
@@ -30,7 +31,8 @@ const PROVIDER_DEFAULTS = {
   facebook: { name: 'Facebook', icon: 'Facebook' },
   github: { name: 'GitHub', icon: 'Github' },
   twitter: { name: 'X (Twitter)', icon: 'Twitter' },
-  microsoft: { name: 'Microsoft', icon: 'Building' }
+  microsoft: { name: 'Microsoft', icon: 'Building' },
+  discord: { name: 'Discord', icon: 'MessageCircle' }
 };
 
 export const load: PageServerLoad = async ({ platform, locals }) => {
