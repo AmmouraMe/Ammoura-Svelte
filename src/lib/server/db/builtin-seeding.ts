@@ -466,6 +466,12 @@ export async function getDefaultRevisionsSummary(
  * - v3: Navbar and footer defaults are childless, rendering the NavBar and
  *       Footer builtins natively (hamburger, mobile menu, cart/auth/account,
  *       theme toggle) instead of the container-children header/footer
+ *
+ * Bumping this constant does NOT reach an existing database on its own — it
+ * only takes effect when an admin calls POST /api/admin/seed-builtins. New
+ * databases are built by the SQL migrations, so a version bump that matters
+ * for a fresh site needs a migration too. v3 shipped without one and every
+ * new site kept the pre-v3 navbar until migration 0103 backfilled it.
  */
 export const CURRENT_BUILTIN_VERSION = 3;
 
