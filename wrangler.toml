@@ -1,6 +1,11 @@
 name = "hermes"
 compatibility_date = "2024-09-23"
 
+# All Ammoura infrastructure (ammoura.me zone, D1, R2, Workers) lives in the
+# "David Monaghan" account. Pinned so non-interactive deploys work — wrangler
+# cannot pick between the six accounts this login can see.
+account_id = "7170285216abcab51100eea6730677aa"
+
 # Workers deployment with static assets (migrated from Cloudflare Pages —
 # tenancy plan §8). `wrangler deploy` after `npm run build`.
 main = ".svelte-kit/cloudflare/_worker.js"
@@ -66,3 +71,43 @@ binding = "MEDIA_BUCKET"
 bucket_name = "hermes-media"
 preview_bucket_name = "hermes-media-preview"
 
+
+# ---------------------------------------------------------------------------
+# dev-staging — a production-shaped environment for the `dev-staging` branch.
+#
+# Same Workers runtime, same adapter output and the same migrations as
+# production, but on its own D1 and its own R2 bucket, so a bad migration or a
+# test order can never touch `hermes-db` / `hermes-media`.
+#
+#   npm run deploy:dev-staging      # migrate + build + deploy
+#
+# See ../docs/dev-staging.md in the Ammoura planning repo.
+# ---------------------------------------------------------------------------
+[env.dev-staging]
+name = "hermes-dev-staging"
+
+[env.dev-staging.vars]
+# The staging host is its own platform domain, not a slug under ammoura.me.
+# If this stayed "ammoura.me", site-routing.ts would read the hostname as the
+# tenant slug `dev-staging-e2ab5e` (site-routing.ts §platform-subdomain path).
+# Tenant sites on staging are therefore slug.dev-staging-e2ab5e.ammoura.me —
+# reachable, but Universal SSL only covers one wildcard level (*.ammoura.me),
+# so those need an explicit cert before they serve HTTPS.
+PLATFORM_SITES_DOMAIN = "dev-staging-e2ab5e.ammoura.me"
+
+# Custom domain: wrangler creates and owns the proxied DNS record on the
+# ammoura.me zone, and issues the edge certificate.
+[[env.dev-staging.routes]]
+pattern = "dev-staging-e2ab5e.ammoura.me"
+custom_domain = true
+
+[[env.dev-staging.d1_databases]]
+binding = "DB"
+database_name = "hermes-db-dev-staging"
+database_id = "aa7a1a2c-a63b-4f60-8e3b-dbe8c53dc9c4"
+migrations_dir = "migrations"
+
+[[env.dev-staging.r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "hermes-media-dev-staging"
+preview_bucket_name = "hermes-media-dev-staging"

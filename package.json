@@ -21,6 +21,8 @@
     "badges": "npm run test:coverage && istanbul-badges-readme",
     "badges:update": "istanbul-badges-readme",
     "deploy": "npm run db:migrate && wrangler deploy",
+    "deploy:dev-staging": "npm run db:migrate:dev-staging && npm run build && wrangler deploy --env dev-staging",
+    "db:migrate:dev-staging": "wrangler d1 migrations apply hermes-db-dev-staging --remote --env dev-staging",
     "db:migrate": "node scripts/db-migrate.js",
     "db:migrate:local": "node scripts/db-migrate.js --local",
     "db:migrate:preview": "node scripts/db-migrate.js --remote --preview",
