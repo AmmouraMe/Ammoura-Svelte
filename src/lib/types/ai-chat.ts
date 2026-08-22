@@ -70,7 +70,7 @@ export type AIModel =
   | 'claude-sonnet-4-20250514'
   | 'claude-3-5-sonnet-20241022'
   | 'claude-3-5-haiku-20241022'
-  | 'grok-beta';
+  | 'grok-4.5';
 
 export interface AIModelConfig {
   provider: AIProvider;

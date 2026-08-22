@@ -55,73 +55,24 @@ vi.mock('$app/environment', () => ({
   version: 'test'
 }));
 
-// Default mock for $app/stores so components using the i18n stores ($t, $money,
-// $dateFmt — all derived from `page`) render in tests without SvelteKit request
-// context. Individual test files can still vi.mock('$app/stores') themselves;
-// their file-local mock takes precedence over this one.
-vi.mock('$app/stores', () => ({
-  page: readable({
-    url: new URL('http://localhost'),
-    params: {},
-    route: { id: null },
-    status: 200,
-    error: null,
-    data: { locale: 'en', currency: 'USD', i18n: { defaultLocale: 'en', enabledLocales: ['en'] } },
-    state: {},
-    form: undefined
-  }),
-  navigating: readable(null),
-  updated: { subscribe: readable(false).subscribe, check: async () => false }
-}));
-/**
- * Node 22+ defines `localStorage` / `sessionStorage` as built-in globals, but they
- * evaluate to `undefined` unless the process is started with `--localstorage-file`.
- *
- * Vitest's happy-dom environment only copies a window key onto `globalThis` when the
- * key does not already exist on the Node global, unless it is on Vitest's own
- * allowlist (`getWindowKeys`: `if (k in global) return keysArray.includes(k)`).
- * Storage is not on that allowlist, so on Node 22+ happy-dom's Storage is skipped and
- * `globalThis.localStorage` stays `undefined` — every test touching it fails with
- * "Cannot read properties of undefined" or "spyOn could not find an object to spy upon".
- *
- * Install a minimal in-memory Storage only when the global is missing. On Node 18/20,
- * where happy-dom's Storage is installed normally, this is a no-op.
- */
-class MemoryStorage implements Storage {
-  #data = new Map<string, string>();
+const storageValues = new Map<string, string>();
+const storage: Storage = {
+  get length() {
+    return storageValues.size;
+  },
+  clear: () => storageValues.clear(),
+  getItem: (key) => storageValues.get(key) ?? null,
+  key: (index) => [...storageValues.keys()][index] ?? null,
+  removeItem: (key) => storageValues.delete(key),
+  setItem: (key, value) => storageValues.set(key, String(value))
+};
 
-  get length(): number {
-    return this.#data.size;
-  }
-
-  key(index: number): string | null {
-    return Array.from(this.#data.keys())[index] ?? null;
-  }
-
-  getItem(key: string): string | null {
-    return this.#data.has(String(key)) ? (this.#data.get(String(key)) as string) : null;
-  }
-
-  setItem(key: string, value: string): void {
-    this.#data.set(String(key), String(value));
-  }
-
-  removeItem(key: string): void {
-    this.#data.delete(String(key));
-  }
-
-  clear(): void {
-    this.#data.clear();
-  }
-}
-
-for (const name of ['localStorage', 'sessionStorage'] as const) {
-  if (typeof (globalThis as Record<string, unknown>)[name] === 'undefined') {
-    Object.defineProperty(globalThis, name, {
-      value: new MemoryStorage(),
-      writable: true,
-      configurable: true,
-      enumerable: true
-    });
-  }
-}
+// Node can expose an unusable localStorage getter that shadows the DOM environment.
+Object.defineProperty(window, 'localStorage', {
+  configurable: true,
+  value: storage
+});
+Object.defineProperty(globalThis, 'localStorage', {
+  configurable: true,
+  value: storage
+});

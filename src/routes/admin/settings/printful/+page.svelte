@@ -221,21 +221,13 @@
         <details class="update-key">
           <summary>Update API key</summary>
           <div class="key-form">
-            {#if showKey}
-              <input
-                type="text"
-                bind:value={apiKey}
-                placeholder="Paste new API key"
-                class="key-input"
-              />
-            {:else}
-              <input
-                type="password"
-                bind:value={apiKey}
-                placeholder="Paste new API key"
-                class="key-input"
-              />
-            {/if}
+            <input
+              type={showKey ? 'text' : 'password'}
+              value={apiKey}
+              on:input={(event) => (apiKey = event.currentTarget.value)}
+              placeholder="Paste new API key"
+              class="key-input"
+            />
             <button class="toggle-visibility" on:click={() => (showKey = !showKey)} type="button">
               {showKey ? 'Hide' : 'Show'}
             </button>
@@ -258,23 +250,14 @@
           </a>. Create a store-level token with at least <em>sync products</em> read access.
         </p>
         <div class="key-form">
-          {#if showKey}
-            <input
-              type="text"
-              bind:value={apiKey}
-              placeholder="Paste your Printful API key"
-              class="key-input"
-              on:keydown={(e) => e.key === 'Enter' && handleConnect()}
-            />
-          {:else}
-            <input
-              type="password"
-              bind:value={apiKey}
-              placeholder="Paste your Printful API key"
-              class="key-input"
-              on:keydown={(e) => e.key === 'Enter' && handleConnect()}
-            />
-          {/if}
+          <input
+            type={showKey ? 'text' : 'password'}
+            value={apiKey}
+            on:input={(event) => (apiKey = event.currentTarget.value)}
+            placeholder="Paste your Printful API key"
+            class="key-input"
+            on:keydown={(e) => e.key === 'Enter' && handleConnect()}
+          />
           <button class="toggle-visibility" on:click={() => (showKey = !showKey)} type="button">
             {showKey ? 'Hide' : 'Show'}
           </button>

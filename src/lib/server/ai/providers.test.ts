@@ -45,10 +45,9 @@ describe('AI Providers', () => {
       expect(provider.getProviderName()).toBe('anthropic');
     });
 
-    it('should throw error for Grok provider (not implemented)', () => {
-      expect(() => createAIProvider('grok', 'test-key')).toThrow(
-        'Grok provider not yet implemented'
-      );
+    it('should create Grok provider', () => {
+      const provider = createAIProvider('grok', 'test-key');
+      expect(provider.getProviderName()).toBe('grok');
     });
 
     it('should throw error for unknown provider', () => {
@@ -84,8 +83,8 @@ describe('AI Providers', () => {
         expect(provider.supportsVision('claude-3-5-sonnet-20241022')).toBe(false);
       });
 
-      it('should not support vision for grok-beta', () => {
-        expect(provider.supportsVision('grok-beta')).toBe(false);
+      it('should not support vision for grok-4.5', () => {
+        expect(provider.supportsVision('grok-4.5')).toBe(false);
       });
     });
 
@@ -1367,8 +1366,28 @@ describe('AI Providers', () => {
   });
 
   describe('createAIProvider - grok and unknown', () => {
-    it('should throw for grok provider', () => {
-      expect(() => createAIProvider('grok', 'key')).toThrow('Grok provider not yet implemented');
+    it('should configure Grok against the xAI endpoint', async () => {
+      const openai = await import('openai');
+      const mockCreate = vi.fn().mockResolvedValue({
+        choices: [{ message: { content: 'Hello from Grok' }, finish_reason: 'stop' }],
+        usage: { prompt_tokens: 2, completion_tokens: 3, total_tokens: 5 }
+      });
+      (openai.default as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
+        chat: { completions: { create: mockCreate } }
+      }));
+
+      const provider = createAIProvider('grok', 'key');
+      const response = await provider.getCompletion({
+        messages: [{ role: 'user', content: 'Hi', timestamp: Date.now() }],
+        model: 'grok-4.5'
+      });
+
+      expect(openai.default).toHaveBeenCalledWith({
+        apiKey: 'key',
+        baseURL: 'https://api.x.ai/v1'
+      });
+      expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ model: 'grok-4.5' }));
+      expect(response.content).toBe('Hello from Grok');
     });
 
     it('should throw for unknown provider', () => {

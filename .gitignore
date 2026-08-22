@@ -16,13 +16,8 @@ vitest.config.ts.timestamp-*
 
 # Coverage reports
 coverage/
-coverage-*.txt
-
-# Scratch output from debugging sessions — these kept getting committed
-debug-page.html
-page-check.html
-*-test-result.png
-*-screenshot.png
+/coverage-*.txt
+/test-output.html
 
 # Wrangler
 .wrangler/

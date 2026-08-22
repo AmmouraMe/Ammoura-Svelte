@@ -60,7 +60,7 @@
     const descriptions: Record<AIProvider, string> = {
       openai: 'GPT-4o and GPT-4o Mini models with vision capabilities',
       anthropic: 'Claude 3.5 Sonnet and Haiku models with superior reasoning',
-      grok: 'Grok Beta model with real-time X integration'
+      grok: 'Grok models through the xAI API'
     };
     return descriptions[provider];
   }

@@ -67,7 +67,7 @@ export function createAIProvider(provider: AIProvider, apiKey: string): AIProvid
     case 'anthropic':
       return new AnthropicProvider(apiKey);
     case 'grok':
-      throw new Error('Grok provider not yet implemented');
+      return new OpenAIProvider(apiKey, 'grok', 'https://api.x.ai/v1');
     default:
       throw new Error(`Unknown provider: ${provider}`);
   }
@@ -78,22 +78,28 @@ export function createAIProvider(provider: AIProvider, apiKey: string): AIProvid
  */
 class OpenAIProvider implements AIProviderInterface {
   private apiKey: string;
+  private providerName: 'openai' | 'grok';
+  private baseURL?: string;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, providerName: 'openai' | 'grok' = 'openai', baseURL?: string) {
     this.apiKey = apiKey;
+    this.providerName = providerName;
+    this.baseURL = baseURL;
   }
 
   getProviderName(): AIProvider {
-    return 'openai';
+    return this.providerName;
   }
 
   supportsVision(model: AIModel): boolean {
-    return model === 'gpt-4o' || model === 'gpt-4o-mini';
+    return this.providerName === 'openai' && (model === 'gpt-4o' || model === 'gpt-4o-mini');
   }
 
   async *streamCompletion(request: AICompletionRequest): AsyncGenerator<AIStreamChunk> {
     const OpenAI = (await import('openai')).default;
-    const openai = new OpenAI({ apiKey: this.apiKey });
+    const openai = new OpenAI(
+      this.baseURL ? { apiKey: this.apiKey, baseURL: this.baseURL } : { apiKey: this.apiKey }
+    );
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const messages: any[] = [];
@@ -191,9 +197,10 @@ class OpenAIProvider implements AIProviderInterface {
         };
       }
     } catch (err) {
-      console.error('OpenAI API error:', err);
+      const providerLabel = this.providerName === 'grok' ? 'Grok' : 'OpenAI';
+      console.error(`${providerLabel} API error:`, err);
       if (err instanceof Error) {
-        throw new Error(`OpenAI API error: ${err.message}`);
+        throw new Error(`${providerLabel} API error: ${err.message}`);
       }
       throw err;
     }
@@ -201,7 +208,9 @@ class OpenAIProvider implements AIProviderInterface {
 
   async getCompletion(request: AICompletionRequest): Promise<AICompletionResponse> {
     const OpenAI = (await import('openai')).default;
-    const openai = new OpenAI({ apiKey: this.apiKey });
+    const openai = new OpenAI(
+      this.baseURL ? { apiKey: this.apiKey, baseURL: this.baseURL } : { apiKey: this.apiKey }
+    );
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const messages: any[] = [];
