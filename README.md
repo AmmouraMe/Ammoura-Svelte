@@ -35,6 +35,31 @@ and customer support. It will comply with relevant data protection regulations.
 
 ## 📦 Contributing Code / Local Dev Setup
 
+### Contribution Workflow
+
+Every repository in the **AmmouraMe** organization follows the same four steps —
+`Ammoura-Svelte`, `nabu`, `teaser`, and anything added later. Humans and AI
+agents work the same way.
+
+1. **Start from an issue, and claim it.** Work is tracked in GitHub Issues.
+   Before writing code, take the issue: assign yourself, or comment that you
+   are picking it up. This is what stops two people — or two agents — landing
+   on the same work.
+2. **Work on a branch.** Never commit to `main`. Cut `feature/<short-name>` for
+   new work or `fix/<short-name>` for a bug. Include the issue number when it
+   helps: `feature/68-code-editor`.
+3. **Open a draft PR early.** As soon as there is a first commit, open the pull
+   request **as a draft**. Do not wait until the work is done. An early draft
+   shows what is in flight, gives CI somewhere to run, and lets reviewers
+   comment before the design hardens. Link the issue in the body (`Closes #68`)
+   so it closes on merge.
+4. **Finish, then mark ready for review.** When the feature or fix is complete
+   and the quality gates are green, update the PR description to say what
+   actually landed, then take it out of draft and mark it **Ready for review**.
+
+In short: the issue says *what*, the branch holds *how*, the draft PR shows
+*progress*, and "ready for review" means *done*.
+
 ### Prerequisites
 
 - Node.js 18+
