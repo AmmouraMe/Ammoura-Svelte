@@ -67,40 +67,46 @@ describe('TailwindContainerEditor', () => {
       expect(screen.getByText('Flex Wrap')).toBeInTheDocument();
     });
 
-    // TODO: Update tests to match refactored component structure
-    // Grid headings are now "Grid Template Columns", "Grid Auto Flow", etc.
-    it.skip('shows grid controls when display is grid', async () => {
-      const { container } = render(TailwindContainerEditor, {
+    it('shows grid controls when display is grid', async () => {
+      render(TailwindContainerEditor, {
+        // Spread so the component's config writes don't leak into other tests
         props: {
-          config: mockConfig,
+          config: { ...mockConfig },
           currentBreakpoint: 'desktop'
         }
       });
 
-      const displaySelect = container.querySelector('select') as HTMLSelectElement;
-      await fireEvent.change(displaySelect, { target: { value: 'grid' } });
+      // Display type is a pair of toggle buttons (Flexbox / Grid), not a select
+      await fireEvent.click(screen.getByRole('button', { name: 'Grid' }));
 
-      expect(screen.getByText('Grid Layout')).toBeInTheDocument();
-      expect(screen.getByLabelText('Grid Columns')).toBeInTheDocument();
-      expect(screen.getByLabelText('Grid Rows')).toBeInTheDocument();
+      expect(screen.getByText('Grid Template Columns')).toBeInTheDocument();
+      expect(screen.getByText('Grid Template Rows')).toBeInTheDocument();
+      expect(screen.getByText('Grid Auto Flow')).toBeInTheDocument();
+      expect(screen.getByText('Place Items')).toBeInTheDocument();
+      // Flex-only controls are hidden while grid is selected
+      expect(screen.queryByText('Flex Wrap')).not.toBeInTheDocument();
+      expect(screen.queryByText('Justify Content')).not.toBeInTheDocument();
     });
 
-    // Flex direction is now controlled by icon buttons, not a labeled select
-    it.skip('dispatches update event when flex direction changes', async () => {
+    it('dispatches update event when flex direction changes', async () => {
       const handleUpdate = vi.fn();
       const { component } = render(TailwindContainerEditor, {
         props: {
-          config: mockConfig,
+          config: { ...mockConfig },
           currentBreakpoint: 'desktop'
         }
       });
 
       component.$on('update', handleUpdate);
 
-      const directionSelect = screen.getByLabelText('Direction') as unknown as HTMLSelectElement;
-      await fireEvent.change(directionSelect, { target: { value: 'column' } });
+      // Flex direction is a group of icon buttons labelled by their title attribute
+      const columnButton = screen.getByTitle('Column (↓)');
+      await fireEvent.click(columnButton);
 
       expect(handleUpdate).toHaveBeenCalled();
+      const updated = handleUpdate.mock.calls[0][0].detail as WidgetConfig;
+      expect(updated.containerFlexDirection).toMatchObject({ desktop: 'column' });
+      expect(columnButton).toHaveClass('active');
     });
   });
 
@@ -120,6 +126,9 @@ describe('TailwindContainerEditor', () => {
       expect(screen.getByText('Padding')).toBeInTheDocument();
     });
 
+    // BLOCKED (component has no such control): the Margin section was moved out of
+    // TailwindContainerEditor in the refactor and now lives in UniversalStyleEditor.svelte:238;
+    // this editor renders only Padding/Size/Background/Border in its Style tab.
     it.skip('shows margin controls', async () => {
       render(TailwindContainerEditor, {
         props: {
@@ -131,7 +140,6 @@ describe('TailwindContainerEditor', () => {
         }
       });
 
-      // Margin was removed in refactoring
       const styleTab = screen.getByRole('button', { name: 'Style' });
       await fireEvent.click(styleTab);
 
