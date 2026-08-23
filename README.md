@@ -57,8 +57,8 @@ agents work the same way.
    and the quality gates are green, update the PR description to say what
    actually landed, then take it out of draft and mark it **Ready for review**.
 
-In short: the issue says *what*, the branch holds *how*, the draft PR shows
-*progress*, and "ready for review" means *done*.
+In short: the issue says _what_, the branch holds _how_, the draft PR shows
+_progress_, and "ready for review" means _done_.
 
 ### Prerequisites
 

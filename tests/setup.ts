@@ -1,6 +1,5 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
-import { readable } from 'svelte/store';
 
 /**
  * Spy-able Web Storage.
