@@ -929,11 +929,16 @@ export async function seedBuiltinPage(
     .bind(siteId, pageId, sitePageId)
     .first<{ id: string }>();
 
-  // Also check by slug in case it was created without the builtin ID
+  // Also check by slug in case it was created without the builtin ID.
+  // Deliberately NOT filtered on is_builtin: createSiteForAccount seeds a
+  // starter home page with a generated id and is_builtin = 0, and a filtered
+  // lookup would miss it and then break on pages' UNIQUE(site_id, slug).
+  // Adopting the existing page is safe — the branch below only adds an
+  // unpublished default revision unless the site is already on a default.
   const pageBySlug = existingPage
     ? null
     : await db
-        .prepare('SELECT id FROM pages WHERE site_id = ? AND slug = ? AND is_builtin = 1')
+        .prepare('SELECT id FROM pages WHERE site_id = ? AND slug = ?')
         .bind(siteId, slug)
         .first<{ id: string }>();
 
