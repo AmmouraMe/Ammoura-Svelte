@@ -5,8 +5,19 @@
   import { toastStore } from '$lib/stores/toast';
   import type { PageData } from './$types';
   import type { EnrichedPage } from '$lib/server/db/pages';
+  import { LEGAL_BUILTIN_PAGE_SLUGS } from '$lib/utils/editor/pageDefaults';
 
   export let data: PageData;
+
+  /**
+   * The built-in Privacy Policy and Terms of Service ship with generic
+   * boilerplate. It names the store, but it is a starting point, and the store
+   * owner — not the platform — is responsible for what it says. Say so here so
+   * nobody mistakes the placeholder for a policy someone wrote for them.
+   */
+  function isLegalBuiltin(slug: string): boolean {
+    return LEGAL_BUILTIN_PAGE_SLUGS.includes(slug);
+  }
 
   let isDeleting = false;
 
@@ -489,6 +500,28 @@
                   ></line>
                 </svg>
                 <span>This page has unpublished changes</span>
+              </div>
+            {/if}
+
+            <!-- Legal boilerplate notice -->
+            {#if isLegalBuiltin(page.slug)}
+              <div class="legal-notice-banner">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path
+                    d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  ></path>
+                  <line x1="12" y1="9" x2="12" y2="13" stroke-width="2" stroke-linecap="round"
+                  ></line>
+                  <line x1="12" y1="17" x2="12.01" y2="17" stroke-width="2" stroke-linecap="round"
+                  ></line>
+                </svg>
+                <span>
+                  Starting template — you are responsible for this policy. Review it, edit it to
+                  match how your store actually works, and add your contact details.
+                </span>
               </div>
             {/if}
 
@@ -1005,6 +1038,25 @@
 
   .pending-changes-banner svg {
     flex-shrink: 0;
+  }
+
+  .legal-notice-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.625rem 0.875rem;
+    background: rgba(217, 119, 6, 0.1);
+    border: 1px solid rgba(217, 119, 6, 0.25);
+    border-radius: 8px;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: #b45309;
+    font-weight: 500;
+  }
+
+  .legal-notice-banner svg {
+    flex-shrink: 0;
+    margin-top: 0.1rem;
   }
 
   /* Preview button */
