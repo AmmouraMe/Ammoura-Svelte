@@ -576,6 +576,67 @@ describe('builtin-seeding', () => {
       expect(result.action).toBe('skipped');
       expect(result.previousVersion).toBe(1);
     });
+
+    it('adopts an existing page on the same slug instead of colliding on it', async () => {
+      // createSiteForAccount seeds a starter home page with a generated id and
+      // is_builtin = 0. The slug lookup has to find it, or the INSERT below
+      // breaks on pages' UNIQUE(site_id, slug).
+      const mockPrepare = vi.fn();
+      const mockRun = vi.fn().mockResolvedValue({ meta: { last_row_id: 1 } });
+
+      const mockFirst = vi
+        .fn()
+        // lookup by builtin id: not found
+        .mockResolvedValueOnce(null)
+        // lookup by slug: the tenant's own page, is_builtin = 0
+        .mockResolvedValueOnce({ id: 'generated-home-id' });
+
+      mockPrepare.mockReturnValue({
+        bind: vi.fn().mockReturnThis(),
+        first: mockFirst,
+        run: mockRun,
+        all: vi.fn().mockResolvedValue({ results: [] })
+      });
+
+      mockDb.prepare = mockPrepare;
+
+      const result = await seedBuiltinPage(mockDb, testSiteId, BUILTIN_PAGES[0], 1);
+
+      expect(result.action).not.toBe('created');
+      expect(result.entityId).toBe('generated-home-id');
+
+      const insertedPages = mockPrepare.mock.calls.filter(
+        (call) => typeof call[0] === 'string' && call[0].includes('INSERT INTO pages')
+      );
+      expect(insertedPages).toHaveLength(0);
+    });
+
+    it('looks a page up by slug without requiring is_builtin', async () => {
+      const mockPrepare = vi.fn();
+
+      mockPrepare.mockReturnValue({
+        bind: vi.fn().mockReturnThis(),
+        first: vi.fn().mockResolvedValue(null),
+        run: vi.fn().mockResolvedValue({ meta: { last_row_id: 1 } }),
+        all: vi.fn().mockResolvedValue({ results: [] })
+      });
+
+      mockDb.prepare = mockPrepare;
+
+      await seedBuiltinPage(mockDb, testSiteId, BUILTIN_PAGES[0], 1);
+
+      const slugLookups = mockPrepare.mock.calls
+        .map((call) => call[0])
+        .filter(
+          (sql) =>
+            typeof sql === 'string' && sql.includes('SELECT id FROM pages') && sql.includes('slug')
+        );
+
+      expect(slugLookups.length).toBeGreaterThan(0);
+      for (const sql of slugLookups) {
+        expect(sql).not.toContain('is_builtin');
+      }
+    });
   });
 
   describe('seedAllBuiltinPages', () => {
