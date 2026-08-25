@@ -1268,6 +1268,262 @@ function getCtaSectionWidget(): WidgetDefinition {
 }
 
 /**
+ * A titled block of legal copy. Kept as data rather than one HTML blob so the
+ * sections stay readable here and translate field-by-field in the overlay.
+ */
+interface LegalSection {
+  heading: string;
+  paragraphs: string[];
+}
+
+/**
+ * Render legal sections to the HTML the text widget accepts.
+ *
+ * Content strings are single-quoted on purpose: they carry literal
+ * `${site.name}` placeholders that templateSubstitution resolves at render
+ * time, and a backtick template would interpolate them here instead.
+ */
+function legalSectionsToHtml(sections: LegalSection[]): string {
+  return sections
+    .map(
+      (section) =>
+        `<h2>${section.heading}</h2>\n` + section.paragraphs.map((p) => `<p>${p}</p>`).join('\n')
+    )
+    .join('\n');
+}
+
+/**
+ * Shared page shell for the built-in legal pages.
+ *
+ * Widget ids are stable and prefixed per page so `content_translations`
+ * (keyed `widgetId:configPath`) can overlay each field per locale.
+ */
+function legalPageWidgets(
+  prefix: string,
+  title: string,
+  intro: string,
+  sections: LegalSection[]
+): WidgetDefinition[] {
+  return [
+    {
+      id: `${prefix}-page-container`,
+      type: 'container',
+      position: 0,
+      config: {
+        containerPadding: {
+          desktop: { top: 64, right: 24, bottom: 80, left: 24 },
+          tablet: { top: 48, right: 20, bottom: 64, left: 20 },
+          mobile: { top: 32, right: 16, bottom: 48, left: 16 }
+        },
+        containerMargin: {
+          desktop: { top: 0, right: 'auto', bottom: 0, left: 'auto' },
+          tablet: { top: 0, right: 'auto', bottom: 0, left: 'auto' },
+          mobile: { top: 0, right: 0, bottom: 0, left: 0 }
+        },
+        containerBackground: 'transparent',
+        containerMaxWidth: '760px',
+        containerDisplay: { desktop: 'flex', tablet: 'flex', mobile: 'flex' },
+        containerFlexDirection: { desktop: 'column', tablet: 'column', mobile: 'column' },
+        containerAlignItems: 'stretch',
+        containerGap: { desktop: 20, tablet: 16, mobile: 14 },
+        children: [
+          {
+            id: `${prefix}-title`,
+            type: 'heading',
+            position: 0,
+            config: {
+              heading: title,
+              level: 1,
+              alignment: 'left',
+              textColor: 'theme:text',
+              fontSize: { desktop: 40, tablet: 34, mobile: 28 },
+              typography: { fontWeight: 'bold', lineHeight: 1.2 }
+            }
+          },
+          {
+            id: `${prefix}-intro`,
+            type: 'text',
+            position: 1,
+            config: {
+              text: intro,
+              alignment: 'left',
+              textColor: 'theme:textSecondary',
+              fontSize: { desktop: 17, tablet: 16, mobile: 15 },
+              typography: { lineHeight: 1.7 }
+            }
+          },
+          {
+            id: `${prefix}-body`,
+            type: 'text',
+            position: 2,
+            config: {
+              html: legalSectionsToHtml(sections),
+              alignment: 'left',
+              textColor: 'theme:text',
+              fontSize: { desktop: 16, tablet: 16, mobile: 15 },
+              typography: { lineHeight: 1.7 }
+            }
+          }
+        ]
+      }
+    }
+  ];
+}
+
+/**
+ * Default Privacy Policy copy.
+ *
+ * Deliberately generic starting text. It names the store through
+ * `${site.name}` so no tenant ships a document carrying another tenant's name,
+ * and it says in the first line that the store — not the platform — owns and
+ * is responsible for the policy.
+ */
+export function getPrivacyPolicyPageWidgets(): WidgetDefinition[] {
+  return legalPageWidgets(
+    'privacy',
+    'Privacy Policy',
+    'This policy explains what personal information ${site.name} collects, why it is collected, and what you can do about it. ${site.name} operates this store and is responsible for the information described here.',
+    [
+      {
+        heading: 'Information we collect',
+        paragraphs: [
+          'When you place an order we collect the details needed to fulfil it: your name, your email address, your delivery address, and the contents of your order.',
+          'If you contact ${site.name} for support, we keep the message and our reply so we can follow up.',
+          'Our servers record ordinary technical information such as your IP address, browser type, and the pages you visit. This is used to keep the store working and secure.'
+        ]
+      },
+      {
+        heading: 'Payment information',
+        paragraphs: [
+          'Card payments are handled by our payment processor. Your full card number is entered on the processor’s systems and is never stored by ${site.name}.',
+          'We receive only what we need to recognise the payment: the result, the amount, and a reference such as the last four digits of the card.'
+        ]
+      },
+      {
+        heading: 'How we use your information',
+        paragraphs: [
+          'We use your information to take payment, fulfil and deliver your order, answer your questions, prevent fraud and abuse, and meet our legal and tax obligations.',
+          'We do not sell your personal information.'
+        ]
+      },
+      {
+        heading: 'Who we share it with',
+        paragraphs: [
+          'We share your details with the suppliers who make delivery possible — our payment processor, our print and fulfilment partners, and our delivery carriers — and only the parts of it they need.',
+          'We also share information where the law requires it.'
+        ]
+      },
+      {
+        heading: 'Cookies',
+        paragraphs: [
+          'This store uses cookies to keep you signed in and to remember the contents of your cart. Blocking them will stop those features from working.'
+        ]
+      },
+      {
+        heading: 'How long we keep it',
+        paragraphs: [
+          'Order records are kept for as long as our tax and accounting obligations require. Account information is kept while your account is open.'
+        ]
+      },
+      {
+        heading: 'Your rights',
+        paragraphs: [
+          'You can ask for a copy of the personal information ${site.name} holds about you, ask for it to be corrected, or ask for it to be deleted. Deletion requests cannot remove records we are legally required to keep.',
+          'To make any of these requests, contact ${site.name} using the contact details published on this site.'
+        ]
+      },
+      {
+        heading: 'Changes to this policy',
+        paragraphs: ['If this policy changes, the updated version will be published on this page.']
+      }
+    ]
+  );
+}
+
+/**
+ * Default Terms of Service copy.
+ *
+ * As with the privacy policy, this is a starting point that names the store
+ * through `${site.name}` and places responsibility for the terms on the store.
+ */
+export function getTermsOfServicePageWidgets(): WidgetDefinition[] {
+  return legalPageWidgets(
+    'terms',
+    'Terms of Service',
+    'These terms cover your use of this store, which is operated by ${site.name}. By browsing the store or placing an order you accept them. ${site.name} is responsible for these terms and for the orders placed here.',
+    [
+      {
+        heading: 'Orders',
+        paragraphs: [
+          'Placing an order is an offer to buy. The order is accepted when ${site.name} confirms it, and a contract is formed at that point.',
+          'An order may be declined — for example if an item is unavailable, if the price was listed incorrectly, or if payment cannot be taken. If an order is declined after payment, it is refunded in full.'
+        ]
+      },
+      {
+        heading: 'Prices and payment',
+        paragraphs: [
+          'Prices are shown in the store’s listed currency. Delivery charges and any taxes are shown before you confirm the order.',
+          'Payment is taken at checkout through our payment processor.'
+        ]
+      },
+      {
+        heading: 'Delivery',
+        paragraphs: [
+          'Delivery times shown at checkout are estimates, not guarantees. Risk in the goods passes to you on delivery.'
+        ]
+      },
+      {
+        heading: 'Returns and refunds',
+        paragraphs: [
+          'Faulty or incorrect items are put right — replaced or refunded — once ${site.name} has been told about the problem.',
+          'Nothing in these terms removes the statutory rights you have as a consumer where you live.'
+        ]
+      },
+      {
+        heading: 'Made-to-order and personalised items',
+        paragraphs: [
+          'Items printed or made to your own design or specification are produced for you alone and cannot be returned simply because you changed your mind. This does not apply where the item arrives faulty or is not what you ordered.',
+          'You are responsible for any artwork or text you supply, and you confirm that you have the right to use it.'
+        ]
+      },
+      {
+        heading: 'Digital products',
+        paragraphs: [
+          'Digital items are licensed to you for your own use. You may not redistribute or resell them.',
+          'Access to a digital item begins as soon as payment clears, which ends the right to cancel it.'
+        ]
+      },
+      {
+        heading: 'Acceptable use',
+        paragraphs: [
+          'Do not attempt to break into, overload, or interfere with this store, and do not use it for anything unlawful.',
+          'Accounts used for fraud or abuse may be closed.'
+        ]
+      },
+      {
+        heading: 'Our content',
+        paragraphs: [
+          'The text, images, and designs on this store belong to ${site.name} or to its suppliers, and may not be copied for commercial use without permission.'
+        ]
+      },
+      {
+        heading: 'Liability',
+        paragraphs: [
+          'Nothing in these terms limits liability for death or personal injury caused by negligence, for fraud, or for anything else that cannot lawfully be limited.',
+          'Beyond that, the liability of ${site.name} for any order is limited to the amount paid for that order.'
+        ]
+      },
+      {
+        heading: 'Changes to these terms',
+        paragraphs: [
+          'These terms may be updated, and the current version is always the one published on this page. The terms that apply to your order are the ones in force when you placed it.'
+        ]
+      }
+    ]
+  );
+}
+
+/**
  * All built-in page definitions
  */
 export const BUILTIN_PAGES: BuiltinPageDefinition[] = [
@@ -1277,8 +1533,31 @@ export const BUILTIN_PAGES: BuiltinPageDefinition[] = [
     slug: '/',
     description: 'Default home page with hero, features, pricing, and products sections',
     getWidgets: getHomePageWidgets
+  },
+  {
+    id: 'builtin-privacy-policy-page',
+    title: 'Privacy Policy',
+    slug: '/privacy-policy',
+    description:
+      'Starting privacy policy, linked from the default footer. The store owner is responsible for its content.',
+    getWidgets: getPrivacyPolicyPageWidgets
+  },
+  {
+    id: 'builtin-terms-of-service-page',
+    title: 'Terms of Service',
+    slug: '/terms-of-service',
+    description:
+      'Starting terms of service, linked from the default footer. The store owner is responsible for its content.',
+    getWidgets: getTermsOfServicePageWidgets
   }
 ];
+
+/**
+ * Built-in pages whose default copy is boilerplate a tenant must review.
+ * The admin pages list uses this to warn owners rather than letting the
+ * placeholder text quietly stand in as their real policy.
+ */
+export const LEGAL_BUILTIN_PAGE_SLUGS = ['/privacy-policy', '/terms-of-service'];
 
 /**
  * Get the default widgets for a built-in page by ID
