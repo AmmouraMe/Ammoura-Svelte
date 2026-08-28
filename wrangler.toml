@@ -81,7 +81,7 @@ preview_bucket_name = "hermes-media-preview"
 #
 #   npm run deploy:dev-staging      # migrate + build + deploy
 #
-# See ../docs/dev-staging.md in the Ammoura planning repo.
+# See docs/DEV_STAGING.md.
 # ---------------------------------------------------------------------------
 [env.dev-staging]
 name = "hermes-dev-staging"
