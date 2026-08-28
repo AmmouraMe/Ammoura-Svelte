@@ -2,9 +2,9 @@
 
 _(codenamed Hermes during development)_
 
-| Statements                                                                                 | Branches                                                                               | Functions                                                                               | Lines                                                                            |
-| ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| ![Statements](https://img.shields.io/badge/statements-96.51%25-brightgreen.svg?style=flat) | ![Branches](https://img.shields.io/badge/branches-93.93%25-brightgreen.svg?style=flat) | ![Functions](https://img.shields.io/badge/functions-97.6%25-brightgreen.svg?style=flat) | ![Lines](https://img.shields.io/badge/lines-96.51%25-brightgreen.svg?style=flat) |
+| Statements                                                                                 | Branches                                                                              | Functions                                                                                | Lines                                                                            |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| ![Statements](https://img.shields.io/badge/statements-95.41%25-brightgreen.svg?style=flat) | ![Branches](https://img.shields.io/badge/branches-92.5%25-brightgreen.svg?style=flat) | ![Functions](https://img.shields.io/badge/functions-95.95%25-brightgreen.svg?style=flat) | ![Lines](https://img.shields.io/badge/lines-95.41%25-brightgreen.svg?style=flat) |
 
 Hermes is a modern multi-tenant eCommerce platform built with SvelteKit and
 TypeScript, deployed as a Cloudflare Worker with D1 database and R2 storage. It
@@ -102,6 +102,7 @@ open http://localhost:4236/
 - `npm run test:coverage` - Run tests with coverage report
 - `npm run badges` - Run coverage and refresh the README coverage badges (see
   [COVERAGE_BADGE_SETUP.md](COVERAGE_BADGE_SETUP.md))
+- `npm run gate` - Lint, check and test, the same three things CI runs
 
 ### Database Management
 
@@ -121,7 +122,8 @@ support. Database migrations and seeding use explicit scripts:
 
 - **Development**: Easily reset database: `npm run db:reset:local`
 - **Local preview**: `npm run preview:local` migrates and seeds local D1
-- **Production**: Auto-migrates when deploying (seeding is blocked for safety)
+- **Production**: Migrated by CI on merge to `main`, never from a laptop
+  (seeding is blocked for safety)
 
 ### Database Scripts
 
@@ -132,9 +134,9 @@ npm run db:seed:local       # Seed with sample data
 npm run db:setup:local      # Both migrate and seed
 npm run db:reset:local      # Dangerously reset and seed
 
-# Production
+# Production — CI runs these on merge to `main`. See docs/CI.md.
 npm run db:migrate          # Run migrations only (no seed)
-npm run deploy              # Deploy and auto-migrate
+npm run deploy              # Migrate, then deploy
 ```
 
 See [docs/DATABASE_MANAGEMENT.md](docs/DATABASE_MANAGEMENT.md) for complete
@@ -142,14 +144,19 @@ database management guide.
 
 ## 🌐 Deployment
 
-The project is configured for deployment as a Cloudflare Worker with static
-assets via `wrangler deploy`.
+**Deployment is automatic.** A merge to `main` builds the project, applies the
+production D1 migrations and runs `wrangler deploy` from GitHub Actions. Nobody
+runs a deploy command on their own machine, and production migrations run in CI
+and nowhere else. See [docs/CI.md](docs/CI.md).
+
+`npm run deploy` still exists for recovery, but it is not part of the normal
+path.
 
 ### Build Configuration
 
 - **Build Command**: `npm run build`
 - **Worker Entry**: `.svelte-kit/cloudflare/_worker.js`
-- **Node.js Version**: 18+
+- **Node.js Version**: 22 (pinned in `.nvmrc`; CI uses the same file)
 - **D1 Database**: Configured in `wrangler.toml`
 
 ## 🔧 Configuration
@@ -208,15 +215,17 @@ ensure:
 Before ANY code is considered complete:
 
 ```bash
-npm run prepare  # Runs format, lint, check, and test
+npm run gate  # Runs lint, check, and test
 ```
 
 All code must pass:
 
-- `npm run format` - Prettier formatting
-- `npm run lint` - ESLint checks
+- `npm run lint` - Prettier formatting and ESLint checks
 - `npm run check` - TypeScript type checking
 - `npm run test:coverage` - Test coverage ≥80%
+
+CI runs the same commands on every pull request, drafts included, and the
+result is required before merge. See [docs/CI.md](docs/CI.md).
 
 ### For Developers Using Copilot:
 

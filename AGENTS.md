@@ -27,10 +27,12 @@ this codebase — the **Ammoura™** multi-tenant eCommerce platform (codenamed
   watch mode, `npm run test:coverage` for coverage)
 - **Single test**: `npm test -- tests/file.test.ts` - Run a specific test file
   (also works for co-located `src/**/*.test.ts` files)
-- **All quality gates**: `npm run prepare` - Runs format, lint, check, and
-  test in sequence; this must pass before work is considered complete
-- **Deploy**: `npm run deploy` - Runs production DB migrations
-  (`npm run db:migrate`) then `wrangler deploy`
+- **All quality gates**: `npm run gate` - Runs lint, check, and test in
+  sequence; this must pass before work is considered complete. CI runs the same
+  three on every pull request (see [docs/CI.md](docs/CI.md))
+- **Deploy**: automatic. A merge to `main` builds, migrates production D1 and
+  runs `wrangler deploy` from GitHub Actions. Never migrate or deploy production
+  from a local machine; `npm run deploy` is for recovery only
 
 ### Database Commands
 

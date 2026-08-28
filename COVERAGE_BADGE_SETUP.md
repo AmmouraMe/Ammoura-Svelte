@@ -16,9 +16,11 @@ npm run badges
 npm run badges:update
 ```
 
-`npm run badges` is a thin wrapper over `npm run test:coverage &&
-istanbul-badges-readme`. Commit the resulting `README.md` change along with the
-code that moved the numbers.
+`npm run badges` is a thin wrapper over `npm run test:coverage && npm run
+badges:update`, and `badges:update` runs `istanbul-badges-readme` followed by
+`prettier --write README.md` — the rewritten badge row changes the Markdown
+table's column widths, so it needs the Prettier pass to stay lint-clean. Commit
+the resulting `README.md` change along with the code that moved the numbers.
 
 ## How it works
 
@@ -31,17 +33,15 @@ code that moved the numbers.
   - 🟡 `yellow`: 60–80%
   - 🔴 `red`: < 60%
 
-The rewritten table stays Prettier-clean, so `npm run lint` passes immediately
-after regenerating.
+## CI enforces this
 
-## Automating it
+The `checks` job in `.github/workflows/ci.yml` regenerates the badges from its
+own coverage run and fails the build when the committed values disagree. The
+numbers in `README.md` therefore cannot drift, and hand-editing them is caught
+on the next pull request.
 
-There is currently no GitHub Actions workflow in this repository, so the badges
-only refresh when someone runs `npm run badges` locally and commits the result.
-
-To automate it, add a workflow that runs `npm run badges` on pushes to `main` and
-commits the README change back (or fails the build when the badges are stale).
-That is a repository-configuration decision and is intentionally left out here.
+When that step fails, run `npm run badges` locally and commit `README.md`. See
+[docs/CI.md](docs/CI.md).
 
 ## Troubleshooting
 

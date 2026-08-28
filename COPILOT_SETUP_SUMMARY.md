@@ -30,7 +30,7 @@ npm run format   # Auto-fix formatting issues
 npm run lint     # Check for linting errors
 npm run check    # TypeScript type checking (CRITICAL)
 npm run test:coverage  # Verify coverage thresholds
-npm run prepare  # Complete verification (all of the above)
+npm run gate  # Complete verification (all of the above)
 ```
 
 ### 3. Formatting Standards Documented
@@ -192,7 +192,7 @@ When GitHub Copilot generates code for this project:
 1. **Before generating**: Reviews the coding standards
 2. **While generating**: Follows formatting and type safety rules
 3. **After generating**: Mentally verifies against quality gates
-4. **On completion**: Reminds to run `npm run prepare`
+4. **On completion**: Reminds to run `npm run gate`
 
 ## Automated Enforcement
 
@@ -228,7 +228,7 @@ npm run check
 npm run test:coverage
 
 # 5. Complete verification
-npm run prepare
+npm run gate
 ```
 
 All commands should pass successfully. ✅
@@ -246,7 +246,7 @@ All commands should pass successfully. ✅
 
 - Quality gates are **mandatory** for all code changes
 - The only exception is explicit prototyping (must refactor with tests after)
-- `npm run prepare` is the gold standard for code quality verification
+- `npm run gate` is the gold standard for code quality verification
 - All generated code must maintain or improve test coverage
 - TDD is the default development approach
 

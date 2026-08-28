@@ -18,8 +18,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:coverage:watch": "vitest --coverage --watch",
-    "badges": "npm run test:coverage && istanbul-badges-readme",
-    "badges:update": "istanbul-badges-readme",
+    "badges": "npm run test:coverage && npm run badges:update",
+    "badges:update": "istanbul-badges-readme && prettier --write README.md",
     "deploy": "npm run db:migrate && wrangler deploy",
     "db:migrate": "node scripts/db-migrate.js",
     "db:migrate:local": "node scripts/db-migrate.js --local",
@@ -43,7 +43,8 @@
     "seed:production": "node scripts/seed-production.js",
     "seed:preview": "node scripts/seed-production.js --preview",
     "seed:local": "node scripts/seed-production.js --local",
-    "prepare": "npm run format && npm run lint && npm run check && npm run test"
+    "gate": "npm run lint && npm run check && npm run test",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^3.0.0",
