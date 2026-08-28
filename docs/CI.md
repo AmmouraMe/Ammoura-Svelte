@@ -73,6 +73,14 @@ preview from a branch in this repository.
 
 ## Branch protection
 
-`main` requires the **Lint, check and test** status to pass before merge. If the
-job is renamed in `ci.yml`, update the required status check in
-**Settings → Branches** to match, or nothing will be enforced.
+`main` is protected:
+
+- Changes reach it through a pull request. Direct pushes are rejected.
+- The **Lint, check and test** status must pass before merge.
+- The branch must be up to date with `main` before merging.
+- No approving review is required — this is a small team — but the check is.
+- Administrators are not exempt, and force pushes and deletion are off.
+
+If the job is renamed in `ci.yml`, update the required status check under
+**Settings → Branches** to match the new name. A required check that names a job
+nobody runs blocks every merge; a check that names nothing enforces nothing.
