@@ -61,8 +61,9 @@ Only start a new server if explicitly asked or if you confirm no server is curre
 - `npm run lint` - Run ESLint
 - `npm run format` - Format code with Prettier
 - `npm run check` - Type check with svelte-check
-- `npm run prepare` - Run `format`, `lint`, and `check` in sequence
-- `npm run deploy` - Deploy to Cloudflare (auto-migrates production DB)
+- `npm run gate` - Run `lint`, `check` and `test` in sequence
+- Deployment is automatic on merge to `main` (see `docs/CI.md`); do not deploy
+  or migrate production from a local machine
 
 ### Database Commands
 
@@ -577,7 +578,7 @@ describe('ProductCard', () => {
 5. Refactor and repeat          # REFACTOR
 
 # Before committing
-npm run prepare                 # Runs format, lint, check, and test
+npm run gate                    # Runs lint, check, and test
 ```
 
 ### Common TDD Patterns
@@ -1042,10 +1043,10 @@ npm test  # All tests must pass
 #### 4. Pre-Commit Verification
 
 ```bash
-npm run prepare  # Runs format, lint, check, and test in sequence
+npm run gate  # Runs lint, check, and test in sequence
 ```
 
-**This is the gold standard.** If `npm run prepare` passes, code quality is verified.
+**This is the gold standard.** If `npm run gate` passes, code quality is verified.
 
 ### Quality Checklist for Every Code Change
 
@@ -1078,7 +1079,7 @@ This project uses **lint-staged** with **husky** for pre-commit hooks:
 - ESLint errors exist
 - Type checking fails
 
-**Always run `npm run prepare` before considering work complete.**
+**Always run `npm run gate` before considering work complete.**
 
 ### Coverage Improvement Strategies
 

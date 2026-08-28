@@ -1,4 +1,4 @@
-npm run format
-npm run lint
-npm run check
-npm run test
+# `npm run gate` is lint (prettier --check + eslint), svelte-check and tests —
+# the same things CI runs. It reports bad formatting rather than rewriting
+# files mid-commit; run `npm run format` to fix them.
+npm run gate
