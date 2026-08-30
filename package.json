@@ -19,7 +19,7 @@
     "test:coverage": "vitest run --coverage",
     "test:coverage:watch": "vitest --coverage --watch",
     "badges": "npm run test:coverage && npm run badges:update",
-    "badges:update": "istanbul-badges-readme && prettier --write README.md",
+    "badges:update": "istanbul-badges-readme && node scripts/round-coverage-badges.js && prettier --write README.md",
     "deploy": "npm run db:migrate && wrangler deploy",
     "db:migrate": "node scripts/db-migrate.js",
     "db:migrate:local": "node scripts/db-migrate.js --local",
