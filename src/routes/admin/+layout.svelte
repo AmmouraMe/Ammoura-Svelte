@@ -622,7 +622,8 @@
 
         <a
           href="/admin/orders"
-          class:active={currentPath.startsWith('/admin/orders')}
+          class:active={currentPath.startsWith('/admin/orders') &&
+            !currentPath.startsWith('/admin/orders/fulfillment')}
           on:click={closeSidebar}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -637,6 +638,24 @@
             ></path>
           </svg>
           Orders
+        </a>
+
+        <a
+          href="/admin/orders/fulfillment"
+          class:active={currentPath.startsWith('/admin/orders/fulfillment')}
+          on:click={closeSidebar}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path
+              d="M1 3h15v13H1zM16 8h4l3 3v5h-7V8z"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ></path>
+            <circle cx="5.5" cy="18.5" r="2.5" stroke-width="2"></circle>
+            <circle cx="18.5" cy="18.5" r="2.5" stroke-width="2"></circle>
+          </svg>
+          Fulfillment
         </a>
 
         <!-- Builder with submenu (Pages, Layouts, Components, Primitives) -->
