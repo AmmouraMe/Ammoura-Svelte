@@ -83,21 +83,27 @@ export function createLogger(options: LoggerOptions = {}): Logger {
       return;
     }
 
-    const line = {
-      level: entryLevel,
-      time: new Date(now()).toISOString(),
-      msg: message,
-      ...(scrub(context) as Record<string, unknown>),
-      ...(fields ? (scrub(fields) as Record<string, unknown>) : {})
-    };
+    const time = new Date(now()).toISOString();
 
+    // Both the scrub and the serialise are inside the try. Reading a field can
+    // itself throw — a getter that raises is enough — and a logger that throws
+    // would take down the request it was only supposed to describe.
     let serialized: string;
     try {
-      serialized = JSON.stringify(line);
+      serialized = JSON.stringify({
+        level: entryLevel,
+        time,
+        msg: message,
+        ...(scrub(context) as Record<string, unknown>),
+        ...(fields ? (scrub(fields) as Record<string, unknown>) : {})
+      });
     } catch {
-      // scrub() already breaks cycles, so this is close to unreachable — but a
-      // logger that throws would take the request down with it.
-      serialized = JSON.stringify({ level: entryLevel, time: line.time, msg: message });
+      serialized = JSON.stringify({
+        level: entryLevel,
+        time,
+        msg: message,
+        logError: 'context could not be serialised'
+      });
     }
 
     sink[entryLevel](serialized);

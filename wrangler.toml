@@ -21,6 +21,10 @@ PLATFORM_SITES_DOMAIN = "ammoura.me"
 #     platform_engineer on their next sign-in. This is how the first superuser
 #     is created; nothing is seeded. See docs/AUTHENTICATION_SETUP.md.
 #   ENCRYPTION_KEY — encrypts stored provider credentials.
+#   ERROR_WEBHOOK_URL — captured errors are alerted here. Without it they are
+#     still structured log lines; see docs/OBSERVABILITY.md.
+# Optional var: LOG_LEVEL (debug|info|warn|error). Unset means info in
+# production, so debug logging is off unless someone asks for it.
 # For local development put them in .dev.vars (see .dev.vars.example).
 
 # Tenancy (see Ammoura planning repo, plans/tenancy.md)
