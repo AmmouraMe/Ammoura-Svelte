@@ -4,6 +4,7 @@
  * Reference: https://printful.com/api/docs
  */
 
+import { PrintfulApiError } from './errors';
 import type {
   PrintfulConfig,
   PrintfulResponse,
@@ -47,26 +48,42 @@ export class PrintfulClient {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        throw new PrintfulApiError(`HTTP ${response.status}: ${response.statusText}`, {
+          status: response.status,
+          body: await readBody(response)
+        });
       }
 
       const data = (await response.json()) as PrintfulResponse<T>;
 
       // Check Printful API error response
       if (data.code !== 200 && data.error) {
-        throw new Error(data.error.message);
+        throw new PrintfulApiError(data.error.message, {
+          status: data.code,
+          printfulCode: data.code,
+          body: JSON.stringify(data)
+        });
       }
 
       if (data.code !== 200) {
-        throw new Error(`Printful API error (code ${data.code})`);
+        throw new PrintfulApiError(`Printful API error (code ${data.code})`, {
+          status: data.code,
+          printfulCode: data.code,
+          body: JSON.stringify(data)
+        });
       }
 
       return data.result as T;
     } catch (error) {
-      if (error instanceof Error) {
+      if (error instanceof PrintfulApiError) {
         throw error;
       }
-      throw new Error(`Printful API request failed: ${String(error)}`);
+      if (error instanceof Error) {
+        // fetch rejecting, or a body that would not parse: the request never
+        // produced an answer, so there is no status to reason about.
+        throw new PrintfulApiError(error.message, { cause: error });
+      }
+      throw new PrintfulApiError(`Printful API request failed: ${String(error)}`);
     }
   }
 
@@ -151,10 +168,36 @@ export class PrintfulClient {
   }
 
   /**
-   * Get order by external ID (our order ID)
+   * Get order by external ID (our order ID).
+   *
+   * Printful addresses an order by our own id with an `@` prefix, which is a
+   * single request rather than paging the whole order list. Returns null when
+   * no such order exists — the answer the relay needs before deciding whether
+   * a retry would create a duplicate.
    */
   async getOrderByExternalId(externalId: string): Promise<PrintfulOrder | null> {
-    const orders = await this.getOrders();
-    return orders.find((o) => o.external_id === externalId) || null;
+    try {
+      return await this.request<PrintfulOrder>(`/orders/@${encodeURIComponent(externalId)}`);
+    } catch (error) {
+      if (error instanceof PrintfulApiError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+}
+
+/**
+ * Read an error response body without letting the read itself become the
+ * failure. Some responses have no body, and test doubles do not always
+ * implement `text()`.
+ */
+async function readBody(response: Response): Promise<string | null> {
+  if (typeof response.text !== 'function') return null;
+  try {
+    const text = await response.text();
+    return text ? text.slice(0, 4000) : null;
+  } catch {
+    return null;
   }
 }
