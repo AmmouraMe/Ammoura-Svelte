@@ -51,6 +51,11 @@
   import ThemeToggleComponent from '$lib/components/builtin/ThemeToggle.svelte';
   import MobileCollapseToggle from '$lib/components/builtin/MobileCollapseToggle.svelte';
   import {
+    getMobileCollapseLabel,
+    isContainerType,
+    shouldShowMobileCollapse
+  } from '$lib/utils/mobileCollapse';
+  import {
     resolveThemeColor,
     getThemeColors,
     generateThemeStyles
@@ -71,6 +76,13 @@
   export let onLogout: (() => void) | undefined = undefined;
   export let user: UserInfo | null | undefined = undefined; // Current user for visibility checks
   export let position: ResponsiveValue<PositionConfig> | undefined = undefined; // Optional position override from layout
+  /**
+   * True when this component is being rendered somewhere inside a navbar.
+   * Set by the navbar container branch and passed down through nested
+   * containers, so a row of navigation items can collapse behind a hamburger
+   * on mobile without the site owner having to know the setting exists.
+   */
+  export let insideNavbar: boolean = false;
 
   /**
    * Check if the component should be visible based on visibility rules
@@ -492,13 +504,12 @@
   $: advancedStyles =
     `${boxShadowStyle} ${transformStyle} ${filterStyle} ${backdropFilterStyle} ${opacityStyle} ${aspectRatioStyle} ${mixBlendModeStyle} ${backgroundColorStyle} ${backgroundImageStyle}`.trim();
 
-  // Check if this is a container-type component (composite components also render children)
-  $: isContainer =
-    type === 'container' || type === 'row' || type === 'flex' || type === 'composite';
+  // Check if this is a container-type component
+  $: isContainer = isContainerType(type);
 
-  // Mobile collapse state
-  $: hasMobileCollapse = isContainer && config.containerMobileCollapse === true;
-  $: mobileCollapseLabel = (config.containerMobileCollapseLabel as string) || 'Menu';
+  // Mobile collapse state — see $lib/utils/mobileCollapse for the rule.
+  $: hasMobileCollapse = shouldShowMobileCollapse({ type, config, insideNavbar, children });
+  $: mobileCollapseLabel = getMobileCollapseLabel(config);
   $: mobileCollapseIconColor = config.containerMobileCollapseIconColor
     ? resolveThemeColor(
         config.containerMobileCollapseIconColor as string,
@@ -569,6 +580,7 @@
             {colorTheme}
             {siteContext}
             {user}
+            insideNavbar={type === 'navbar'}
           />
         </div>
       {/each}
@@ -620,6 +632,7 @@
                 {colorTheme}
                 {siteContext}
                 {user}
+                {insideNavbar}
               />
             </div>
           {/each}
@@ -922,15 +935,32 @@
       overflow: hidden;
       transition:
         max-height 0.3s ease,
-        opacity 0.3s ease;
+        opacity 0.3s ease,
+        visibility 0s linear 0s;
       max-height: 2000px;
       opacity: 1;
+      visibility: visible;
     }
 
     .mobile-collapse-hidden {
       max-height: 0;
       opacity: 0;
       pointer-events: none;
+      /* visibility, not just opacity: a collapsed menu must also drop out of
+         the tab order, or keyboard focus walks into links nobody can see.
+         Delayed so it only applies once the collapse has finished animating. */
+      visibility: hidden;
+      transition:
+        max-height 0.3s ease,
+        opacity 0.3s ease,
+        visibility 0s linear 0.3s;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .mobile-collapse-content,
+      .mobile-collapse-hidden {
+        transition: none;
+      }
     }
   }
 

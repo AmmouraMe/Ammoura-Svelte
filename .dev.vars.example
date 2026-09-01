@@ -16,6 +16,13 @@ ENCRYPTION_KEY=your_generated_encryption_key_here
 # http://<slug>.localhost:4236
 PLATFORM_SITES_DOMAIN=localhost
 
+# Bearer token for POST /api/cron/fulfillment-retry, the sweep that retries
+# paid orders which never reached their fulfillment provider. Without it the
+# endpoint refuses every request, including yours. Generate with:
+#   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+# See docs/FULFILLMENT_RELAY.md.
+CRON_SECRET=your_generated_cron_secret_here
+
 # Log level: debug | info | warn | error.
 # Unset means debug in dev and info in production, so debug logging is off
 # where it matters. See docs/OBSERVABILITY.md.

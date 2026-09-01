@@ -42,6 +42,7 @@ declare global {
         EMAIL_FROM?: string; // From header for outbound email
         PLATFORM_ENGINEER_EMAIL?: string; // secret: this user is elevated to platform_engineer on sign-in
         ENCRYPTION_KEY?: string; // Base64-encoded AES-256 key for encrypting secrets
+        CRON_SECRET?: string; // secret: bearer token for POST /api/cron/fulfillment-retry
         LOG_LEVEL?: string; // debug | info | warn | error; defaults to info in production
         ERROR_WEBHOOK_URL?: string; // secret: captured errors are alerted here
         // OAuth provider credentials (dynamically indexed)

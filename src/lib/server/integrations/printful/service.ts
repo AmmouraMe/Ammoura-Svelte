@@ -98,6 +98,16 @@ export class PrintfulService {
   }
 
   /**
+   * Find an order Printful already holds under our own order id.
+   *
+   * The relay asks this before retrying, so a first attempt that created the
+   * order and then timed out does not produce a second one.
+   */
+  async findOrderByExternalId(externalId: string): Promise<PrintfulOrder | null> {
+    return this.client.getOrderByExternalId(externalId);
+  }
+
+  /**
    * Get order status from Printful
    */
   async getOrderStatus(orderId: number): Promise<PrintfulOrder> {

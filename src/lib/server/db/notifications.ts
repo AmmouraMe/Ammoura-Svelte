@@ -12,7 +12,10 @@ export type NotificationType =
   | 'permission_changed'
   | 'role_updated'
   | 'password_reset'
-  | 'system_announcement';
+  | 'system_announcement'
+  // A paid order never reached its fulfillment provider — see
+  // src/lib/server/fulfillment/relay-runner.ts.
+  | 'fulfillment_failed';
 
 export interface Notification {
   id: string;

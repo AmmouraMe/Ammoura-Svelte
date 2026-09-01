@@ -84,10 +84,13 @@ For real-time order updates:
 When a customer places an order with Printful fulfillment:
 
 1. Order is validated and inventory checked
-2. Order data is sent to Printful API
-3. Printful processes, prints, and ships the product
-4. Webhook updates received on status changes
-5. Customer receives tracking information
+2. A relay record is written, then the order data is sent to the Printful API
+3. A failed hand-off is retried with backoff, or dead-lettered where it is
+   visible and retryable by hand — see
+   [FULFILLMENT_RELAY.md](./FULFILLMENT_RELAY.md)
+4. Printful processes, prints, and ships the product
+5. Webhook updates received on status changes
+6. Customer receives tracking information
 
 ### Inventory Management
 
@@ -190,9 +193,22 @@ class PrintfulService {
 
 ### Retry Strategy
 
-- **API Errors**: Automatic retry with exponential backoff
-- **Network Errors**: Retry up to 3 times
-- **Order Webhooks**: Returned 200 immediately to prevent retries
+A paid order that fails to reach Printful is recorded in `fulfillment_relays`
+and retried on a schedule — 8 attempts over roughly four hours, with
+exponential backoff and jitter. A failure Printful will never accept (a bad
+address, an unavailable variant, a revoked key) is not retried at all; it is
+dead-lettered immediately so a human sees it.
+
+Anything that gives up lands on `/admin/orders/fulfillment` with its error and
+the raw Printful response, and the store's admins are notified. Retries are
+idempotent: the order carries our order id as its `external_id`, and a retry
+adopts an order Printful already holds instead of placing a second one.
+
+Order webhooks are still returned 200 immediately, so Printful does not retry
+them.
+
+Full detail, including how to configure the sweep, is in
+[FULFILLMENT_RELAY.md](./FULFILLMENT_RELAY.md).
 
 ## Security
 
