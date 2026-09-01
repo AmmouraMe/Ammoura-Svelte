@@ -34,6 +34,12 @@
       case 'account_inactive':
         error = 'Your account is inactive. Please contact support.';
         break;
+      case 'provider_not_configured':
+        error = `${provider} sign-in is not set up on this site yet. Use email and password, or ask an administrator to add the credentials.`;
+        break;
+      case 'unknown_provider':
+        error = 'That sign-in method is not available.';
+        break;
       default:
         error = 'Authentication failed. Please try again.';
     }
