@@ -5,9 +5,17 @@ declare global {
   const __APP_VERSION__: string;
 
   namespace App {
-    // interface Error {}
+    interface Error {
+      message: string;
+      /** Echoed to the visitor so a report can be matched to a log line. */
+      requestId?: string;
+    }
     interface Locals {
       siteId: string;
+      /** One id per request; also returned as the `x-request-id` header. */
+      requestId: string;
+      /** Request-scoped structured logger, pre-bound with site and route. */
+      log: import('$lib/server/observability').Logger;
       /** Resolved locale for this request (cookie → Accept-Language → site default) */
       locale: string;
       /** The site's language configuration (validated against supported locales) */
@@ -35,6 +43,8 @@ declare global {
         PLATFORM_ENGINEER_EMAIL?: string; // secret: this user is elevated to platform_engineer on sign-in
         ENCRYPTION_KEY?: string; // Base64-encoded AES-256 key for encrypting secrets
         CRON_SECRET?: string; // secret: bearer token for POST /api/cron/fulfillment-retry
+        LOG_LEVEL?: string; // debug | info | warn | error; defaults to info in production
+        ERROR_WEBHOOK_URL?: string; // secret: captured errors are alerted here
         // OAuth provider credentials (dynamically indexed)
         [key: string]: string | D1Database | R2Bucket | undefined;
       };
