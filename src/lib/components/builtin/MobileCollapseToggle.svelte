@@ -66,7 +66,10 @@
     display: none;
     align-items: center;
     gap: 8px;
-    padding: 8px 12px;
+    /* 44px minimum tap target: the icon is 24px, so 10px of vertical padding
+       is the floor. min-height holds the target even with no label. */
+    padding: 10px 12px;
+    min-height: 44px;
     border: none;
     cursor: pointer;
     font-size: 14px;
@@ -79,6 +82,12 @@
 
   .mobile-collapse-toggle:hover {
     opacity: 0.8;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mobile-collapse-toggle {
+      transition: none;
+    }
   }
 
   .mobile-collapse-toggle:focus-visible {
