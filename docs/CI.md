@@ -35,6 +35,10 @@ differ.
 When this step fails, run `npm run badges` and commit the `README.md` change.
 See [COVERAGE_BADGE_SETUP.md](../COVERAGE_BADGE_SETUP.md).
 
+The badges are rounded to whole percent on purpose. V8 counts branches slightly
+differently between Node versions, and at two decimal places that difference
+made this check unsatisfiable from any machine not running the runner's Node.
+
 ## Deploy
 
 `deploy` runs only on a push to `main`, and only after `checks` passes. It

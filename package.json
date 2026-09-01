@@ -19,7 +19,7 @@
     "test:coverage": "vitest run --coverage",
     "test:coverage:watch": "vitest --coverage --watch",
     "badges": "npm run test:coverage && npm run badges:update",
-    "badges:update": "istanbul-badges-readme && prettier --write README.md",
+    "badges:update": "istanbul-badges-readme && node scripts/round-coverage-badges.js && prettier --write README.md",
     "deploy": "npm run db:migrate && wrangler deploy",
     "deploy:dev-staging": "npm run db:migrate:dev-staging && npm run build && wrangler deploy --env dev-staging",
     "db:migrate:dev-staging": "wrangler d1 migrations apply hermes-db-dev-staging --remote --env dev-staging",
