@@ -17,10 +17,25 @@ npm run badges:update
 ```
 
 `npm run badges` is a thin wrapper over `npm run test:coverage && npm run
-badges:update`, and `badges:update` runs `istanbul-badges-readme` followed by
-`prettier --write README.md` — the rewritten badge row changes the Markdown
-table's column widths, so it needs the Prettier pass to stay lint-clean. Commit
-the resulting `README.md` change along with the code that moved the numbers.
+badges:update`. `badges:update` runs three steps: `istanbul-badges-readme`,
+then `scripts/round-coverage-badges.js`, then `prettier --write README.md`.
+Commit the resulting `README.md` change along with the code that moved the
+numbers.
+
+The Prettier pass is needed because the rewritten badge row changes the
+Markdown table's column widths, and without it the README fails
+`prettier --check`.
+
+## Why the badges are whole percent
+
+`istanbul-badges-readme` writes two decimals, and V8 counts branches very
+slightly differently between Node versions — the same commit measured 92.45% on
+Node 25 and 92.46% on Node 22. CI regenerates the badges and fails when they
+disagree with the committed ones, so that hundredth of a percent made the check
+impossible to satisfy from a machine running a different Node than the runner.
+
+`scripts/round-coverage-badges.js` rounds to whole percent, which is stable
+across that difference and is all a badge conveys anyway.
 
 ## How it works
 
