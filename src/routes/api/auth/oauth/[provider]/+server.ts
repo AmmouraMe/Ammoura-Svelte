@@ -19,7 +19,8 @@ const VALID_PROVIDERS: OAuthProvider[] = [
   'facebook',
   'github',
   'twitter',
-  'microsoft'
+  'microsoft',
+  'discord'
 ];
 
 /**
@@ -29,9 +30,14 @@ const VALID_PROVIDERS: OAuthProvider[] = [
 export const GET: RequestHandler = async ({ params, url, platform, locals, request }) => {
   const provider = params.provider as OAuthProvider;
 
-  // Validate provider
+  // Validate provider. Send the visitor back to the login page rather than
+  // throwing — an unknown or unconfigured provider is a bad link or a missing
+  // setting, and a 500 page gives them nothing to act on.
   if (!VALID_PROVIDERS.includes(provider)) {
-    throw new Error(`Invalid OAuth provider: ${provider}`);
+    throw redirect(
+      302,
+      `/auth/login?error=unknown_provider&provider=${encodeURIComponent(provider)}`
+    );
   }
 
   const db = getDB(platform);
@@ -56,7 +62,10 @@ export const GET: RequestHandler = async ({ params, url, platform, locals, reque
         provider
       );
       if (!envCreds) {
-        throw new Error(`OAuth provider ${provider} not configured for this site`);
+        throw redirect(
+          302,
+          `/auth/login?error=provider_not_configured&provider=${encodeURIComponent(provider)}`
+        );
       }
       clientId = envCreds.clientId;
       clientSecret = envCreds.clientSecret;
@@ -68,7 +77,10 @@ export const GET: RequestHandler = async ({ params, url, platform, locals, reque
       provider
     );
     if (!envCreds) {
-      throw new Error(`OAuth provider ${provider} not configured (no encryption key or env vars)`);
+      throw redirect(
+        302,
+        `/auth/login?error=provider_not_configured&provider=${encodeURIComponent(provider)}`
+      );
     }
     clientId = envCreds.clientId;
     clientSecret = envCreds.clientSecret;

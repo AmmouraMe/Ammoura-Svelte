@@ -20,7 +20,8 @@ const PROVIDER_ENV_MAP: Record<OAuthProvider, string> = {
   facebook: 'FACEBOOK',
   github: 'GITHUB',
   twitter: 'TWITTER',
-  microsoft: 'MICROSOFT'
+  microsoft: 'MICROSOFT',
+  discord: 'DISCORD'
 };
 
 /**
@@ -33,7 +34,10 @@ const PROVIDER_DISPLAY_DEFAULTS: Record<OAuthProvider, { name: string; icon: str
   facebook: { name: 'Facebook', icon: 'Facebook' },
   github: { name: 'GitHub', icon: 'Github' },
   twitter: { name: 'X (Twitter)', icon: 'Twitter' },
-  microsoft: { name: 'Microsoft', icon: 'Building' }
+  microsoft: { name: 'Microsoft', icon: 'Building' },
+  // lucide ships no Discord brand mark; MessageCircle is the closest
+  // resolvable icon and the SSO icon picker can override it per site.
+  discord: { name: 'Discord', icon: 'MessageCircle' }
 };
 
 export interface EnvOAuthCredentials {

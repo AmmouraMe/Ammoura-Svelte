@@ -4,7 +4,7 @@ This guide explains how to configure and use the multi-provider OAuth Single Sig
 
 ## Overview
 
-Hermes supports seamless authentication through 7 major OAuth providers:
+Hermes supports seamless authentication through 8 major OAuth providers:
 
 - 🔍 **Google** - OAuth 2.0 / OpenID Connect
 - 💼 **LinkedIn** - OAuth 2.0
@@ -13,6 +13,7 @@ Hermes supports seamless authentication through 7 major OAuth providers:
 - 🐙 **GitHub** - GitHub OAuth
 - 𝕏 **X (Twitter)** - OAuth 2.0
 - 🪟 **Microsoft** - Microsoft Entra ID (Azure AD)
+- 💬 **Discord** - OAuth 2.0 (`identify` + `email` scopes)
 
 ## Features
 

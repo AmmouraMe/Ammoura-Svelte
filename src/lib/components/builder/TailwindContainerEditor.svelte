@@ -495,7 +495,11 @@
           }}
         />
       </div>
-      <small>Hide children behind a hamburger icon on mobile screens</small>
+      <small>
+        Hides this container's contents behind a hamburger on screens under 768px. A row of
+        navigation items inside a navbar already does this on its own — switch it on here for any
+        other container, or off to keep a navbar row expanded.
+      </small>
 
       {#if config.containerMobileCollapse}
         <div class="form-group">
