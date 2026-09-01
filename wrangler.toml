@@ -26,6 +26,10 @@ PLATFORM_SITES_DOMAIN = "ammoura.me"
 #     platform_engineer on their next sign-in. This is how the first superuser
 #     is created; nothing is seeded. See docs/AUTHENTICATION_SETUP.md.
 #   ENCRYPTION_KEY — encrypts stored provider credentials.
+#   CRON_SECRET — bearer token for POST /api/cron/fulfillment-retry, the
+#     fulfillment retry sweep. The Worker cannot schedule itself (the SvelteKit
+#     adapter emits a fetch-only worker), so the sweep is called on a schedule
+#     from CI. See docs/FULFILLMENT_RELAY.md.
 # For local development put them in .dev.vars (see .dev.vars.example).
 
 # Tenancy (see Ammoura planning repo, plans/tenancy.md)

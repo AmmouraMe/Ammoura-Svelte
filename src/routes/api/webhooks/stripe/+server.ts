@@ -93,9 +93,13 @@ export const POST: RequestHandler = async ({ request, platform, locals }) => {
       if (justPaid) {
         // Fulfilment first. markOrderPaid is a one-shot guard (it only fires
         // while payment_status is still 'unpaid'), so anything that throws
-        // between it and the relay strands the order permanently: Stripe
-        // retries, justPaid comes back false, and the relay never runs again.
-        // The customer is charged and Printful never hears about it.
+        // between it and the relay strands the order: Stripe retries, justPaid
+        // comes back false, and this call never runs again.
+        //
+        // The relay itself now writes a fulfillment_relays row and retries on
+        // a schedule, so a Printful failure here is recorded rather than lost.
+        // A crash before that row is written is what
+        // /admin/orders/fulfillment lists as "paid, never sent".
         await relayPaidOrderToPrintful(db, siteId, order.id, encryptionKey);
 
         // Telemetry — must never be able to abort the paid-order path.
